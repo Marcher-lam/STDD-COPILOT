@@ -1,8 +1,14 @@
 ---
-description: 需求确认（用户审阅并同意）
+name: stdd-confirm
+description: |
+  需求确认（用户审阅并同意）。
+  触发场景：用户说 '/stdd-confirm', 'stdd confirm', '确认需求', 'STDD确认', 'confirm需求'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
 
-# STDD 需求确认向导 (/stdd:confirm)
+# STDD 需求确认向导 (/stdd-confirm)
 
 1. 读取 `01_proposal.md`（已包含原始需求 + 澄清记录）。
 2. 自动生成 **需求确认报告**：

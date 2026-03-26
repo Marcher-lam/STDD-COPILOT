@@ -1,8 +1,14 @@
 ---
-description: 生成最终需求文档（聚合所有阶段产出）
+name: stdd-final-doc
+description: |
+  生成最终需求文档（聚合所有阶段产出）。
+  触发场景：用户说 '/stdd-final-doc', 'stdd final doc', '最终文档', 'STDD文档', 'stdd final doc'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
 
-# STDD 最终需求文档生成向导 (/stdd:final-doc)
+# STDD 最终需求文档生成向导 (/stdd-final-doc)
 
 ## 目的
 在整个 STDD Copilot 流程结束后，自动生成一份 **完整、可审阅的需求文档**，该文档汇总了：
@@ -13,7 +19,7 @@ description: 生成最终需求文档（聚合所有阶段产出）
 5. 任务拆解清单（`03_tasks.md`）
 6. 关键实现摘要（自动抽取自生成的代码文件头部注释）
 7. 测试概览（测试用例列表、通过率、伪变异审查结果）
-8. 变更日志（从 `stdd‑commit` 生成的原子提交信息）
+8. 变更日志（从 `stdd-commit` 生成的原子提交信息）
 9. 文档版本号与生成时间
 
 ## 步骤
@@ -22,7 +28,7 @@ description: 生成最终需求文档（聚合所有阶段产出）
 2. **聚合澄清记录**
    - 搜索 `<!-- Clarify -->` 区块，按轮次 (`Round #N`) 组织，形成 **澄清章节**。
 3. **确认状态**
-   - 检查 `<!-- Confirmed -->` 或 `<!-- Rejected -->` 标记，若已确认则在文档顶部写入 `✅ 需求已确认`，否则写入 `⚠️ 需求未确认` 并终止后续步骤。
+   - 检查 `<!-- Confirmed -->` 或 `<!-- Rejected -->` 标记，若已确认则在文档顶部写入 `需求已确认`，否则写入 `需求未确认` 并终止后续步骤。
 4. **插入 BDD 规格**
    - 将 `02_bdd_specs.feature` 前 20 行（或全部）作为 **规格章节**，保持原始 Given/When/Then 格式。
 5. **任务清单**
@@ -30,7 +36,7 @@ description: 生成最终需求文档（聚合所有阶段产出）
 6. **实现摘要**
    - 对 `src/` 目录下的每个实现文件（`.js/.ts/.jsx/.tsx`），读取文件顶部的 `/***` 注释块（若存在），汇总为 **实现概览**。若文件缺少注释，则使用文件路径作为占位。
 7. **测试概览**
-   - 读取 `src/__tests__/` 下的所有测试文件，统计 **总用例数**、**通过数**、**覆盖率**（从 `coverage-summary.json`，若存在），并列出 **伪变异审查报告**（`stdd‑execute` 生成的 `mutation_report.md`，若存在）。
+   - 读取 `src/__tests__/` 下的所有测试文件，统计 **总用例数**、**通过数**、**覆盖率**（从 `coverage-summary.json`，若存在），并列出 **伪变异审查报告**（`stdd-execute` 生成的 `mutation_report.md`，若存在）。
 8. **变更日志**
    - 调用 `git log -n 10 --pretty=format:"%h %s"`（限制最近 10 条），将带有 `red:`、`green:`、`refactor:` 前缀的提交收集为 **变更章节**。
 9. **文档元信息**
@@ -59,16 +65,15 @@ description: 生成最终需求文档（聚合所有阶段产出）
 - 同步频率：网络恢复自动同步
 
 ## 3. 需求确认
-✅ 需求已确认（2026-03-26T17:30:00+08:00）
+需求已确认（2026-03-26T17:30:00+08:00）
 
 ## 4. BDD 规格
-```feature
+feature
 Feature: Todo List
   Scenario: Export markdown
     Given a user has a todo list
     When the user clicks "Export"
     Then a markdown file is generated
-```
 
 ## 5. 任务拆解
 1. 创建 TodoList 组件 UI
@@ -97,4 +102,4 @@ Feature: Todo List
 *此文档由 STDD Copilot 自动生成，保持与代码同步。*
 ```
 
-> **调用方式**：在整个 `stdd‑execute` 完成后（或手动在任意阶段），运行 `/stdd:final-doc` 即可生成上述文档。
+> **调用方式**：在整个 `stdd-execute` 完成后（或手动在任意阶段），运行 `/stdd-final-doc` 即可生成上述文档。

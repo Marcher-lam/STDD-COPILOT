@@ -1,5 +1,11 @@
 ---
-description: 归档特性，完成防范围溢漏审查，原子化提交。
+name: stdd-commit
+description: |
+  归档特性，完成防范围溢漏审查，原子化提交。
+  触发场景：用户说 '/stdd-commit', 'stdd commit', '提交代码', 'STDD提交', 'stdd commit'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
 
 # STDD 文档闭环与原子规范提交 (/stdd-commit)
