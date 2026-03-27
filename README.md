@@ -125,6 +125,16 @@ npm link
 | `/stdd-roles` | 多角色协作 (PO/Dev/Tester/Reviewer) ⭐ 新增 |
 | `/stdd-metrics` | 质量指标仪表板 ⭐ 新增 |
 | `/stdd-learn` | 自适应学习系统 ⭐ 新增 |
+| **SDD 增强** | |
+| `/stdd-api-spec` | API 规范先行 (OpenAPI/TypeScript) 🔥 SDD |
+| `/stdd-contract` | 契约测试 (消费者驱动契约) 🔥 SDD |
+| `/stdd-schema` | 类型规范先行 (JSON Schema/Zod) 🔥 SDD |
+| `/stdd-validate` | 规范验证 (实现与规范一致性) 🔥 SDD |
+| **TDD 增强** | |
+| `/stdd-outside-in` | 外向内 TDD (E2E → 集成 → 单元) 🔥 TDD |
+| `/stdd-mock` | 自动 Mock 生成 (服务/API) 🔥 TDD |
+| `/stdd-factory` | 测试数据工厂 (Builder/Faker) 🔥 TDD |
+| `/stdd-mutation` | 变异测试 (Stryker 风格) 🔥 TDD |
 
 ## 项目结构
 
