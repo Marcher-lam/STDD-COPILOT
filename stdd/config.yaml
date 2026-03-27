@@ -1,0 +1,132 @@
+# STDD Copilot 配置
+# 版本: 1.0
+
+version: "1.0"
+name: "STDD Copilot"
+description: "Specification & Test-Driven Development Framework"
+
+# 项目信息
+project:
+  type: "${PROJECT_TYPE:-node}"
+  language: "${LANGUAGE:-typescript}"
+  framework: "${FRAMEWORK:-react}"
+  test_framework: "${TEST_FRAMEWORK:-vitest}"
+  package_manager: "${PKG_MANAGER:-npm}"
+
+# Skill Graph 配置
+graph:
+  max_parallel: 4
+  timeout: 3600
+  retry_count: 3
+  on_failure: "rollback"
+
+# 变更管理
+changes:
+  dir: "stdd/changes"
+  archive_dir: "stdd/changes/archive"
+  naming: "change-YYYYMMDD-HHMMSS"
+  auto_archive_after_days: 30
+
+# 规格管理
+specs:
+  dir: "stdd/specs"
+  format: "gherkin"  # gherkin, yaml, markdown
+  bdd_framework: "${TEST_FRAMEWORK:-vitest}"
+
+# 记忆系统
+memory:
+  dir: "stdd/memory"
+  vector_db: "${VECTOR_DB:-none}"  # none, pinecone, weaviate, qdrant
+  embedding_model: "${EMBEDDING_MODEL:-none}"
+
+# TDD 配置
+tdd:
+  ralph_loop:
+    max_iterations: 10
+    failure_threshold: 3
+    auto_rollback: true
+
+  static_check:
+    enabled: true
+    commands:
+      typescript: "tsc --noEmit"
+      python: "mypy ."
+      java: "mvn compile"
+
+  mutation:
+    enabled: true
+    threshold: 80
+    operators:
+      - arithmetic
+      - conditional
+      - boolean
+      - string
+      - null
+
+# 5 级防跑偏
+defense:
+  confirm_gate:
+    enabled: true
+    critical_points:
+      - after_clarify
+      - before_apply
+      - before_archive
+
+  micro_task:
+    max_tasks: 6
+    min_granularity: "30min"
+
+  failure_rollback:
+    threshold: 3
+    auto_stash: true
+
+  static_quality:
+    enabled: true
+    block_on_error: true
+
+  mutation_review:
+    enabled: true
+    detect_fake_green: true
+
+# 外部 AI 引擎
+ai_engines:
+  claude_code:
+    enabled: true
+    model: "${CLAUDE_MODEL:-claude-sonnet-4-6}"
+    max_tokens: 128000
+
+  qwen_code:
+    enabled: "${QWEN_ENABLED:-false}"
+    model: "${QWEN_MODEL:-qwen-max}"
+
+  openai:
+    enabled: "${OPENAI_ENABLED:-false}"
+    model: "${OPENAI_MODEL:-gpt-4-turbo}"
+
+# 报告配置
+reports:
+  dir: "stdd/reports"
+  formats:
+    - html
+    - json
+    - markdown
+
+  metrics:
+    - test_coverage
+    - code_quality
+    - spec_coverage
+    - mutation_score
+
+# Hooks
+hooks:
+  pre_apply:
+    - skill: "stdd-guard"
+      condition: "always"
+
+  post_apply:
+    - skill: "stdd-metrics"
+      condition: "on_success"
+
+  on_failure:
+    - skill: "stdd-iterate"
+      max_retries: 3
