@@ -119,6 +119,12 @@ npm link
 | `/stdd-prp` | PRP 结构化规划 (What/Why/How/Success) ⭐ 新增 |
 | `/stdd-supervisor` | 多 Agent 协调器 (Supervisor 模式) ⭐ 新增 |
 | `/stdd-context` | 三层文档架构 (渐进式加载) ⭐ 新增 |
+| `/stdd-iterate` | 自主迭代循环 (Plan-Execute-Reflect) ⭐ 新增 |
+| `/stdd-memory` | 向量数据库记忆 (语义搜索) ⭐ 新增 |
+| `/stdd-parallel` | 并行执行模式 (DAG 调度) ⭐ 新增 |
+| `/stdd-roles` | 多角色协作 (PO/Dev/Tester/Reviewer) ⭐ 新增 |
+| `/stdd-metrics` | 质量指标仪表板 ⭐ 新增 |
+| `/stdd-learn` | 自适应学习系统 ⭐ 新增 |
 
 ## 项目结构
 
