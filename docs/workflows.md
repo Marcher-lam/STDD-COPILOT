@@ -146,9 +146,13 @@ Ready for /stdd:apply
 ### 示例
 
 ```bash
-# 1. 探索现有系统
+# 1. 探索现有系统 (探索目标是必需的)
 /stdd:explore 理解现有的认证系统架构
 
+# AI 会:
+# - 只读取业务代码 (src/, tests/ 等)
+# - 不读取 STDD 配置文件 (.claude/, stdd/, schemas/)
+# - 分析技术栈、架构模式、约束条件
 # 输出: stdd/explorations/explore-xxx.md
 # 包含: 项目结构、技术栈、约束、建议
 
@@ -160,6 +164,8 @@ Ready for /stdd:apply
 # 3. 后续同 Expanded 工作流
 ...
 ```
+
+> ⚠️ **注意**: 如果没有提供探索目标，系统会询问您想探索什么。请提供具体的业务功能或技术问题作为探索目标。
 
 ### 适用场景
 

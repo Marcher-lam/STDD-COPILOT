@@ -60,12 +60,36 @@ stdd/
 
 ### /stdd:explore
 
-进入只读探索模式。
+进入只读探索模式，探索**业务代码**和架构。
+
+> ⚠️ **探索目标是必需的**。如果没有提供，系统会询问您想探索什么。
 
 ```bash
-/stdd:explore                  # 通用探索
-/stdd:explore <探索目标>       # 指定目标
+/stdd:explore <探索目标>       # 指定探索目标 (必需)
 /stdd:explore --deep           # 深度探索
+```
+
+**探索范围:**
+
+```
+✅ 探索这些:
+   - src/ 目录下的业务代码
+   - 现有的组件、服务、工具
+   - API 接口和数据模型
+   - 测试文件和测试模式
+
+❌ 不要探索这些:
+   - .claude/ (STDD 命令配置)
+   - stdd/ (STDD 工作目录)
+   - schemas/ (规格模板)
+   - AGENTS.md (AI 指令)
+```
+
+**示例:**
+```bash
+/stdd:explore 理解现有的用户认证流程
+/stdd:explore 分析 API 错误处理模式
+/stdd:explore 评估引入 Zustand 替代 Redux 的可行性
 ```
 
 **输出:**
