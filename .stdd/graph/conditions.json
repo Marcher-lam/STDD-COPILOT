@@ -1,0 +1,91 @@
+{
+  "evaluators": {
+    "file_exists": {
+      "type": "filesystem",
+      "description": "检查文件是否存在",
+      "cache": true,
+      "ttl": 5000
+    },
+    "file_pattern": {
+      "type": "glob",
+      "description": "检查匹配模式的文件是否存在",
+      "cache": true,
+      "ttl": 10000
+    },
+    "command": {
+      "type": "shell",
+      "description": "执行 shell 命令并检查结果",
+      "timeout": 30000,
+      "allowedCommands": ["npm", "git", "node", "npx", "yarn", "pnpm"]
+    },
+    "variable": {
+      "type": "env",
+      "description": "检查环境变量",
+      "allowOverride": true
+    },
+    "json_path": {
+      "type": "jsonpath",
+      "description": "从 JSON 文件中提取值",
+      "cache": true,
+      "ttl": 10000
+    },
+    "git_branch": {
+      "type": "git",
+      "description": "检查当前 Git 分支",
+      "cache": false
+    },
+    "git_status": {
+      "type": "git",
+      "description": "检查 Git 状态",
+      "cache": false
+    }
+  },
+  "operators": {
+    "equals": {
+      "symbol": "==",
+      "description": "等于"
+    },
+    "not_equals": {
+      "symbol": "!=",
+      "description": "不等于"
+    },
+    "greater_than": {
+      "symbol": ">",
+      "description": "大于"
+    },
+    "less_than": {
+      "symbol": "<",
+      "description": "小于"
+    },
+    "greater_or_equal": {
+      "symbol": ">=",
+      "description": "大于或等于"
+    },
+    "less_or_equal": {
+      "symbol": "<=",
+      "description": "小于或等于"
+    },
+    "contains": {
+      "symbol": "contains",
+      "description": "包含"
+    },
+    "matches": {
+      "symbol": "matches",
+      "description": "正则匹配"
+    }
+  },
+  "hooks": {
+    "onConditionMet": [
+      {
+        "type": "log",
+        "level": "info"
+      }
+    ],
+    "onConditionFailed": [
+      {
+        "type": "log",
+        "level": "debug"
+      }
+    ]
+  }
+}

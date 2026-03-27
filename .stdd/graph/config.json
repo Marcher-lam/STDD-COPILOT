@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "graphFile": ".stdd/graph/skills.yaml",
+  "historyDir": ".stdd/history",
+  "maxParallelWorkers": 4,
+  "defaultTimeout": 3600000,
+  "retryPolicy": {
+    "maxRetries": 3,
+    "backoffMs": 1000,
+    "multiplier": 2
+  },
+  "visualization": {
+    "defaultFormat": "mermaid",
+    "htmlTemplate": ".stdd/templates/graph.html",
+    "theme": "light"
+  },
+  "tracking": {
+    "enabled": true,
+    "snapshotInterval": 60000,
+    "maxHistoryEntries": 100
+  },
+  "recommendations": {
+    "enabled": true,
+    "minConfidence": 0.7,
+    "contextWindow": 5
+  }
+}

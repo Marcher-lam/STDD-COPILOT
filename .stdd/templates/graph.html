@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STDD Copilot - Skill Graph 可视化</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #3b82f6;
+      --success-color: #22c55e;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-color: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      color: var(--text-muted);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      flex-wrap: wrap;
+    }
+
+    .toolbar button {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--card-bg);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .toolbar button:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .toolbar button.active {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .status-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .status-card {
+      flex: 1;
+      min-width: 200px;
+      padding: 1rem;
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .status-card h3 {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .status-card .value {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .graph-container {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      overflow: auto;
+    }
+
+    #graph {
+      width: 100%;
+      min-height: 600px;
+    }
+
+    .skill-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .skill-card {
+      padding: 1rem;
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border-left: 4px solid var(--primary-color);
+    }
+
+    .skill-card.completed {
+      border-left-color: var(--success-color);
+    }
+
+    .skill-card.running {
+      border-left-color: var(--warning-color);
+    }
+
+    .skill-card.failed {
+      border-left-color: var(--danger-color);
+    }
+
+    .skill-card h4 {
+      margin-bottom: 0.5rem;
+    }
+
+    .skill-card p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .skill-card .meta {
+      display: flex;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+    }
+
+    .badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      background: var(--border-color);
+    }
+
+    .badge.success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    /* D3 Graph Styles */
+    .node circle {
+      cursor: pointer;
+      stroke-width: 2px;
+    }
+
+    .node text {
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .link {
+      fill: none;
+      stroke: var(--border-color);
+      stroke-width: 1.5px;
+    }
+
+    .link.optional {
+      stroke-dasharray: 5,5;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      padding: 0.5rem 1rem;
+      background: var(--text-color);
+      color: white;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      pointer-events: none;
+      z-index: 100;
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚀 STDD Copilot Skill Graph</h1>
+      <p>Specification & Test-Driven Development Workflow Visualization</p>
+    </header>
+
+    <div class="toolbar">
+      <button class="active" onclick="setView('all')">全部</button>
+      <button onclick="setView('init')">初始化</button>
+      <button onclick="setView('requirement')">需求</button>
+      <button onclick="setView('spec')">规格</button>
+      <button onclick="setView('execute')">执行</button>
+      <button onclick="setView('verify')">验证</button>
+      <button onclick="exportGraph()">导出 SVG</button>
+      <button onclick="analyzeGraph()">分析</button>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-card">
+        <h3>已完成</h3>
+        <div class="value" id="completed-count">0</div>
+      </div>
+      <div class="status-card">
+        <h3>进行中</h3>
+        <div class="value" id="running-count">0</div>
+      </div>
+      <div class="status-card">
+        <h3>阻塞中</h3>
+        <div class="value" id="blocked-count">0</div>
+      </div>
+      <div class="status-card">
+        <h3>总进度</h3>
+        <div class="value" id="progress">0%</div>
+      </div>
+    </div>
+
+    <div class="graph-container">
+      <div id="graph"></div>
+    </div>
+
+    <div class="skill-list" id="skill-list">
+      <!-- Dynamically populated -->
+    </div>
+
+    <footer>
+      <p>STDD Copilot - 让每个开发者都能拥有一个不跑偏、不产生"屎山"的超级 AI 结对编程专家</p>
+    </footer>
+  </div>
+
+  <div class="tooltip" id="tooltip" style="display: none;"></div>
+
+  <script>
+    // Sample skill data
+    const skills = [
+      { id: 'stdd-init', phase: 'init', status: 'completed', description: '初始化环境与插件记忆库' },
+      { id: 'stdd-propose', phase: 'requirement', status: 'completed', description: '提出原始需求草案' },
+      { id: 'stdd-clarify', phase: 'requirement', status: 'completed', description: '系统主动交互澄清' },
+      { id: 'stdd-confirm', phase: 'requirement', status: 'completed', description: '人类确认需求' },
+      { id: 'stdd-spec', phase: 'spec', status: 'completed', description: '生成 BDD 规格' },
+      { id: 'stdd-plan', phase: 'spec', status: 'completed', description: '极细微任务拆解' },
+      { id: 'stdd-execute', phase: 'execute', status: 'running', description: '执行 TDD 循环' },
+      { id: 'stdd-mutation', phase: 'verify', status: 'blocked', description: '变异测试' },
+      { id: 'stdd-validate', phase: 'verify', status: 'blocked', description: '规范验证' },
+      { id: 'stdd-final-doc', phase: 'document', status: 'pending', description: '生成最终需求文档' },
+      { id: 'stdd-commit', phase: 'commit', status: 'pending', description: '原子化打包与提交' }
+    ];
+
+    const dependencies = [
+      { from: 'stdd-init', to: 'stdd-propose', optional: false },
+      { from: 'stdd-propose', to: 'stdd-clarify', optional: false },
+      { from: 'stdd-clarify', to: 'stdd-confirm', optional: false },
+      { from: 'stdd-confirm', to: 'stdd-spec', optional: false },
+      { from: 'stdd-spec', to: 'stdd-plan', optional: false },
+      { from: 'stdd-plan', to: 'stdd-execute', optional: false },
+      { from: 'stdd-execute', to: 'stdd-mutation', optional: false },
+      { from: 'stdd-execute', to: 'stdd-validate', optional: false },
+      { from: 'stdd-mutation', to: 'stdd-final-doc', optional: false },
+      { from: 'stdd-validate', to: 'stdd-final-doc', optional: false },
+      { from: 'stdd-final-doc', to: 'stdd-commit', optional: false }
+    ];
+
+    // Update status counts
+    function updateStatus() {
+      const completed = skills.filter(s => s.status === 'completed').length;
+      const running = skills.filter(s => s.status === 'running').length;
+      const blocked = skills.filter(s => s.status === 'blocked').length;
+      const progress = Math.round((completed / skills.length) * 100);
+
+      document.getElementById('completed-count').textContent = completed;
+      document.getElementById('running-count').textContent = running;
+      document.getElementById('blocked-count').textContent = blocked;
+      document.getElementById('progress').textContent = progress + '%';
+    }
+
+    // Render skill list
+    function renderSkillList() {
+      const container = document.getElementById('skill-list');
+      container.innerHTML = skills.map(skill => `
+        <div class="skill-card ${skill.status}">
+          <h4>/${skill.id}</h4>
+          <p>${skill.description}</p>
+          <div class="meta">
+            <span class="badge">${skill.phase}</span>
+            <span class="badge ${skill.status === 'completed' ? 'success' : skill.status === 'running' ? 'warning' : skill.status === 'blocked' ? 'error' : ''}">${skill.status}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Set view filter
+    function setView(phase) {
+      // Update active button
+      document.querySelectorAll('.toolbar button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+
+      // Filter visualization (would be implemented based on D3 graph)
+      console.log('Setting view to:', phase);
+    }
+
+    // Export graph as SVG
+    function exportGraph() {
+      const svg = document.querySelector('#graph svg');
+      if (svg) {
+        const serializer = new XMLSerializer();
+        const source = serializer.serializeToString(svg);
+        const blob = new Blob([source], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'skill-graph.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    // Analyze graph
+    function analyzeGraph() {
+      alert('Graph analysis would show:\n- Critical path\n- Parallel opportunities\n- Bottlenecks\n- Estimated time');
+    }
+
+    // Initialize
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+
+    updateStatus();
+    renderSkillList();
+
+    // Sample Mermaid diagram
+    const graphDefinition = `
+      graph TD
+        A[stdd-init] --> B[stdd-propose]
+        B --> C[stdd-clarify]
+        C --> D[stdd-confirm]
+        D --> E[stdd-spec]
+        E --> F[stdd-plan]
+        F --> G[stdd-execute]
+        G --> H[stdd-mutation]
+        G --> I[stdd-validate]
+        H --> J[stdd-final-doc]
+        I --> J
+        J --> K[stdd-commit]
+
+        style A fill:#dcfce7
+        style B fill:#dcfce7
+        style C fill:#dcfce7
+        style D fill:#dcfce7
+        style E fill:#dcfce7
+        style F fill:#dcfce7
+        style G fill:#fef3c7
+        style H fill:#fee2e2
+        style I fill:#fee2e2
+        style J fill:#f8fafc
+        style K fill:#f8fafc
+    `;
+
+    const graphElement = document.getElementById('graph');
+    mermaid.render('skillGraph', graphDefinition, (svgCode) => {
+      graphElement.innerHTML = svgCode;
+    });
+  </script>
+</body>
+</html>

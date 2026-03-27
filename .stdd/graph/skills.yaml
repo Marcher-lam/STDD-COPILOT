@@ -1,0 +1,443 @@
+# STDD Copilot Skill Graph 定义
+# 版本: 1.0
+# 描述: Specification & Test-Driven Development 工作流
+
+version: "1.0"
+name: "STDD Copilot Skill Graph"
+description: "Specification & Test-Driven Development Workflow"
+
+# 全局配置
+config:
+  max_parallel: 4
+  timeout: 3600
+  retry_count: 3
+  on_failure: "rollback"
+
+# 条件变量
+variables:
+  project_type: "${PROJECT_TYPE:-node}"
+  test_framework: "${TEST_FRAMEWORK:-vitest}"
+  has_database: "${HAS_DATABASE:-false}"
+  has_api: "${HAS_API:-false}"
+
+# Skill 节点定义
+skills:
+  # ========== 初始化阶段 ==========
+  stdd-init:
+    description: "初始化环境与插件记忆库"
+    phase: init
+    timeout: 300
+    outputs:
+      - ".stdd/memory/foundation.md"
+      - ".stdd/memory/components.md"
+    next:
+      - stdd-propose
+    metadata:
+      priority: required
+      category: setup
+
+  # ========== 需求阶段 ==========
+  stdd-propose:
+    description: "提出原始需求草案"
+    phase: propose
+    inputs:
+      - "user_request"
+    outputs:
+      - ".stdd/drafts/proposal.md"
+    next:
+      - stdd-clarify
+    metadata:
+      priority: required
+      category: requirement
+
+  stdd-clarify:
+    description: "系统主动交互澄清"
+    phase: clarify
+    inputs:
+      - ".stdd/drafts/proposal.md"
+    outputs:
+      - ".stdd/drafts/clarification.json"
+    next:
+      - stdd-confirm
+    metadata:
+      priority: required
+      category: requirement
+      interactive: true
+
+  stdd-confirm:
+    description: "人类确认需求"
+    phase: confirm
+    inputs:
+      - ".stdd/drafts/clarification.json"
+    outputs:
+      - ".stdd/approved/requirement.md"
+    next:
+      - stdd-spec
+    condition: "${clarification_complete} == true"
+    metadata:
+      priority: required
+      category: requirement
+      gate: human_approval
+
+  # ========== 规格阶段 ==========
+  stdd-spec:
+    description: "生成 BDD 规格"
+    phase: spec
+    inputs:
+      - ".stdd/approved/requirement.md"
+    outputs:
+      - ".stdd/specs/features/"
+      - ".stdd/specs/scenarios/"
+    next:
+      - stdd-plan
+    parallel_with:
+      - stdd-api-spec
+      - stdd-schema
+    metadata:
+      priority: required
+      category: specification
+
+  stdd-plan:
+    description: "极细微任务拆解"
+    phase: plan
+    inputs:
+      - ".stdd/specs/features/"
+    outputs:
+      - ".stdd/plans/tasks.md"
+      - ".stdd/plans/dependencies.json"
+    next:
+      - stdd-execute
+    metadata:
+      priority: required
+      category: planning
+
+  stdd-prp:
+    description: "PRP 结构化规划"
+    phase: plan
+    inputs:
+      - ".stdd/approved/requirement.md"
+    outputs:
+      - ".stdd/plans/prp.md"
+    metadata:
+      priority: high
+      category: planning
+
+  # ========== 执行阶段 ==========
+  stdd-execute:
+    description: "执行 TDD 循环"
+    phase: execute
+    inputs:
+      - ".stdd/plans/tasks.md"
+    outputs:
+      - "src/"
+      - "tests/"
+    next:
+      - stdd-final-doc
+    parallel_with:
+      - stdd-mock
+      - stdd-factory
+      - stdd-outside-in
+    metadata:
+      priority: required
+      category: execution
+
+  stdd-apply:
+    description: "开始实现"
+    phase: execute
+    inputs:
+      - ".stdd/plans/tasks.md"
+    outputs:
+      - "src/"
+    metadata:
+      priority: high
+      category: execution
+
+  # ========== 验证阶段 (可并行) ==========
+  stdd-mutation:
+    description: "变异测试"
+    phase: verify
+    inputs:
+      - "tests/"
+      - "src/"
+    outputs:
+      - ".stdd/reports/mutation.html"
+    metadata:
+      priority: high
+      category: testing
+      parallel_group: verification
+
+  stdd-validate:
+    description: "规范验证"
+    phase: verify
+    inputs:
+      - ".stdd/specs/"
+      - "src/"
+    outputs:
+      - ".stdd/reports/validation.json"
+    metadata:
+      priority: high
+      category: verification
+      parallel_group: verification
+
+  stdd-contract:
+    description: "契约测试"
+    phase: verify
+    inputs:
+      - ".stdd/contracts/"
+    outputs:
+      - ".stdd/reports/contract.json"
+    condition: "${has_api} == true"
+    metadata:
+      priority: medium
+      category: testing
+      parallel_group: verification
+
+  # ========== 文档阶段 ==========
+  stdd-final-doc:
+    description: "生成最终需求文档"
+    phase: document
+    inputs:
+      - ".stdd/approved/requirement.md"
+      - ".stdd/plans/tasks.md"
+      - ".stdd/reports/"
+    outputs:
+      - "FINAL_REQUIREMENT.md"
+    next:
+      - stdd-commit
+    metadata:
+      priority: required
+      category: documentation
+
+  # ========== 提交阶段 ==========
+  stdd-commit:
+    description: "原子化打包与提交"
+    phase: commit
+    inputs:
+      - "src/"
+      - "tests/"
+      - "FINAL_REQUIREMENT.md"
+    outputs:
+      - "git commits"
+    metadata:
+      priority: required
+      category: deployment
+
+  # ========== 便捷模式 ==========
+  stdd-turbo:
+    description: "一键通扫模式"
+    phase: all
+    metadata:
+      priority: low
+      category: convenience
+
+  # ========== SDD 增强技能 ==========
+  stdd-api-spec:
+    description: "API 规范先行"
+    phase: spec
+    outputs:
+      - ".stdd/specs/openapi.yaml"
+      - "src/types/api.ts"
+    condition: "${has_api} == true"
+    metadata:
+      priority: high
+      category: sdd
+      parallel_group: specification
+
+  stdd-schema:
+    description: "类型规范先行"
+    phase: spec
+    outputs:
+      - ".stdd/schemas/"
+      - "src/types/"
+    metadata:
+      priority: high
+      category: sdd
+      parallel_group: specification
+
+  # ========== TDD 增强技能 ==========
+  stdd-outside-in:
+    description: "外向内 TDD"
+    phase: execute
+    inputs:
+      - ".stdd/specs/features/"
+    outputs:
+      - "tests/e2e/"
+      - "tests/integration/"
+      - "tests/unit/"
+    metadata:
+      priority: high
+      category: tdd
+
+  stdd-mock:
+    description: "自动 Mock 生成"
+    phase: execute
+    inputs:
+      - "src/services/"
+    outputs:
+      - "src/__mocks__/"
+    metadata:
+      priority: medium
+      category: tdd
+      parallel_group: testing
+
+  stdd-factory:
+    description: "测试数据工厂"
+    phase: execute
+    inputs:
+      - "src/types/"
+    outputs:
+      - "src/__tests__/factories/"
+    metadata:
+      priority: medium
+      category: tdd
+      parallel_group: testing
+
+  # ========== 辅助技能 ==========
+  stdd-guard:
+    description: "TDD 守护钩子"
+    phase: all
+    metadata:
+      priority: high
+      category: guard
+
+  stdd-supervisor:
+    description: "多 Agent 协调器"
+    phase: execute
+    metadata:
+      priority: high
+      category: coordination
+
+  stdd-context:
+    description: "三层文档架构"
+    phase: all
+    metadata:
+      priority: high
+      category: context
+
+  stdd-iterate:
+    description: "自主迭代循环"
+    phase: execute
+    metadata:
+      priority: medium
+      category: iteration
+
+  stdd-memory:
+    description: "向量数据库记忆"
+    phase: all
+    metadata:
+      priority: low
+      category: memory
+
+  stdd-parallel:
+    description: "并行执行模式"
+    phase: execute
+    metadata:
+      priority: medium
+      category: execution
+
+  stdd-roles:
+    description: "多角色协作"
+    phase: all
+    metadata:
+      priority: medium
+      category: collaboration
+
+  stdd-metrics:
+    description: "质量指标仪表板"
+    phase: verify
+    metadata:
+      priority: low
+      category: metrics
+
+  stdd-learn:
+    description: "自适应学习系统"
+    phase: all
+    metadata:
+      priority: low
+      category: learning
+
+# 依赖关系
+dependencies:
+  stdd-spec:
+    requires:
+      - stdd-confirm
+    optional:
+      - stdd-api-spec
+      - stdd-schema
+
+  stdd-plan:
+    requires:
+      - stdd-spec
+
+  stdd-execute:
+    requires:
+      - stdd-plan
+    optional:
+      - stdd-outside-in
+      - stdd-mock
+      - stdd-factory
+
+  stdd-final-doc:
+    requires:
+      - stdd-execute
+
+  stdd-commit:
+    requires:
+      - stdd-final-doc
+      - stdd-mutation
+      - stdd-validate
+
+# 并行组定义
+parallel_groups:
+  verification:
+    skills:
+      - stdd-mutation
+      - stdd-validate
+      - stdd-contract
+    strategy: "all"  # all, any, race
+
+  specification:
+    skills:
+      - stdd-api-spec
+      - stdd-schema
+    strategy: "all"
+
+  testing:
+    skills:
+      - stdd-mock
+      - stdd-factory
+      - stdd-outside-in
+    strategy: "any"
+
+# 条件规则
+conditions:
+  clarification_complete:
+    type: "file_exists"
+    path: ".stdd/drafts/clarification.json"
+
+  has_api:
+    type: "file_pattern"
+    pattern: "src/api/**/*.ts"
+
+  has_database:
+    type: "file_pattern"
+    pattern: "**/migrations/**/*.sql"
+
+  tests_pass:
+    type: "command"
+    command: "npm test"
+    expected: "exit_code:0"
+
+# 钩子定义
+hooks:
+  pre_execute:
+    - skill: stdd-guard
+      condition: "always"
+
+  post_execute:
+    - skill: stdd-metrics
+      condition: "tests_pass"
+
+  on_failure:
+    - skill: stdd-iterate
+      max_retries: 3
