@@ -196,6 +196,7 @@ stdd list
 | `/stdd:mutation` | 变异测试 (Stryker 风格) |
 | **辅助功能** | |
 | `/stdd:guard` | TDD 守护钩子 (强制测试先行) |
+| `/stdd:constitution` | Constitution 管理 (9 篇开发条例) |
 | `/stdd:prp` | PRP 结构化规划 (What/Why/How/Success) |
 | `/stdd:supervisor` | 多 Agent 协调器 (Supervisor 模式) |
 | `/stdd:context` | 三层文档架构 (渐进式加载) |
@@ -277,6 +278,68 @@ stdd-copilot/
 ├── ARCHITECTURE.md         # 系统架构
 ├── INSTALL.md              # 安装指南
 └── USAGE.md                # 使用手册
+```
+
+## 🛡️ Constitution + Hook Enforcement
+
+STDD Copilot 引入了 **9 篇开发条例 (Constitution)** 和 **Hook Enforcement System**，实现自动化代码质量管控。
+
+### 9 篇开发条例
+
+| 优先级 | 条例 | 核心原则 | 执行方式 |
+|--------|------|----------|----------|
+| **Blocking** | Article 2: TDD | 测试先行 | Hook 阻断 |
+| **Blocking** | Article 7: Security | 安全优先 | Hook 阻断 |
+| **Blocking** | Article 9: CI/CD | 自动化流水线 | CI 门禁 |
+| **Warning** | Article 1: Library-First | 优先使用成熟库 | 警告提示 |
+| **Warning** | Article 3: Small Commits | 原子提交 | 警告提示 |
+| **Warning** | Article 4: Code Style | 统一风格 | Hook 检查 |
+| **Warning** | Article 6: Error Handling | 显式错误处理 | 建议提示 |
+| **Suggestion** | Article 5: Documentation | 文档即代码 | 建议提示 |
+| **Suggestion** | Article 8: Performance | 性能默认 | 建议提示 |
+
+### Hook 集成
+
+```bash
+# 安装 Hooks
+stdd hooks install
+
+# 验证配置
+stdd hooks verify
+
+# 查看条例
+stdd constitution
+
+# 申请临时豁免
+/stdd:constitution waiver --article=2 --reason="Legacy migration"
+```
+
+### Hook 检查流程
+
+```
+用户写入代码
+     │
+     ▼
+┌─────────────────┐
+│ PreToolUse Hook │
+│ Article 2, 4, 7 │
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │         │
+   PASS      FAIL → 阻断 + 错误提示
+    │
+    ▼
+ 执行写入操作
+    │
+    ▼
+┌──────────────────┐
+│ PostToolUse Hook │
+│ Article 5, 6, 8  │
+└────────┬─────────┘
+         │
+         ▼
+   建议提示 (不阻断)
 ```
 
 ## 变更管理流程

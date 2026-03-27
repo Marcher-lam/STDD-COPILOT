@@ -14,6 +14,7 @@ const { UpdateCommand } = require('./src/cli/commands/update');
 const { ListCommand } = require('./src/cli/commands/list');
 const { NewCommand } = require('./src/cli/commands/new');
 const { StatusCommand } = require('./src/cli/commands/status');
+const hooksCommand = require('./src/cli/commands/hooks');
 
 const program = new Command();
 const packageJson = require('./package.json');
@@ -225,14 +226,78 @@ program
       { cmd: '/stdd:apply', desc: 'Apply change (TDD cycle)' },
       { cmd: '/stdd:verify', desc: 'Verify implementation' },
       { cmd: '/stdd:archive', desc: 'Archive completed change' },
+      { cmd: '/stdd:constitution', desc: 'Constitution management' },
       { cmd: '/stdd:graph *', desc: 'Graph engine commands' },
     ];
 
     commands.forEach(({ cmd, desc }) => {
-      console.log(`  ${chalk.cyan(cmd.padEnd(20))} ${desc}`);
+      console.log(`  ${chalk.cyan(cmd.padEnd(24))} ${desc}`);
     });
 
     console.log(chalk.dim('\nUse these commands in Claude Code conversations.'));
+  });
+
+// Hooks command (使用函数式导入)
+hooksCommand(program);
+
+// Constitution command
+program
+  .command('constitution [action]')
+  .description('Manage STDD Constitution (9 articles)')
+  .option('--article <n>', 'Specific article number')
+  .option('--reason <reason>', 'Reason for waiver')
+  .option('--days <days>', 'Waiver duration in days')
+  .action(async (action = 'show', options = {}) => {
+    try {
+      const constitutionPath = path.join(__dirname, 'schemas', 'constitution', 'constitution.yaml');
+
+      if (action === 'show') {
+        console.log(chalk.bold('\n📋 STDD Constitution - 9 篇开发条例\n'));
+
+        const articles = [
+          { n: 1, name: 'Library-First', priority: 'Warning', desc: '优先使用成熟库' },
+          { n: 2, name: 'TDD', priority: 'Blocking', desc: '测试先行' },
+          { n: 3, name: 'Small Commits', priority: 'Warning', desc: '原子提交' },
+          { n: 4, name: 'Code Style', priority: 'Warning', desc: '统一风格' },
+          { n: 5, name: 'Documentation', priority: 'Suggestion', desc: '文档即代码' },
+          { n: 6, name: 'Error Handling', priority: 'Warning', desc: '显式错误处理' },
+          { n: 7, name: 'Security', priority: 'Blocking', desc: '安全优先' },
+          { n: 8, name: 'Performance', priority: 'Suggestion', desc: '性能默认' },
+          { n: 9, name: 'CI/CD', priority: 'Blocking', desc: '自动化流水线' },
+        ];
+
+        const blocking = articles.filter(a => a.priority === 'Blocking');
+        const warning = articles.filter(a => a.priority === 'Warning');
+        const suggestion = articles.filter(a => a.priority === 'Suggestion');
+
+        console.log(chalk.red('Priority 1 (Blocking):'));
+        blocking.forEach(a => {
+          console.log(`  Article ${a.n}: ${chalk.bold(a.name)} - ${a.desc}`);
+        });
+
+        console.log(chalk.yellow('\nPriority 2 (Warning):'));
+        warning.forEach(a => {
+          console.log(`  Article ${a.n}: ${chalk.bold(a.name)} - ${a.desc}`);
+        });
+
+        console.log(chalk.blue('\nPriority 3 (Suggestion):'));
+        suggestion.forEach(a => {
+          console.log(`  Article ${a.n}: ${chalk.bold(a.name)} - ${a.desc}`);
+        });
+
+        console.log(chalk.dim('\n详情: stdd constitution show <article>'));
+        console.log(chalk.dim('检查: stdd constitution check'));
+      } else if (action === 'check') {
+        console.log(chalk.bold('\n🔍 Constitution 合规检查\n'));
+        console.log('请使用 Claude Code 运行: /stdd:constitution check');
+      } else {
+        console.log(`未知操作: ${action}`);
+        console.log('可用操作: show, check, waiver');
+      }
+    } catch (error) {
+      console.error(chalk.red(`Error: ${error.message}`));
+      process.exit(1);
+    }
   });
 
 // Parse arguments
