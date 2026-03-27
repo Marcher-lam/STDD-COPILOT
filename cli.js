@@ -1,58 +1,239 @@
 #!/usr/bin/env node
 
-const args = process.argv.slice(2);
+/**
+ * STDD Copilot CLI
+ * Spec + Test Driven Development Copilot
+ */
 
-console.log("STDD Copilot CLI");
-console.log("================");
+const { Command } = require('commander');
+const chalk = require('chalk');
+const path = require('path');
+const fs = require('fs');
+const { InitCommand } = require('./src/cli/commands/init');
+const { UpdateCommand } = require('./src/cli/commands/update');
+const { ListCommand } = require('./src/cli/commands/list');
+const { NewCommand } = require('./src/cli/commands/new');
+const { StatusCommand } = require('./src/cli/commands/status');
 
-if (args.length === 0) {
-  console.log(`
-使用方式:
-  stdd /stdd-init          初始化 STDD 工作区
-  stdd /stdd-propose <需求>  提出需求草案
-  stdd /stdd-clarify       需求澄清
-  stdd /stdd-confirm       需求确认
-  stdd /stdd-spec          生成 BDD 规格
-  stdd /stdd-plan          任务拆解
-  stdd /stdd-execute       TDD 执行循环
-  stdd /stdd-commit        原子化提交
-  stdd /stdd-turbo <需求>  一键防疲劳模式
+const program = new Command();
+const packageJson = require('./package.json');
 
-提示: STDD 主要依赖于 .agents/skills/ 下的 SKILL.md 工作流文件。
-      在 Claude Code 中可直接引用这些文件执行。
-`);
-  process.exit(0);
+// Simple spinner implementation
+function createSpinner(text) {
+  let interval;
+  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  let i = 0;
+
+  return {
+    start() {
+      process.stdout.write(`${frames[i]} ${text}`);
+      interval = setInterval(() => {
+        i = (i + 1) % frames.length;
+        process.stdout.write(`\r${frames[i]} ${text}`);
+      }, 80);
+      return this;
+    },
+    succeed(msg) {
+      if (interval) clearInterval(interval);
+      process.stdout.write(`\r${chalk.green('✓')} ${msg || text}\n`);
+    },
+    fail(msg) {
+      if (interval) clearInterval(interval);
+      process.stdout.write(`\r${chalk.red('✗')} ${msg || text}\n`);
+    },
+    text: ''
+  };
 }
 
-const command = args[0];
+program
+  .name('stdd')
+  .description('STDD Copilot - Spec + Test Driven Development Framework')
+  .version(packageJson.version);
 
-// 指令映射到 SKILL.md 路径
-const skillMap = {
-  '/stdd-init': 'stdd-init',
-  '/stdd-propose': 'stdd-propose',
-  '/stdd-clarify': 'stdd-clarify',
-  '/stdd-confirm': 'stdd-confirm',
-  '/stdd-spec': 'stdd-spec',
-  '/stdd-plan': 'stdd-plan',
-  '/stdd-execute': 'stdd-execute',
-  '/stdd-apply': 'stdd-apply',
-  '/stdd-final-doc': 'stdd-final-doc',
-  '/stdd-commit': 'stdd-commit',
-  '/stdd-turbo': 'stdd-turbo'
-};
+// Global options
+program.option('--no-color', 'Disable color output');
 
-const skillName = skillMap[command];
+// Init command
+program
+  .command('init [path]')
+  .description('Initialize STDD Copilot in your project')
+  .option('--force', 'Overwrite existing files')
+  .option('--skip-skills', 'Skip copying skills directory')
+  .action(async (targetPath = '.', options = {}) => {
+    const spinner = createSpinner('Initializing STDD Copilot...').start();
+    try {
+      const resolvedPath = path.resolve(targetPath);
+      const initCommand = new InitCommand(spinner);
+      await initCommand.execute(resolvedPath, options);
+      spinner.succeed('STDD Copilot initialized successfully!');
+    } catch (error) {
+      spinner.fail(`Error: ${error.message}`);
+      process.exit(1);
+    }
+  });
 
-if (skillName) {
-  console.log(`指令: ${command}`);
-  console.log(`对应 Skill: .agents/skills/${skillName}/SKILL.md`);
-  console.log(`\n请在 Claude Code 中执行:`);
-  console.log(`  参考 .agents/skills/${skillName}/SKILL.md 的步骤执行`);
+// Update command
+program
+  .command('update [path]')
+  .description('Update STDD Copilot files in your project')
+  .option('--force', 'Force update even when files exist')
+  .action(async (targetPath = '.', options = {}) => {
+    const spinner = ora('Updating STDD Copilot...').start();
+    try {
+      const resolvedPath = path.resolve(targetPath);
+      const updateCommand = new UpdateCommand(spinner);
+      await updateCommand.execute(resolvedPath, options);
+      spinner.succeed('STDD Copilot updated successfully!');
+    } catch (error) {
+      spinner.fail(`Error: ${error.message}`);
+      process.exit(1);
+    }
+  });
 
-  if (args.length > 1) {
-    console.log(`\n参数: ${args.slice(1).join(' ')}`);
-  }
-} else {
-  console.log(`未知指令: ${command}`);
-  console.log(`可用指令: ${Object.keys(skillMap).join(', ')}`);
-}
+// List command
+program
+  .command('list')
+  .alias('ls')
+  .description('List all changes or specs')
+  .option('--changes', 'List changes (default)')
+  .option('--specs', 'List specs')
+  .option('--archived', 'Include archived items')
+  .option('--json', 'Output as JSON')
+  .action(async (options = {}) => {
+    try {
+      const listCommand = new ListCommand();
+      await listCommand.execute('.', options);
+    } catch (error) {
+      console.error(chalk.red(`Error: ${error.message}`));
+      process.exit(1);
+    }
+  });
+
+// Status command
+program
+  .command('status [change]')
+  .description('Show status of a change or current work')
+  .option('--json', 'Output as JSON')
+  .action(async (changeName, options = {}) => {
+    try {
+      const statusCommand = new StatusCommand();
+      await statusCommand.execute(changeName, options);
+    } catch (error) {
+      console.error(chalk.red(`Error: ${error.message}`));
+      process.exit(1);
+    }
+  });
+
+// New command group
+const newCmd = program.command('new').description('Create new items');
+
+newCmd
+  .command('change <name>')
+  .description('Create a new change proposal')
+  .option('--title <title>', 'Change title')
+  .option('--description <desc>', 'Change description')
+  .action(async (name, options = {}) => {
+    const spinner = ora(`Creating change: ${name}...`).start();
+    try {
+      const newCommand = new NewCommand(spinner);
+      await newCommand.createChange(name, options);
+      spinner.succeed(`Change '${name}' created!`);
+    } catch (error) {
+      spinner.fail(`Error: ${error.message}`);
+      process.exit(1);
+    }
+  });
+
+newCmd
+  .command('spec <domain>')
+  .description('Create a new spec file')
+  .action(async (domain, options = {}) => {
+    const spinner = ora(`Creating spec: ${domain}...`).start();
+    try {
+      const newCommand = new NewCommand(spinner);
+      await newCommand.createSpec(domain, options);
+      spinner.succeed(`Spec '${domain}' created!`);
+    } catch (error) {
+      spinner.fail(`Error: ${error.message}`);
+      process.exit(1);
+    }
+  });
+
+// Skills command
+program
+  .command('skills')
+  .description('List all available STDD skills')
+  .option('--phase <phase>', 'Filter by phase (1-5)')
+  .action(async (options = {}) => {
+    try {
+      const skillsPath = path.join(__dirname, '.claude', 'skills');
+      const stddSkillsPath = path.join(__dirname, 'src', 'stdd-skills');
+
+      console.log(chalk.bold('\n📚 STDD Copilot Skills\n'));
+
+      // Core skills
+      console.log(chalk.cyan('Core Skills:'));
+      const coreSkills = fs.existsSync(path.join(__dirname, 'src', 'core-skills'))
+        ? fs.readdirSync(path.join(__dirname, 'src', 'core-skills')).filter(f => !f.startsWith('.'))
+        : [];
+      coreSkills.forEach(skill => {
+        console.log(`  • ${skill}`);
+      });
+
+      // Phase-based skills
+      console.log(chalk.cyan('\nPhase-based Skills:'));
+      [1, 2, 3, 4, 5].forEach(phase => {
+        const phasePath = path.join(stddSkillsPath, `${phase}-*`);
+        const phaseSkills = fs.existsSync(stddSkillsPath)
+          ? fs.readdirSync(stddSkillsPath).filter(f => f.startsWith(`${phase}-`))
+          : [];
+        if (phaseSkills.length > 0) {
+          const phaseNames = {
+            1: 'Proposal',
+            2: 'Specification',
+            3: 'Design',
+            4: 'Implementation',
+            5: 'Verification'
+          };
+          console.log(`  ${chalk.yellow(`Phase ${phase}`)} (${phaseNames[phase]}):`);
+          phaseSkills.forEach(skill => {
+            console.log(`    • ${skill}`);
+          });
+        }
+      });
+
+      console.log(chalk.dim('\nUse in Claude Code: /stdd:<skill-name>'));
+    } catch (error) {
+      console.error(chalk.red(`Error: ${error.message}`));
+      process.exit(1);
+    }
+  });
+
+// Commands reference
+program
+  .command('commands')
+  .description('List all Claude Code slash commands')
+  .action(async () => {
+    console.log(chalk.bold('\n🔧 STDD Copilot Commands\n'));
+
+    const commands = [
+      { cmd: '/stdd:init', desc: 'Initialize STDD workspace' },
+      { cmd: '/stdd:new', desc: 'Create new change proposal' },
+      { cmd: '/stdd:explore', desc: 'Explore requirements' },
+      { cmd: '/stdd:ff', desc: 'Fast-forward generation' },
+      { cmd: '/stdd:continue', desc: 'Continue paused work' },
+      { cmd: '/stdd:apply', desc: 'Apply change (TDD cycle)' },
+      { cmd: '/stdd:verify', desc: 'Verify implementation' },
+      { cmd: '/stdd:archive', desc: 'Archive completed change' },
+      { cmd: '/stdd:graph *', desc: 'Graph engine commands' },
+    ];
+
+    commands.forEach(({ cmd, desc }) => {
+      console.log(`  ${chalk.cyan(cmd.padEnd(20))} ${desc}`);
+    });
+
+    console.log(chalk.dim('\nUse these commands in Claude Code conversations.'));
+  });
+
+// Parse arguments
+program.parse();
