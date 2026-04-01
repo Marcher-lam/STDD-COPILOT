@@ -6,7 +6,6 @@
 const fs = require('fs').promises;
 const path = require('path');
 const chalk = require('chalk');
-const inquirer = require('inquirer');
 
 // Template files
 const AGENTS_MD_TEMPLATE = `# STDD Copilot - AI Agent Instructions

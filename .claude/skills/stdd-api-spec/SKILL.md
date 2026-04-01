@@ -1,7 +1,12 @@
 ---
-description: API 规范先行 - 生成 OpenAPI/TypeScript 类型规范
+name: stdd-api-spec
+description: |
+  API 规范先行 - 生成 OpenAPI/TypeScript 类型规范
+  触发场景：用户说 '/stdd-api-spec', 'API规范', 'OpenAPI规范', '生成API类型'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD API 规范先行 (/stdd-api-spec)
 
 ## 目标
@@ -74,7 +79,7 @@ API-First:
 
 ## OpenAPI 规范模板
 
-生成文件: `.stdd/active_feature/api-spec.yaml`
+生成文件: `stdd/active_feature/api-spec.yaml`
 
 ```yaml
 openapi: 3.1.0
@@ -553,7 +558,9 @@ export const todoService = new TodoService();
 
 ## 配置
 
-在 `.stdd/memory/api-spec-config.json` 中：
+在 `stdd/memory/api-spec-config.json` 中：
+
+<!-- 配置 Schema: 参见 schemas/shared/skill-config-schema.json -->
 
 ```json
 {

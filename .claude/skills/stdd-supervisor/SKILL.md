@@ -1,7 +1,12 @@
 ---
-description: 多 Agent 协调器 - Supervisor 层级模式与任务委派
+name: stdd-supervisor
+description: |
+  多 Agent 协调器 - Supervisor 层级模式与任务委派
+  触发场景：用户说 '/stdd-supervisor', 'supervisor', '协调器', '多Agent', '任务委派'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 多 Agent 协调器 (/stdd-supervisor)
 
 ## 目标
@@ -163,8 +168,8 @@ function decomposeTask(requirement) {
   },
   "context": {
     "projectRoot": "/path/to/project",
-    "memoryPath": ".stdd/memory",
-    "activeFeature": ".stdd/active_feature"
+    "memoryPath": "stdd/memory",
+    "activeFeature": "stdd/active_feature"
   }
 }
 ```
@@ -210,7 +215,7 @@ function decomposeTask(requirement) {
 
 ## 状态持久化
 
-在 `.stdd/memory/supervisor-state.json` 中：
+在 `stdd/memory/supervisor-state.json` 中：
 
 ```json
 {
@@ -300,3 +305,17 @@ function decomposeTask(requirement) {
 ---
 
 > **引用**: 借鉴自 LangGraph Supervisor 模式
+
+## 与 /stdd-parallel 的区别
+
+| 维度 | /stdd-supervisor (本 Skill) | /stdd-parallel |
+|------|-----------------------------|-----------------|
+| **协调层级** | Agent 级（多个独立 Agent 进程） | 任务级（同一 Agent 内的子任务） |
+| **角色模型** | Planner/Coder/Tester/Reviewer 专业角色 | 无角色区分，同一执行体 |
+| **通信方式** | Agent 间消息传递 + 结果聚合 | 共享文件系统 + 内存 |
+| **适用规模** | 大型特性（需跨专业领域协作） | 中小型特性（5-15 个微任务） |
+| **错误隔离** | Agent 间完全隔离，可独立重启 | 任务间失败不影响其他任务 |
+
+**选择指南**：
+- 多技术栈（前端+后端+测试）、需要角色评审 → `/stdd-supervisor`
+- 单一技术栈、任务间只差数据流 → `/stdd-parallel`

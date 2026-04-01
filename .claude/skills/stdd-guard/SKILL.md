@@ -1,7 +1,12 @@
 ---
-description: TDD 守护钩子系统 - 强制执行测试驱动开发原则
+name: stdd-guard
+description: |
+  TDD 守护钩子系统 - 强制执行测试驱动开发原则
+  触发场景：用户说 '/stdd-guard', 'guard', '守护', 'TDD钩子', '测试守护'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD TDD 守护钩子 (/stdd-guard)
 
 ## 目标
@@ -154,7 +159,9 @@ onPostToolUse('write', async (context) => {
 
 ## 守护配置文件
 
-在 `.stdd/memory/guard-config.json` 中：
+在 `stdd/memory/guard-config.json` 中：
+
+<!-- 配置 Schema: 参见 schemas/shared/skill-config-schema.json -->
 
 ```json
 {
@@ -240,6 +247,182 @@ TDD 原则: 先写测试，再写实现
 1. 拆分 processTodos 为更小的函数
 2. 运行 /stdd-refactor 优化代码
 3. 确保测试覆盖所有分支
+```
+
+---
+
+## AI 模型验证 TDD 合规
+
+参考 TDD Guard (nizos)，增加 AI 辅助验证模式，使用 AI 模型审查代码是否遵循 TDD 原则：
+
+```bash
+# AI 验证最近提交的 TDD 合规性
+/stdd-guard --ai-verify
+
+# AI 验证指定文件
+/stdd-guard --ai-verify --file=src/services/TodoService.ts
+```
+
+### AI 验证检查项
+
+| 检查项 | 说明 | 判定 |
+|--------|------|------|
+| 测试先行证据 | 测试文件修改时间是否早于实现文件 | 时间戳比较 |
+| 实现与测试比例 | 实现代码是否被对应测试覆盖 | 1:1 映射检查 |
+| 断言质量 | 断言是否验证具体行为而非仅检查存在 | AI 语义分析 |
+| TDD 周期完整性 | 是否有 Red→Green→Refactor 的提交记录 | git log 分析 |
+
+### 输出示例
+
+```
+🤖 AI TDD 合规验证
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 src/services/TodoService.ts
+
+  ✅ 测试先行: test (10:01) → impl (10:03)
+  ✅ 测试覆盖: 100% 方法有对应测试
+  ⚠️ 断言质量: 2 处 toBeTruthy() 建议改为精确断言
+  ✅ TDD 周期: 3 次完整的 Red→Green→Refactor
+
+  合规评分: 92/100
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 总体 TDD 合规: 92%
+```
+
+---
+
+## 防绕过机制 (Anti-Bypass Enforcement)
+
+参考 TDD Guard，检测并防止绕过 Hook 系统的行为。确保 Constitution 条例和 TDD 流程不被跳过。
+
+### 绕过检测矩阵
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Anti-Bypass Detection                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│   绕过方式                  检测手段             严重级       │
+│   ──────────                ────────             ──────      │
+│                                                              │
+│   ① git commit --no-verify   pre-commit hook     🔴 阻断     │
+│      绕过 pre-commit hook                                    │
+│                                                              │
+│   ② 直接编辑文件             PostToolUse hook     🟡 警告     │
+│      跳过 PreToolUse 检查     时间戳比对                       │
+│                                                              │
+│   ③ 手动修改 waivers.yaml    文件哈希校验        🔴 阻断     │
+│      非法豁免 Constitution                                   │
+│                                                              │
+│   ④ 删除测试文件             pre-commit 检查     🔴 阻断     │
+│      绕过测试先行要求                                         │
+│                                                              │
+│   ⑤ 临时禁用 hooks          stdd-guard status    🟡 警告     │
+│      /stdd-guard off                                          │
+│                                                              │
+│   ⑥ 在 .claude/settings.json git diff 监控        🟡 警告     │
+│      删除 hook 配置          配置文件哈希                      │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 防御措施
+
+#### 1. Pre-commit Hook（防止 --no-verify）
+
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit (STDD 强化版)
+
+# 检测 --no-verify 绕过尝试
+if git config --get commit.template | grep -q "stdd"; then
+  echo "🔒 STDD Guard: 检测到提交行为"
+fi
+
+# 验证测试文件存在性
+changed_impl_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E 'src/.*\.(ts|js|py)$')
+for file in $changed_impl_files; do
+  test_file=$(echo "$file" | sed 's/src\//__tests__\//' | sed 's/\.\(ts\|js\)$/.test.\1/')
+  if [ ! -f "$test_file" ]; then
+    echo "❌ STDD Guard: $file 无对应测试文件 $test_file"
+    echo "   请先运行 TDD 流程创建测试"
+    exit 1
+  fi
+done
+
+# 验证 waivers.yaml 完整性
+if [ -f "schemas/constitution/waivers.yaml" ]; then
+  current_hash=$(sha256sum schemas/constitution/waivers.yaml | cut -d' ' -f1)
+  stored_hash=$(cat stdd/memory/.waivers-hash 2>/dev/null || echo "")
+  if [ "$current_hash" != "$stored_hash" ] && [ -n "$stored_hash" ]; then
+    echo "⚠️ STDD Guard: waivers.yaml 被外部修改"
+    echo "   请通过 /stdd-constitution exempt 正式申请豁免"
+    exit 1
+  fi
+fi
+```
+
+#### 2. 文件变更监控（防止直接编辑绕过）
+
+```bash
+# 检查是否有文件被绕过 Hook 直接修改
+/stdd-guard --audit-trail
+
+# 输出示例:
+# 🔒 STDD Guard 审计追踪
+#
+# 最近 10 次文件修改:
+# ┌────────────────────┬──────────────────────────┬──────────┐
+# │ 时间               │ 文件                     │ Hook状态 │
+# ├────────────────────┼──────────────────────────┼──────────┤
+# │ 10:01:23           │ TodoService.ts           │ ✅ 已检查│
+# │ 10:03:45           │ TodoService.test.ts      │ ✅ 已检查│
+# │ 10:05:12           │ waivers.yaml             │ ⚠️ 未检查│ ← 可疑
+# └────────────────────┴──────────────────────────┴──────────┘
+```
+
+#### 3. Hook 配置完整性检查
+
+```bash
+# 验证 Hook 配置是否被篡改
+/stdd-guard --verify-hooks
+
+# 输出示例:
+# 🔍 Hook 配置验证
+#
+# .claude/settings.json:
+#   ✅ PreToolUse hook 已配置
+#   ✅ PostToolUse hook 已配置
+#   ✅ Hook 脚本路径存在
+#
+# .git/hooks/pre-commit:
+#   ✅ pre-commit hook 已安装
+#   ✅ hook 内容未被修改
+#
+# ⚠️ 可疑修改:
+#   - .claude/settings.json 上次修改: 2分钟前 (非 STDD 流程)
+```
+
+### 会话控制
+
+参考 TDD Guard 的会话控制功能：
+
+```bash
+# 临时禁用（紧急情况，如 hotfix）
+/stdd-guard off --reason="紧急 hotfix, P0 修复"
+# → 记录禁用原因到 stdd/memory/guard-log.json
+# → 自动在 30 分钟后重新启用
+
+# 重新启用
+/stdd-guard on
+
+# 查看状态
+/stdd-guard status
+# → 输出: 🟢 已启用 | 🔴 已禁用 (原因: ..., 禁用时间: ..., 自动恢复: ...)
 ```
 
 ---

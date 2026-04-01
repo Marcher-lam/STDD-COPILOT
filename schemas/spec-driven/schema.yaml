@@ -132,7 +132,7 @@ execution_order:
   - specs | design  # 可并行
   - tasks
 
-# 验证规则
+# 验证规则（增强 Schema 驱动验证深度，参考 OpenSpec）
 validation:
   proposal:
     - field: Intent
@@ -143,6 +143,14 @@ validation:
       required: true
       min_items: 1
 
+    - field: Scope.Out of Scope
+      required: true
+      min_items: 1
+
+    - field: Success Criteria
+      required: true
+      min_items: 2
+
   specs:
     - field: Requirements
       required: true
@@ -151,6 +159,29 @@ validation:
     - field: Scenarios
       required: true
       min_items: 1
+
+    - field: Given/When/Then
+      required: true
+      validate:
+        each_scenario_must_have:
+          - at_least_one_given
+          - exactly_one_when
+          - at_least_one_then
+
+    - field: Coverage
+      required: true
+      validate:
+        each_in_scope_has_scenario: true
+        each_edge_case_has_scenario: true
+        error_path_coverage: true
+
+    - field: Red Line
+      required: true
+      validate:
+        no_class_names: true
+        no_table_names: true
+        no_api_urls: true
+        no_technical_terms: true
 
   design:
     - field: Technical Approach
@@ -161,11 +192,40 @@ validation:
       required: true
       min_items: 1
 
+    - field: Architecture Decisions
+      required: true
+      min_items: 1
+      validate:
+        each_decision_has:
+          - context
+          - decision
+          - rationale
+
+    - field: Risks
+      required: true
+      min_items: 1
+
   tasks:
     - field: Tasks
       required: true
       min_items: 1
       max_items: 10
+
+    - field: Dependencies
+      required: true
+      validate:
+        no_circular_dependencies: true
+        all_deps_resolvable: true
+
+    - field: Time Estimates
+      required: true
+      validate:
+        each_task_max_30min: true
+
+    - field: Test Files
+      required: true
+      validate:
+        each_task_has_test_file: true
 
 # 质量门控
 quality_gates:

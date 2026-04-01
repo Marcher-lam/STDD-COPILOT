@@ -145,9 +145,9 @@ git commit -m "docs(api): update authentication guide"
 # 自动提交 (Ralph Loop 完成后)
 /stdd:commit
 
-# 手动提交
-/stdd:commit --amend  # 修改上次提交
-/stdd:commit --split  # 拆分当前变更
+# 手动操作 (使用标准 git 命令)
+git commit --amend  # 修改上次提交
+git add -p && git commit  # 拆分为多次原子提交
 ```
 
 ## 提交历史要求

@@ -1,7 +1,12 @@
 ---
-description: 并行执行模式 - 独立任务并行处理与结果聚合
+name: stdd-parallel
+description: |
+  并行执行模式 - 独立任务并行处理与结果聚合
+  触发场景：用户说 '/stdd-parallel', 'parallel', '并行', '并发执行', 'DAG调度'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 并行执行模式 (/stdd-parallel)
 
 ## 目标
@@ -345,7 +350,9 @@ async function aggregateResults(workerResults) {
 
 ## 配置
 
-在 `.stdd/memory/parallel-config.json` 中：
+在 `stdd/memory/parallel-config.json` 中：
+
+<!-- 配置 Schema: 参见 schemas/shared/skill-config-schema.json -->
 
 ```json
 {
@@ -370,3 +377,17 @@ async function aggregateResults(workerResults) {
 ---
 
 > **引用**: 借鉴自 LangGraph 并行执行模式
+
+## 与 /stdd-supervisor 的区别
+
+| 维度 | /stdd-parallel (本 Skill) | /stdd-supervisor |
+|------|---------------------------|-------------------|
+| **协调层级** | 任务级（同一 Agent 内的子任务） | Agent 级（多个独立 Agent 进程） |
+| **角色模型** | 无角色区分，同一执行体 | Planner/Coder/Tester/Reviewer 等专业角色 |
+| **通信方式** | 共享文件系统 + 内存 | Agent 间消息传递 + 结果聚合 |
+| **适用规模** | 中小型特性（5-15 个微任务） | 大型特性（需跨专业领域协作） |
+| **错误隔离** | 任务间失败不影响其他任务 | Agent 间完全隔离，可独立重启 |
+
+**选择指南**：
+- 单一技术栈、任务间只差数据流 → `/stdd-parallel`
+- 多技术栈（前端+后端+测试）、需要角色评审 → `/stdd-supervisor`

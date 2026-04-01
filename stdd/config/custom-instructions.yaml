@@ -1,0 +1,86 @@
+# Custom Instructions - 场景化规则覆盖
+# 参考 TDD Guard 的场景化自定义规则
+# 根据当前开发场景自动调整 Constitution 条例的执行力度
+
+scenarios:
+  feature:
+    description: "新功能开发（默认场景）"
+    constitution_overrides:
+      article_02_tdd:
+        enforcement: strict        # 必须测试先行
+      article_03_commits:
+        max_files: 5               # 单次提交最多 5 文件
+        max_lines: 300
+      article_07_security:
+        enforcement: strict
+    allowed_shortcuts: []
+    required_artifacts:
+      - "stdd/changes/{name}/proposal.md"
+      - "stdd/changes/{name}/specs/feature.feature"
+      - "stdd/changes/{name}/tasks.md"
+
+  bugfix:
+    description: "Bug 修复"
+    constitution_overrides:
+      article_02_tdd:
+        enforcement: relaxed       # 允许先修复再补测试
+        grace_period: true         # 补测试宽限期
+      article_03_commits:
+        max_files: 3
+    allowed_shortcuts:
+      - skip_clarify               # 跳过需求澄清
+      - skip_plan                  # 跳过任务拆解
+    required_artifacts:
+      - "stdd/changes/{name}/bug-spec.md"
+      - "stdd/changes/{name}/fix-report.md"
+
+  refactor:
+    description: "代码重构"
+    constitution_overrides:
+      article_02_tdd:
+        enforcement: strict        # 重构必须保持测试通过
+      article_08_performance:
+        enforcement: suggest       # 性能优化建议但不阻断
+    allowed_shortcuts:
+      - skip_propose               # 跳过需求提案
+    required_artifacts:
+      - "stdd/changes/{name}/tasks.md"
+    complexity_gate:
+      enabled: true
+      max_app_mass_increase: 0.5   # 重构后复杂度不得增加超过 0.5
+
+  hotfix:
+    description: "紧急修复（生产故障）"
+    constitution_overrides:
+      article_02_tdd:
+        enforcement: minimal       # 最小 TDD 约束
+        allow_post_test: true      # 允许后补测试
+      article_03_commits:
+        max_files: 10              # 紧急修复允许更多文件
+      article_09_cicd:
+        skip_ci: false             # CI 不可跳过
+        fast_track: true           # 但走快速通道
+    allowed_shortcuts:
+      - skip_clarify
+      - skip_plan
+      - skip_spec
+      - skip_final_doc
+    required_artifacts:
+      - "stdd/changes/{name}/bug-spec.md"
+      - "stdd/changes/{name}/fix-report.md"
+    post_hotfix:
+      must_backfill_tests: true   # 修复后必须补测试
+      backfill_deadline: "24h"
+
+# 场景自动检测规则
+detection:
+  rules:
+    - if: "用户输入包含 'bug', 'fix', '修复', '问题', '故障'"
+      then: bugfix
+    - if: "用户输入包含 '重构', 'refactor', '优化', '清理'"
+      then: refactor
+    - if: "用户输入包含 '紧急', 'hotfix', 'P0', '生产'"
+      then: hotfix
+    - if: "用户输入包含 '新功能', 'feature', '添加', '实现'"
+      then: feature
+  default: feature

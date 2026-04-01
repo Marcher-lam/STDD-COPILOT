@@ -1,7 +1,12 @@
 ---
-description: 结构化规划模式 - What/Why/How/Success 四要素规划
+name: stdd-prp
+description: |
+  结构化规划模式 - What/Why/How/Success 四要素规划
+  触发场景：用户说 '/stdd-prp', 'prp', '结构化规划', '四要素', '规划模式'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 结构化规划模式 (/stdd-prp)
 
 ## 目标
@@ -78,7 +83,7 @@ description: 结构化规划模式 - What/Why/How/Success 四要素规划
 
 ## PRP 文档模板
 
-生成文件: `.stdd/active_feature/00_prp.md`
+生成文件: `stdd/active_feature/00_prp.md`
 
 ```markdown
 # PRP 文档: [功能名称]

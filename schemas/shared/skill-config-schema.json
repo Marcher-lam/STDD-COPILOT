@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "stdd://schemas/shared/skill-config.json",
+  "title": "STDD Skill Configuration",
+  "description": "所有 STDD Skill 的共享配置 Schema。各 Skill 在此基础上扩展自身特有字段。",
+  "type": "object",
+  "required": ["version", "skill"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "配置版本号"
+    },
+    "skill": {
+      "type": "string",
+      "description": "对应的 Skill 名称（如 stdd-guard, stdd-mock）",
+      "pattern": "^stdd-[a-z-]+$"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "是否启用此 Skill"
+    },
+    "thresholds": {
+      "type": "object",
+      "description": "质量阈值（各 Skill 自定义具体字段）",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "number" },
+          { "type": "integer" },
+          { "type": "boolean" }
+        ]
+      }
+    },
+    "logging": {
+      "type": "object",
+      "description": "日志配置",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "info"
+        },
+        "persistTo": {
+          "type": "string",
+          "description": "日志持久化路径（相对于 stdd/）",
+          "default": "memory/logs/"
+        }
+      }
+    },
+    "retry": {
+      "type": "object",
+      "description": "重试策略",
+      "properties": {
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 3
+        },
+        "backoff": {
+          "type": "string",
+          "enum": ["fixed", "linear", "exponential"],
+          "default": "exponential"
+        },
+        "initialDelayMs": {
+          "type": "integer",
+          "minimum": 100,
+          "default": 1000
+        }
+      }
+    },
+    "timeout": {
+      "type": "object",
+      "description": "超时配置",
+      "properties": {
+        "defaultMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "default": 30000
+        },
+        "maxMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "default": 300000
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

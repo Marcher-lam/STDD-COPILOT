@@ -1,7 +1,12 @@
 ---
-description: 变异测试 - Stryker 风格的测试质量验证
+name: stdd-mutation
+description: |
+  变异测试 - Stryker 风格的测试质量验证
+  触发场景：用户说 '/stdd-mutation', 'mutation', '变异测试', '测试质量', 'stryker'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 变异测试 (/stdd-mutation)
 
 ## 目标
@@ -287,7 +292,9 @@ expect(array.length).toBeGreaterThanOrEqual(0);
 
 ### 自定义变异算子
 
-在 `.stdd/mutation/operators.json` 中：
+在 `stdd/mutation/operators.json` 中：
+
+<!-- 配置 Schema: 参见 schemas/shared/skill-config-schema.json -->
 
 ```json
 {
@@ -341,6 +348,151 @@ expect(array.length).toBeGreaterThanOrEqual(0);
 
 ---
 
+## 双模式系统
+
+STDD 变异测试提供两种模式：**快速模式**（伪变异，AI 驱动）和**深度模式**（Stryker 真实工具集成）。
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Mutation Testing 双模式                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│   ┌─────────────────┐       ┌─────────────────┐            │
+│   │  Quick Mode      │       │  Deep Mode       │            │
+│   │  (伪变异/AI驱动)  │       │  (Stryker 集成)  │            │
+│   ├─────────────────┤       ├─────────────────┤            │
+│   │ ⚡ 秒级完成      │       │ 🔬 分钟级完成     │            │
+│   │ AI 模拟变异体    │       │ 真实代码变异      │            │
+│   │ 8 种内置算子     │       │ Stryker 全量算子  │            │
+│   │ Ralph Loop 内置  │       │ CI/CD 独立运行    │            │
+│   │ 适合开发时使用   │       │ 适合合并前验证    │            │
+│   └─────────────────┘       └─────────────────┘            │
+│                                                              │
+│   自动选择逻辑:                                               │
+│   ├── Stryker 已安装 → 默认使用 Deep Mode                     │
+│   ├── Stryker 未安装 → 降级到 Quick Mode                      │
+│   └── 可通过 --mode=quick|deep 强制指定                       │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Deep Mode（Stryker 集成）
+
+#### 安装检测
+
+运行 `stdd-mutation` 时自动检测 Stryker 是否已安装：
+
+```bash
+# 检测命令
+npx stryker --version 2>/dev/null
+```
+
+| 语言/框架 | Stryker 包 | 配置文件 |
+|-----------|-----------|---------|
+| JavaScript/TypeScript | `stryker-cli` + `@stryker-mutator/*` | `stryker.conf.json` |
+| Python | `stryker-python` (实验) | `stryker.ini` |
+
+#### 自动生成 Stryker 配置
+
+若未存在 `stryker.conf.json`，STDD 自动生成：
+
+```bash
+/stdd-mutation init-stryker
+```
+
+生成文件 `stryker.conf.json`：
+```json
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "packageManager": "npm",
+  "reporters": ["html", "clear-text", "json", "dashboard"],
+  "testRunner": "vitest",
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/**/*.ts",
+    "!src/**/*.test.ts",
+    "!src/**/*.spec.ts",
+    "!src/types/**"
+  ],
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 50
+  },
+  "concurrency": 4,
+  "timeoutMS": 5000,
+  "dryRunTimeoutMinutes": 5,
+  "htmlReporter": {
+    "fileName": "reports/mutation/stryker-report.html"
+  },
+  "jsonReporter": {
+    "fileName": "reports/mutation/stryker-report.json"
+  }
+}
+```
+
+#### 运行 Stryker Deep Mode
+
+```bash
+# 使用 Stryker 运行（自动检测或强制）
+/stdd-mutation run --mode=deep
+
+# 指定文件
+/stdd-mutation run --mode=deep --file=src/services/TodoService.ts
+
+# 指定并发数
+/stdd-mutation run --mode=deep --concurrency=2
+```
+
+#### Deep Mode 输出
+
+```
+🧬 STDD 变异测试报告 [Stryker Deep Mode]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 总体统计 (Stryker 引擎)
+
+┌─────────────────┬──────────┬─────────────────┐
+│ 指标             │ 数值     │ 状态            │
+├─────────────────┼──────────┼─────────────────┤
+│ 变异体总数       │ 312      │                 │
+│ 已杀死 (Killed)  │ 285      │                 │
+│ 超时 (Timeout)   │ 12       │                 │
+│ 存活 (Survived)  │ 8        │ ⚠️ 需关注       │
+│ 编译错误         │ 7        │                 │
+├─────────────────┼──────────┼─────────────────┤
+│ 变异测试得分     │ 91.3%    │ ✅ 优秀         │
+│ 耗时             │ 3m 42s   │                 │
+│ 引擎             │ Stryker  │ 🔬 Deep         │
+└─────────────────┴──────────┴─────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 HTML 报告: reports/mutation/stryker-report.html
+📁 JSON 报告: reports/mutation/stryker-report.json
+```
+
+#### Quick ↔ Deep 结果对比
+
+```
+📊 模式对比
+
+┌─────────────────┬──────────┬──────────┬──────────┐
+│ 指标             │ Quick    │ Deep     │ 差异     │
+├─────────────────┼──────────┼──────────┼──────────┤
+│ 变异体数量       │ 156      │ 312      │ +100%    │
+│ 变异得分         │ 91.0%    │ 91.3%    │ +0.3%    │
+│ 存活变异体       │ 10       │ 8        │ -2       │
+│ 运行时间         │ 5s       │ 3m 42s   │          │
+│ 算子类型         │ 8        │ 24       │ +16      │
+└─────────────────┴──────────┴──────────┴──────────┘
+
+💡 Quick 模式得分与 Deep 模式高度一致，建议开发时用 Quick，合并前用 Deep。
+```
+
+---
+
 ## 与 STDD 工作流集成
 
 ```
@@ -361,14 +513,24 @@ Ralph Loop 绿灯阶段
 
 ## 配置
 
-在 `.stdd/memory/mutation-config.json` 中：
+在 `stdd/memory/mutation-config.json` 中：
+
+<!-- 配置 Schema: 参见 schemas/shared/skill-config-schema.json -->
 
 ```json
 {
   "enabled": true,
+  "mode": "auto",
   "threshold": 80,
   "timeout": 5000,
   "maxMutants": 1000,
+  "stryker": {
+    "enabled": "auto",
+    "config_file": "stryker.conf.json",
+    "concurrency": 4,
+    "test_runner": "vitest",
+    "fallback_to_quick": true
+  },
   "operators": [
     "ArithmeticOperatorReplacement",
     "ConditionalBoundary",

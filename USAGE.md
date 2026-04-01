@@ -364,7 +364,7 @@ stdd/changes/
 /stdd:explore --> /stdd:new --> /stdd:continue --> ... --> /stdd:apply --> /stdd:archive
 
 # 场景 3：棕地项目核心场景
-/stdd:init --> /stdd:clarify --> /stdd:confirm --> /stdd:spec --> /stdd:apply --> /stdd:archive
+/stdd:init --> /stdd:propose --> /stdd:clarify --> /stdd:confirm --> /stdd:spec --> /stdd:plan --> /stdd:apply --> /stdd:archive
 ```
 
 ---

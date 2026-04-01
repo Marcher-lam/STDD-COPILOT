@@ -1,0 +1,22 @@
+name: express
+description: Express API 服务开发预设
+detect:
+  - file: package.json
+    contains: "express"
+test_framework: vitest
+test_command: "npx vitest run"
+single_test_command: "npx vitest run {file}"
+coverage_command: "npx vitest run --coverage"
+typecheck_command: "npx tsc --noEmit"
+lint_command: "npx eslint ."
+dev_dependencies:
+  - vitest
+  - "@vitest/coverage-v8"
+  - supertest
+  - "@types/supertest"
+vitest_config:
+  environment: node
+  coverage:
+    include: ["src/**/*.ts"]
+    exclude: ["src/**/*.test.ts", "src/types/**", "src/migrations/**"]
+article_overrides: {}

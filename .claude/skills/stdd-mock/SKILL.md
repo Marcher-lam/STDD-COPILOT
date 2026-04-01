@@ -1,7 +1,12 @@
 ---
-description: 自动 Mock 生成 - 服务/API 依赖模拟
+name: stdd-mock
+description: |
+  自动 Mock 生成 - 服务/API 依赖模拟
+  触发场景：用户说 '/stdd-mock', 'mock', '模拟', '依赖模拟', '生成mock'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 自动 Mock 生成 (/stdd-mock)
 
 ## 目标
@@ -471,7 +476,9 @@ export const createScenarioHandlers = (scenario: 'empty' | 'error' | 'normal') =
 
 ## 配置
 
-在 `.stdd/memory/mock-config.json` 中：
+在 `stdd/memory/mock-config.json` 中：
+
+<!-- 配置 Schema: 参见 schemas/shared/skill-config-schema.json -->
 
 ```json
 {

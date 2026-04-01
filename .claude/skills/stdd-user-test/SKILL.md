@@ -1,7 +1,12 @@
 ---
-description: 生成用户测试脚本（人类测试脚本 + AI 代理测试脚本）
+name: stdd-user-test
+description: |
+  生成用户测试脚本（人类测试脚本 + AI 代理测试脚本）
+  触发场景：用户说 '/stdd-user-test', 'user-test', '用户测试', '验收测试', '测试脚本'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 用户测试向导 (/stdd-user-test)
 
 ## 目标
@@ -133,8 +138,8 @@ await screenshot('03-task-visible.png');
 
 ### 4. 保存测试脚本
 
-- 人类脚本: `.stdd/active_feature/plan/human-test-script.md`
-- AI 脚本: `.stdd/active_feature/plan/agent-test-script.md`
+- 人类脚本: `stdd/active_feature/plan/human-test-script.md`
+- AI 脚本: `stdd/active_feature/plan/agent-test-script.md`
 
 ### 5. 生成执行命令
 

@@ -1,7 +1,12 @@
 ---
-description: STDD 使用指南与上下文感知帮助系统
+name: stdd-help
+description: |
+  STDD 使用指南与上下文感知帮助系统
+  触发场景：用户说 '/stdd-help', 'help', '帮助', '使用指南', '怎么用'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 帮助向导 (/stdd-help)
 
 ## 目标
@@ -20,7 +25,7 @@ description: STDD 使用指南与上下文感知帮助系统
 
 ### 检测逻辑
 
-1. **检查 `.stdd/` 目录是否存在**
+1. **检查 `stdd/` 目录是否存在**
    - 不存在 → 揻示示: "请先运行 `/stdd-init` 初始化工作区"
 
 2. **检查 `01_proposal.md` 是否存在**

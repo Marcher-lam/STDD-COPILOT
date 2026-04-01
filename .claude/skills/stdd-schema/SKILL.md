@@ -1,7 +1,12 @@
 ---
-description: 类型规范先行 - JSON Schema / Zod / TypeScript 类型生成
+name: stdd-schema
+description: |
+  类型规范先行 - JSON Schema / Zod / TypeScript 类型生成
+  触发场景：用户说 '/stdd-schema', 'schema', '类型规范', 'JSON Schema', 'Zod类型'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 类型规范先行 (/stdd-schema)
 
 ## 目标
@@ -93,6 +98,8 @@ Feature: Todo List
 ### 输出 1: JSON Schema
 
 生成文件: `schemas/Todo.schema.json`
+
+<!-- 配置 Schema: 参见 schemas/shared/skill-config-schema.json -->
 
 ```json
 {
@@ -453,7 +460,9 @@ router.patch('/:id',
 
 ## 配置
 
-在 `.stdd/memory/schema-config.json` 中：
+在 `stdd/memory/schema-config.json` 中：
+
+<!-- 配置 Schema: 参见 schemas/shared/skill-config-schema.json -->
 
 ```json
 {

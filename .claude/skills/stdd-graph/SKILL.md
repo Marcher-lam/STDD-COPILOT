@@ -1,7 +1,12 @@
 ---
-description: Skill Graph 引擎 - 统一的可视化、编排、调度和追踪系统
+name: stdd-graph
+description: |
+  Skill Graph 引擎 - 统一的可视化、编排、调度和追踪系统
+  触发场景：用户说 '/stdd-graph', 'graph', '图谱', '可视化', '调度'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD Skill Graph 引擎 (/stdd-graph)
 
 ## 目标
@@ -153,7 +158,7 @@ description: Skill Graph 引擎 - 统一的可视化、编排、调度和追踪�
 
 ### YAML 格式
 
-文件位置: `.stdd/graph/skills.yaml`
+文件位置: `stdd/graph/skills.yaml`
 
 ```yaml
 version: "1.0"
@@ -181,8 +186,8 @@ skills:
     phase: init
     timeout: 300
     outputs:
-      - ".stdd/memory/foundation.md"
-      - ".stdd/memory/components.md"
+      - "stdd/memory/foundation.md"
+      - "stdd/memory/components.md"
     next:
       - stdd-propose
     metadata:
@@ -196,7 +201,7 @@ skills:
     inputs:
       - "user_request"
     outputs:
-      - ".stdd/drafts/proposal.md"
+      - "stdd/drafts/proposal.md"
     next:
       - stdd-clarify
     metadata:
@@ -207,9 +212,9 @@ skills:
     description: "系统主动交互澄清"
     phase: clarify
     inputs:
-      - ".stdd/drafts/proposal.md"
+      - "stdd/drafts/proposal.md"
     outputs:
-      - ".stdd/drafts/clarification.json"
+      - "stdd/drafts/clarification.json"
     next:
       - stdd-confirm
     metadata:
@@ -221,9 +226,9 @@ skills:
     description: "人类确认需求"
     phase: confirm
     inputs:
-      - ".stdd/drafts/clarification.json"
+      - "stdd/drafts/clarification.json"
     outputs:
-      - ".stdd/approved/requirement.md"
+      - "stdd/approved/requirement.md"
     next:
       - stdd-spec
     condition: "${clarification_complete} == true"
@@ -237,10 +242,10 @@ skills:
     description: "生成 BDD 规格"
     phase: spec
     inputs:
-      - ".stdd/approved/requirement.md"
+      - "stdd/approved/requirement.md"
     outputs:
-      - ".stdd/specs/features/"
-      - ".stdd/specs/scenarios/"
+      - "stdd/specs/features/"
+      - "stdd/specs/scenarios/"
     next:
       - stdd-plan
     metadata:
@@ -251,10 +256,10 @@ skills:
     description: "极细微任务拆解"
     phase: plan
     inputs:
-      - ".stdd/specs/features/"
+      - "stdd/specs/features/"
     outputs:
-      - ".stdd/plans/tasks.md"
-      - ".stdd/plans/dependencies.json"
+      - "stdd/plans/tasks.md"
+      - "stdd/plans/dependencies.json"
     next:
       - stdd-execute
     metadata:
@@ -266,7 +271,7 @@ skills:
     description: "执行 TDD 循环"
     phase: execute
     inputs:
-      - ".stdd/plans/tasks.md"
+      - "stdd/plans/tasks.md"
     outputs:
       - "src/"
       - "tests/"
@@ -284,7 +289,7 @@ skills:
     description: "开始实现"
     phase: execute
     inputs:
-      - ".stdd/plans/tasks.md"
+      - "stdd/plans/tasks.md"
     outputs:
       - "src/"
     metadata:
@@ -299,7 +304,7 @@ skills:
       - "tests/"
       - "src/"
     outputs:
-      - ".stdd/reports/mutation.html"
+      - "stdd/reports/mutation.html"
     metadata:
       priority: medium
       category: testing
@@ -309,10 +314,10 @@ skills:
     description: "规范验证"
     phase: verify
     inputs:
-      - ".stdd/specs/"
+      - "stdd/specs/"
       - "src/"
     outputs:
-      - ".stdd/reports/validation.json"
+      - "stdd/reports/validation.json"
     metadata:
       priority: medium
       category: verification
@@ -322,9 +327,9 @@ skills:
     description: "契约测试"
     phase: verify
     inputs:
-      - ".stdd/contracts/"
+      - "stdd/contracts/"
     outputs:
-      - ".stdd/reports/contract.json"
+      - "stdd/reports/contract.json"
     condition: "${has_api} == true"
     metadata:
       priority: medium
@@ -336,8 +341,8 @@ skills:
     description: "生成最终需求文档"
     phase: document
     inputs:
-      - ".stdd/approved/requirement.md"
-      - ".stdd/specs/"
+      - "stdd/approved/requirement.md"
+      - "stdd/specs/"
       - "src/"
     outputs:
       - "FINAL_REQUIREMENT.md"
@@ -366,8 +371,8 @@ skills:
     description: "API 规范先行"
     phase: spec
     outputs:
-      - ".stdd/specs/openapi.yaml"
-      - ".stdd/types/api.ts"
+      - "stdd/specs/openapi.yaml"
+      - "stdd/types/api.ts"
     condition: "${has_api} == true"
     metadata:
       priority: high
@@ -377,8 +382,8 @@ skills:
     description: "类型规范先行"
     phase: spec
     outputs:
-      - ".stdd/schemas/"
-      - ".stdd/types/"
+      - "stdd/schemas/"
+      - "stdd/types/"
     metadata:
       priority: high
       category: sdd
@@ -538,7 +543,7 @@ parallel_groups:
 conditions:
   clarification_complete:
     type: "file_exists"
-    path: ".stdd/drafts/clarification.json"
+    path: "stdd/drafts/clarification.json"
 
   has_api:
     type: "file_pattern"
@@ -1038,13 +1043,13 @@ graph TD
 
 ### Graph 配置文件
 
-文件位置: `.stdd/graph/config.json`
+文件位置: `stdd/graph/config.json`
 
 ```json
 {
   "version": "1.0",
-  "graphFile": ".stdd/graph/skills.yaml",
-  "historyDir": ".stdd/history",
+  "graphFile": "stdd/graph/skills.yaml",
+  "historyDir": "stdd/history",
   "maxParallelWorkers": 4,
   "defaultTimeout": 3600000,
   "retryPolicy": {
@@ -1054,7 +1059,7 @@ graph TD
   },
   "visualization": {
     "defaultFormat": "mermaid",
-    "htmlTemplate": ".stdd/templates/graph.html",
+    "htmlTemplate": "stdd/templates/graph.html",
     "theme": "light"
   },
   "tracking": {
@@ -1072,7 +1077,7 @@ graph TD
 
 ### 条件引擎配置
 
-文件位置: `.stdd/graph/conditions.json`
+文件位置: `stdd/graph/conditions.json`
 
 ```json
 {

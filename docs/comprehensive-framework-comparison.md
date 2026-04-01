@@ -1,1060 +1,572 @@
-# 全面框架对比：12 个参考框架 vs STDD Copilot
+# Comprehensive Framework Comparison: 12 Reference Frameworks vs STDD Copilot
 
-本文档详细对比 SDD/TDD 领域的 12 个参考框架与 STDD Copilot 的架构设计。
-
----
-
-## 📊 框架总览
-
-### SDD (Spec-Driven Development) 框架
-
-| 框架 | 来源 | 核心理念 | 命令前缀 |
-|------|------|----------|----------|
-| **SpecKit** | GitHub | Specification-Driven Development | `/speckit.*` |
-| **OpenSpec** | Fission-AI | Fluid Spec Workflow | `/opsx:*` |
-| **BMAD-METHOD** | bmad-code-org | Behavior-First Method | `bmad-*` |
-
-### TDD (Test-Driven Development) 框架
-
-| 框架 | 来源 | 核心理念 | 特点 |
-|------|------|----------|------|
-| **AIDD** | paralleldrive | AI-Driven Development | AI + TDD 规则引擎 |
-| **TDD Guard** | nizos | Hook-based Enforcement | Claude Code 钩子 |
-| **Claude Pilot** | changoo89 | Plugin Architecture | Ralph Loop TDD |
-| **Spec-First TDD** | donnieprakoso | Spec-First TDD (SFTDD) | 原子用例 + 人在环中 |
-| **TDAID** | joedevon | Test-Driven AI Development | TDD + AI 代码生成 |
-| **ATDD** | swingerman | Acceptance Test-Driven | Uncle Bob 验收测试 |
-| **tdder** | t1 | Disciplined TDD | Clean Code + Baby Steps |
-| **TDG** | - | TDD Generator | 测试代码生成器 |
-| **Outside-In TDD** | tdd-starters | London School | Mockist-style |
-
-### STDD Copilot 融合框架
-
-| 框架 | 核心理念 | 命令前缀 |
-|------|----------|----------|
-| **STDD Copilot** | Spec + Test Driven Development | `/stdd:*` |
+> Generated: 2026-04-02 | STDD Copilot v1.0
+> Purpose: Identify unique/advanced features in 12 reference frameworks that STDD does NOT yet have
 
 ---
 
-## 🏗️ 架构对比总览
+## Executive Summary
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                              Framework Architecture Comparison                           │
-├─────────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                          │
-│  SDD Frameworks                                                                          │
-│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐                                 │
-│  │   SpecKit    │   │   OpenSpec   │   │     BMAD     │                                 │
-│  │   (GitHub)   │   │ (Fission-AI) │   │  (bmad-org)  │                                 │
-│  ├──────────────┤   ├──────────────┤   ├──────────────┤                                 │
-│  │ Constitution │   │ Delta Specs  │   │ 4-Phase Org  │                                 │
-│  │ 9 Articles   │   │ Artifact     │   │ AGENTS.md    │                                 │
-│  │ Templates    │   │   Graph      │   │ Skills by    │                                 │
-│  │ Multi-Agent  │   │ Workflows    │   │   Phase      │                                 │
-│  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘                                 │
-│         │                  │                  │                                          │
-│         └──────────────────┼──────────────────┘                                          │
-│                            ▼                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────────────────────┐│
-│  │                           STDD Copilot Fusion Layer                                  ││
-│  │   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐               ││
-│  │   │ Delta Specs │  │ 5-Phase Org │  │ AGENTS.md   │  │ Templates   │               ││
-│  │   │ (OpenSpec)  │  │ (BMAD++)    │  │ (Both)      │  │ (SpecKit)   │               ││
-│  │   └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘               ││
-│  └─────────────────────────────────────────────────────────────────────────────────────┘│
-│                                                                                          │
-│  TDD Frameworks                                                                          │
-│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐             │
-│  │     AIDD     │   │  TDD Guard   │   │ Claude Pilot │   │ Outside-In   │             │
-│  ├──────────────┤   ├──────────────┤   ├──────────────┤   ├──────────────┤             │
-│  │ TDD Rules    │   │ Hook-Based   │   │ Ralph Loop   │   │ London Style │             │
-│  │ AI Guidelines│   │ Enforcement  │   │ 5-Step Cycle │   │ Mock-First   │             │
-│  │ Vision Doc   │   │ Multi-Lang   │   │ E2E Verify   │   │ Contract     │             │
-│  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘   └──────┬───────┘             │
-│         │                  │                  │                  │                      │
-│         └──────────────────┼──────────────────┼──────────────────┘                      │
-│                            ▼                  ▼                                           │
-│  ┌─────────────────────────────────────────────────────────────────────────────────────┐│
-│  │                           STDD Copilot TDD Innovation                               ││
-│  │   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐                    ││
-│  │   │   Ralph Loop    │  │  5-Level Defense│  │  Graph Engine   │                    ││
-│  │   │ (Claude Pilot++)│  │ (TDD Guard++)   │  │ (STDD Original) │                    ││
-│  │   └─────────────────┘  └─────────────────┘  └─────────────────┘                    ││
-│  └─────────────────────────────────────────────────────────────────────────────────────┘│
-│                                                                                          │
-└─────────────────────────────────────────────────────────────────────────────────────────┘
-```
+STDD Copilot already has 38 skills, 12 agents, graph engine, constitution (9 articles), hooks, certainty protocol, and many other features. This report identifies **83 unique features** across 12 frameworks that STDD does NOT currently implement. Features are organized by category with priority ratings.
 
 ---
 
-## 📁 目录结构对比
+## 1. SpecKit (github/spec-kit)
 
-### SpecKit (GitHub)
+**Source:** [github.com/github/spec-kit](https://github.com/github/spec-kit)
 
-```
-spec-kit/
-├── AGENTS.md                    # AI 代理指令（多代理支持）
-├── spec-driven.md               # SDD 方法论文档
-├── templates/
-│   ├── spec-template.md         # 规格模板
-│   ├── plan-template.md         # 计划模板
-│   ├── tasks-template.md        # 任务模板
-│   └── commands/                # 命令模板
-├── scripts/
-│   ├── bash/                    # Bash 脚本
-│   └── powershell/              # PowerShell 脚本
-├── presets/                     # 预设配置
-└── extensions/                  # 扩展系统
-```
+### Unique Features NOT in STDD
 
-**特点**:
-- 支持 20+ AI 代理（Claude, Gemini, Cursor 等）
-- 宪法机制（9 篇开发条例）
-- 扩展系统支持自定义
+#### MULTI-AGENT VENDOR SUPPORT (HIGH priority)
+- **23+ AI agent integrations**: Supports Claude Code, Gemini CLI, GitHub Copilot, Cursor, Qwen Code, opencode, Codex CLI, Windsurf, Junie, Kilo Code, Auggie CLI, Roo Code, CodeBuddy CLI, Qoder CLI, Kiro CLI, Amp, SHAI, Tabnine CLI, Kimi Code, Pi, iFlow, IBM Bob, Trae, and a generic "bring your own agent" option. STDD is Claude-only.
+- **AGENTS.md standard format**: A single interop format (`AGENTS.md`) that any agent can read, enabling multi-vendor team workflows.
+- **Agent-specific config generation**: Automatically generates the correct directory structure, command format (Markdown vs TOML), and argument conventions per agent.
 
-### OpenSpec (Fission-AI)
+#### EXTENSION MARKETPLACE (HIGH priority)
+- **Extension system with catalog.json**: Community extensions can be published and installed, with `catalog.community.json` for third-party extensions.
+- **RFC-EXTENSION-SYSTEM.md**: Formal extension API, development guide, and publishing guide.
+- **Extension self-test**: Built-in `selftest` extension for validating the extension system itself.
 
-```
-OpenSpec/
-├── AGENTS.md                    # AI 代理指令
-├── openspec/                    # 工作目录
-│   ├── changes/                 # 变更管理
-│   │   ├── IMPLEMENTATION_ORDER.md
-│   │   └── archive/
-│   ├── specs/                   # Source of Truth
-│   ├── explorations/            # 探索文档
-│   └── config.yaml
-├── schemas/
-│   └── spec-driven/
-│       ├── schema.yaml
-│       └── templates/
-└── src/                         # CLI 源码
-```
+#### PRESET SYSTEM (MEDIUM priority)
+- **Community preset catalog** (`catalog.community.json`): Shared team configurations.
+- **Scaffold preset**: Project scaffolding via presets.
+- **Self-test preset**: Built-in testing preset for validation.
 
-**特点**:
-- Delta Specs 变更管理
-- Artifact Graph 产物图
-- 流式工作流（非瀑布）
+#### PROJECT SCAFFOLDING CLI (MEDIUM priority)
+- **Specify CLI (Python-based)**: `speckit init --ai <agent>` bootstraps full project with correct agent configs.
+- **Cross-platform shell scripts**: Both Bash and PowerShell scripts for check-prerequisites, create-new-feature, setup-plan, update-agent-context.
+- **DevContainer support**: Pre-configured devcontainers with AI agent CLI tools installed.
 
-### BMAD-METHOD
-
-```
-BMAD-METHOD/
-├── AGENTS.md                    # AI 代理指令
-├── src/
-│   ├── bmm-skills/              # 按阶段组织
-│   │   ├── 1-analysis/
-│   │   ├── 2-plan-workflows/
-│   │   ├── 3-solutioning/
-│   │   └── 4-implementation/
-│   └── core-skills/             # 核心技能
-│       ├── bmad-init/
-│       ├── bmad-brainstorming/
-│       └── bmad-party-mode/
-└── website/                     # Astro 文档站点
-```
-
-**特点**:
-- 4 阶段组织（分析→计划→方案→实现）
-- module.yaml 模块定义
-- 多语言文档支持
-
-### AIDD (paralleldrive)
-
-```
-aidd/
-├── AGENTS.md                    # AI 代理指令
-├── vision.md                    # 愿景文档（必需）
-├── ai/
-│   ├── commands/                # 命令定义
-│   └── rules/
-│       ├── tdd.mdc              # TDD 规则
-│       ├── review.mdc           # 评审规则
-│       └── frameworks/          # 框架规则
-├── tasks/                       # 任务管理
-│   └── archive/
-└── docs/
-    └── vision-document.md
-```
-
-**特点**:
-- Vision Document 强制前置
-- TDD 规则引擎
-- 渐进式发现模式
-
-### TDD Guard (nizos)
-
-```
-tdd-guard/
-├── CLAUDE.md                    # Claude Code 指令
-├── docs/
-│   ├── enforcement.md           # 强制执行
-│   ├── validation-model.md      # 验证模型
-│   └── custom-instructions.md   # 自定义规则
-├── src/
-│   ├── hooks/                   # Hook 处理
-│   ├── validation/              # TDD 验证
-│   └── providers/               # 模型提供者
-└── reporters/                   # 多语言报告器
-    ├── jest/
-    ├── vitest/
-    ├── pytest/
-    ├── phpunit/
-    ├── go/
-    └── rust/
-```
-
-**特点**:
-- Claude Code Hook 集成
-- 多语言测试框架支持
-- AI 模型验证 TDD 合规
-
-### Claude Pilot (changoo89)
-
-```
-claude-pilot/
-├── CLAUDE.md                    # 插件文档
-├── docs/
-│   └── ai-context/              # AI 上下文
-├── .claude/
-│   ├── commands/                # 11 个命令
-│   ├── skills/                  # 技能系统
-│   │   ├── tdd/                 # TDD 技能
-│   │   ├── ralph-loop/          # Ralph Loop
-│   │   └── spec-driven-workflow/
-│   └── agents/                  # 12 个专用代理
-└── examples/                    # 示例项目
-```
-
-**特点**:
-- Ralph Loop 自动迭代
-- E2E 验证框架
-- 3-Tier 文档层次
-
-### Spec-First TDD (donnieprakoso)
-
-```
-spec-first-tdd/
-├── 00-sftdd-workflow.md         # 系统提示（AI 首先读取）
-├── 00-use-case.md               # 功能开发跟踪器
-├── 00-issues.md                 # 生产 Bug 跟踪器
-└── README.md
-```
-
-**核心理念**:
-- **原子用例（Atomic Use Cases）**: 以微小的"功能珠子"形式工作
-- **人在环中（Human-in-the-Loop）**: 你是飞行员，而不只是旁观者
-- **进化式规格（Evolutionary Specs）**: 规格因为你构建而变得严密
-
-**SFTDD 工作流**:
-```
-┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐
-│ 🔴 RED  │───►│🟢 GREEN │───►│Enhance- │───►│🔵REFACTOR│
-│Fail Test│    │Min Impl │    │  ment   │    │ Clean Up│
-└─────────┘    └─────────┘    │Edge Case│    └─────────┘
-                              └─────────┘
-```
-
-**三种模式**:
-1. Feature Development - 添加用例 → AI 创建测试和代码 → 你批准每个阶段
-2. Issue Resolution - 添加问题 → AI 分类和修复 → 同样的 TDD 循环
-3. Brainstorming - "不要改变任何东西" → AI 分析和建议 → 无代码更改
-
-### ATDD (swingerman)
-
-```
-atdd/
-├── CLAUDE.md                    # Claude Code 插件文档
-├── .claude/
-│   ├── skills/
-│   │   ├── atdd/                # 7 步 ATDD 工作流
-│   │   ├── atdd-team/           # 团队编排技能
-│   │   └── atdd-mutate/         # 变异测试技能
-│   ├── agents/
-│   │   ├── spec-guardian/       # 捕获实现泄漏
-│   │   └── pipeline-builder/    # 生成测试管道
-│   └── commands/
-│       ├── atdd.md              # 启动 ATDD 工作流
-│       ├── spec-check.md        # 审计规格泄漏
-│       ├── mutate.md            # 运行变异测试
-│       └── kill-mutants.md      # 杀灭存活变异
-└── specs/                       # Given/When/Then 规格
-```
-
-**核心理念**（Inspired by Uncle Bob's empire-2025）:
-- **双测试流约束开发**: 验收测试定义 WHAT，单元测试定义 HOW
-- **规格只描述外部可观察行为**: 无类名、API 端点、数据库表
-- **人类最终批准**: AI 提议规格，你批准
-
-**ATDD 工作流**:
-```
-1. Write Given/When/Then specs (domain language only)
-                    ↓
-2. Generate test pipeline (parser → IR → test generator)
-                    ↓
-3. Run acceptance tests → they FAIL (red)
-                    ↓
-4. Implement with TDD until BOTH streams pass
-                    ↓
-5. Review specs for implementation leakage
-                    ↓
-6. Mutation testing → verify tests catch bugs
-                    ↓
-7. Iterate
-```
-
-**GWT 规格格式**:
-```
-;===============================================================
-; Description of the behavior being specified.
-;===============================================================
-GIVEN [precondition in domain language].
-
-WHEN [action the user/system takes].
-
-THEN [observable outcome].
-```
-
-**关键原则**:
-- "Just enough specs for this sprint" - 不要预先写所有规格
-- "Two test streams constrain development" - 验收 + 单元必须都通过
-- "Specs describe only external observables" - 只有领域语言
-
-### tdder (t1)
-
-```
-tdder/
-├── CLAUDE.md                    # 插件文档
-├── .claude/
-│   ├── skills/
-│   │   ├── tdd/                 # 核心 TDD 流程
-│   │   │   │                    # Red-Green-Refactor + Baby Steps
-│   │   ├── clean-code/          # Clean Code 原则
-│   │   │   │                    # Naming, SOLID, Smells, Method Design
-│   │   ├── app/                 # APP 质量计算
-│   │   │   │                    # Absolute Priority Premise
-│   │   ├── java/                # Java 特定约定
-│   │   ├── maven/               # Maven 约定
-│   │   ├── unfolding-architecture/  # 渐进式架构决策
-│   │   ├── integration-architecture/  # 集成消息模式
-│   │   └── nested-fixture-pattern/    # JUnit 嵌套 Fixture
-│   └── agents/
-│       └── clean-code-reviewer/  # 重构阶段自动代码审查
-```
-
-**核心特性**:
-- **TDD Discipline**: 严格的 Red-Green-Refactor 循环 + Baby Steps + Guessing Game
-- **Clean Code Review**: 重构阶段通过 subagent 自动代码审查
-- **APP Mass Calculations**: 客观的代码复杂度测量
-- **Language-agnostic Core**: TDD 和 Clean Code 原则适用于任何语言
-- **Unfolding Architecture**: 渐进式架构决策 - 从简单开始，只在减少复杂度时添加复杂性
-
-**Human-in-the-Loop 配置**:
-```markdown
----
-hitl: every-phase    # 每个 Red, Green, Refactor 阶段后停止
-# or
-hitl: end-of-cycle   # 每个完整 Red-Green-Refactor 循环后停止
-# or
-hitl: off            # 自主运行，最后报告
----
-```
-
-### TDAID (Test-Driven AI Development)
-
-```
-TDAID/
-├── README.md                    # 方法论文档
-├── examples/                    # 示例代码和测试
-└── best-practices.md            # 最佳实践指南
-```
-
-**核心理念**:
-- **TDD + AI 代码生成**: 用 TDD 原则改进 LLM 生成代码的质量和速度
-- **模式教学**: 提供代码和测试作为 AI 的学习模式
-- **示例驱动**: AI 从你的编码风格和测试模式中学习
-
-**TDAID 工作流**:
-```
-1. Write initial code    → 开发部分功能
-2. Write initial tests   → 为初始代码创建测试
-3. Teach the AI          → 代码和测试作为模式示例
-4. AI-assisted test      → AI 编写额外测试用例
-5. AI-assisted impl      → AI 实现代码通过测试
-6. Review and refine     → 评估并调整
-```
-
-**最佳实践**:
-1. Start small - 从定义明确的功能开始
-2. Provide clear examples - 包含代表性代码和测试示例
-3. Be specific - 清晰传达要测试和实现的内容
-4. Iterative approach - 审查和改进 AI 的工作
-5. Maintain quality control - 始终审查 AI 生成代码的正确性
-
-### TDD Starters (Outside-In TDD)
-
-```
-tdd-starters/
-├── rust/                        # Rust TDD Starter
-├── java/                        # Java TDD Starter
-├── python/                      # Python TDD Starter
-├── kotlin/                      # Kotlin TDD Starter
-├── javascript/                  # JavaScript TDD Starter
-├── typescript/                  # TypeScript TDD Starter
-├── cpp/                         # C++ TDD Starter
-├── csharp/                      # C# TDD Starter
-└── go/                          # Go TDD Starter
-```
-
-**核心理念（London School / Mockist TDD）**:
-- **Outside-In / Top-Down**: 从外部、特性级别开始，向内构建
-- **Mock-First**: 使用 Mock 来隔离测试，强调对象间交互
-- **测试驱动设计**: 测试驱动代码结构的设计
-
-**London School vs Detroit School**:
-| Aspect | Detroit (Classicist) | London (Mockist) |
-|--------|---------------------|------------------|
-| Focus | State verification | Interaction verification |
-| Style | Inside-Out | Outside-In |
-| Mocks | Sparingly | Extensively |
-| Design | Emergent | Specified upfront |
-
-### STDD Copilot
-
-```
-STDD-COPILOT/
-├── AGENTS.md                    # AI 代理指令
-├── src/
-│   ├── stdd-skills/             # 按阶段组织（5 阶段）
-│   │   ├── 1-proposal/
-│   │   ├── 2-specification/
-│   │   ├── 3-design/
-│   │   ├── 4-implementation/
-│   │   ├── 5-verification/
-│   │   └── module.yaml
-│   └── core-skills/
-│       └── module.yaml
-├── stdd/                        # 工作目录
-│   ├── specs/                   # Source of Truth
-│   ├── changes/                 # 变更管理
-│   ├── memory/                  # 向量记忆
-│   ├── graph/                   # Graph 配置
-│   └── config.yaml
-├── schemas/
-│   └── spec-driven/
-│       ├── schema.yaml
-│       └── templates/
-├── .claude/
-│   ├── commands/stdd/           # 9 个核心命令
-│   └── skills/                  # 33 个技能
-└── docs/                        # 文档系统
-```
-
-**特点**:
-- 5 阶段组织（提案→规格→设计→实现→验证）
-- Ralph Loop TDD（5 步循环）
-- Graph 引擎（可视化+调度）
-- 5 级防跑偏机制
-- 向量记忆系统
+#### BRANCH NUMBERING (LOW priority)
+- **Timestamp-based branch numbering**: Automated branch naming with timestamps for traceability.
 
 ---
 
-## 🔄 工作流对比
+## 2. OpenSpec (Fission-AI)
 
-### SDD 工作流
+**Source:** [github.com/Fission-AI/OpenSpec](https://github.com/Fission-AI/OpenSpec)
 
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                          SDD Workflow Comparison                           │
-├───────────────────────────────────────────────────────────────────────────┤
-│                                                                            │
-│  SpecKit (Constitutional)                                                  │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐                │
-│  │Specify  │───►│  Plan   │───►│  Tasks  │───►│Implement│                │
-│  │/specify │    │ /plan   │    │ /tasks  │    │(TDD)    │                │
-│  └─────────┘    └─────────┘    └─────────┘    └─────────┘                │
-│       │              │              │              │                       │
-│       └──────────────┴──────────────┴──────────────┘                       │
-│                          Constitution Gates                                │
-│                    (9 Articles: Library-First, TDD, etc.)                  │
-│                                                                            │
-│  OpenSpec (Delta-Based)                                                    │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐                │
-│  │/opsx:new│───►│/opsx:ff │───►│/opsx:   │───►│/opsx:   │                │
-│  │         │    │/continue│    │apply    │    │archive  │                │
-│  └─────────┘    └─────────┘    └─────────┘    └─────────┘                │
-│       │              │              │              │                       │
-│       └──────────────┴──────────────┴──────────────┘                       │
-│                          Delta Specs (ADDED/MODIFIED/REMOVED)              │
-│                                                                            │
-│  BMAD (4-Phase)                                                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
-│  │ 1-Analysis  │─►│2-Plan Work- │─►│3-Solutioning│─►│4-Implement  │      │
-│  │ Brainstorm  │  │  flows      │  │ Tech Design │  │ Coding      │      │
-│  │ Distillator │  │ Task Plan   │  │ Architecture│  │ Testing     │      │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘      │
-│                                                                            │
-│  STDD Copilot (5-Phase + Delta)                                           │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌────────┐  │
-│  │/stdd:new│───►│/stdd:   │───►│/stdd:   │───►│/stdd:   │───►│/stdd:  │  │
-│  │proposal │    │specify  │    │design   │    │apply    │    │archive │  │
-│  └─────────┘    └─────────┘    └─────────┘    └─────────┘    └────────┘  │
-│       │              │              │              │              │        │
-│       ▼              ▼              ▼              ▼              ▼        │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                    Delta Specs + Graph Engine                       │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                                                            │
-└───────────────────────────────────────────────────────────────────────────┘
-```
+### Unique Features NOT in STDD
 
-### TDD 工作流
+#### DELTA SPEC SYSTEM (HIGH priority)
+- **Delta specs with semantic markers**: `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements` -- specs describe ONLY what's changing, not the whole system.
+- **Spec merge on archive**: When a change is archived, its delta specs automatically merge into the main specs, building a living source of truth.
+- **Conflict-free parallel changes**: Two changes can touch the same spec file without conflict as long as they modify different requirements.
+- **Brownfield-first philosophy**: Designed for modifying existing systems, not just greenfield projects.
 
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                          TDD Workflow Comparison                           │
-├───────────────────────────────────────────────────────────────────────────┤
-│                                                                            │
-│  Classic TDD (Red-Green-Refactor)                                          │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐                               │
-│  │  🔴 RED │───►│🟢 GREEN │───►│🔵REFACTOR│──┐                            │
-│  │Fail Test│    │Min Impl │    │ Clean Up│  │                            │
-│  └─────────┘    └─────────┘    └─────────┘  │                            │
-│       ▲                                        │                            │
-│       └────────────────────────────────────────┘                            │
-│                                                                            │
-│  Spec-First TDD (4-Step Enhanced)                                         │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐                │
-│  │  🔴 RED │───►│🟢 GREEN │───►│⚡Enhance│───►│🔵REFACTOR│                │
-│  │Fail Test│    │Min Impl │    │Edge Case│    │ Clean Up│                │
-│  └─────────┘    └─────────┘    └─────────┘    └─────────┘                │
-│       │              │              │              │                       │
-│       └──────────────┴──────────────┴──────────────┘                       │
-│                     Human-in-the-Loop Approval                            │
-│                                                                            │
-│  ATDD (7-Step Acceptance)                                                  │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐              │
-│  │ GWT Specs │─►│ Pipeline  │─►│🔴Accept   │─►│  TDD      │              │
-│  │(Given/When│  │ Generate  │  │  Tests    │  │Implement  │              │
-│  │  /Then)   │  │           │  │   (Red)   │  │ (Green)   │              │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘              │
-│        │              │              │              │                      │
-│        ▼              ▼              ▼              ▼                      │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐              │
-│  │  Spec     │─►│  Mutation │─►│  ✅ Both  │─►│  Archive  │              │
-│  │  Review   │  │  Testing  │  │  Pass     │  │           │              │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘              │
-│                                                                            │
-│  tdder (Baby Steps + Clean Code Review)                                   │
-│  ┌─────────┐    ┌─────────┐    ┌─────────────┐                           │
-│  │  🔴 RED │───►│🟢 GREEN │───►│🔵 REFACTOR  │                           │
-│  │Baby Step│    │ Min Imp │    │+ Code Review│                           │
-│  └─────────┘    └─────────┘    │(subagent)   │                           │
-│       │              │         └─────────────┘                           │
-│       │              │               │                                   │
-│       │              └───────────────┘                                   │
-│       │                    │                                              │
-│       └────────────────────┘                                              │
-│            Hitl: every-phase | end-of-cycle | off                         │
-│                                                                            │
-│  TDD Guard (Hook-Enforced)                                                 │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐                               │
-│  │ AI Write│───►│  Hook   │───►│Validate │                               │
-│  │  Code   │    │Intercept│    │  TDD    │                               │
-│  └─────────┘    └─────────┘    └─────────┘                               │
-│                      │              │                                      │
-│                      ▼              ▼                                      │
-│               ┌──────────────────────────┐                                 │
-│               │ Block if:                │                                 │
-│               │ - No test first          │                                 │
-│               │ - Over-implementation    │                                 │
-│               │ - Skip refactor          │                                 │
-│               └──────────────────────────┘                                 │
-│                                                                            │
-│  Claude Pilot Ralph Loop (5-Step)                                          │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌────────┐  │
-│  │  🔴 RED │───►│🔍 VERIFY│───►│🟢 GREEN │───►│🧪 MUTATE│───►│✅ PASS │  │
-│  │Fail Test│    │  E2E    │    │Min Impl │    │ Review  │    │        │  │
-│  └─────────┘    └─────────┘    └─────────┘    └─────────┘    └────────┘  │
-│                                                                            │
-│  STDD Copilot Ralph Loop (Enhanced 5-Step)                                │
-│  ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌────────┐  │
-│  │  🔴 RED │───►│🔍 CHECK │───►│🟢 GREEN │───►│🧪MUTATION│───►│🔵REFACT│  │
-│  │Fail Test│    │Static QA│    │Min Impl │    │ Review  │    │ Clean  │  │
-│  └─────────┘    └─────────┘    └─────────┘    └─────────┘    └────────┘  │
-│       │              │              │              │              │        │
-│       └──────────────┴──────────────┴──────────────┴──────────────┘        │
-│                          3-Failure Circuit Breaker                         │
-│                                                                            │
-└───────────────────────────────────────────────────────────────────────────┘
-```
+#### ARTIFACT DAG (HIGH priority)
+- **Schema-based artifact dependency graph**: A `schema.yaml` defines artifact types and their dependencies (e.g., proposal -> specs -> design -> tasks), forming a DAG.
+- **Dependencies as enablers, not gates**: They show what's possible to create next, not what you must create. You can skip artifacts.
+- **Custom schemas**: Teams can create custom workflow schemas or fork existing ones (`openspec schema fork spec-driven my-workflow`).
+
+#### CHANGE ISOLATION (MEDIUM priority)
+- **Change folders**: Each proposed modification is a self-contained folder with all artifacts (proposal, design, tasks, delta specs).
+- **Parallel changes**: Multiple changes can exist simultaneously without conflict, enabling context-switching.
+- **Change metadata**: `.openspec.yaml` per change for configuration.
+
+#### 3D VERIFICATION (MEDIUM priority)
+- **Completeness, Correctness, Coherence verification**: `/opsx:verify` checks implementation across three dimensions: (1) all tasks done, requirements covered; (2) implementation matches spec intent; (3) design decisions reflected in code.
+- **Bulk-archive with conflict detection**: Detects when multiple changes touch the same specs and resolves by checking what's actually implemented.
+
+#### CONFIGURATION SYSTEM (MEDIUM priority)
+- **Dynamic instructions**: Three-layer AI instruction injection: Context (tech stack) + Rules (per-artifact constraints) + Templates (formatting patterns).
+- **Profile sync drift detection**: Warns when local profile is out of sync with shared config.
+- **Global config + project config**: User-level schemas at `~/.local/share/openspec/schemas/` shared across projects.
 
 ---
 
-## 🛡️ 防跑偏机制对比
+## 3. BMAD-METHOD (bmad-code-org)
 
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                     Anti-Drift Defense Mechanisms                          │
-├───────────────────────────────────────────────────────────────────────────┤
-│                                                                            │
-│                    Level 1          Level 2          Level 3              │
-│                    ─────────        ─────────        ─────────             │
-│  SpecKit           Constitution    Template         Checklist             │
-│                    Gates            Constraints      Validation            │
-│                                                                            │
-│  OpenSpec          Human Confirm   Artifact         Change                │
-│                    Gates            Validation       Isolation             │
-│                                                                            │
-│  BMAD              Elicitation     Module           Workflow              │
-│                    Questions       Boundaries       Gates                  │
-│                                                                            │
-│  AIDD              Vision Doc      TDD Rules        Review                │
-│                    Required        Engine           Process                │
-│                                                                            │
-│  TDD Guard         Hook            AI Validation    Multi-Lang            │
-│                    Enforcement     Model            Reporters              │
-│                                                                            │
-│  Claude Pilot      Certainty       E2E Verify       Agent Teams           │
-│                    Protocol        Framework        Coordination           │
-│                                                                            │
-│  ────────────────────────────────────────────────────────────────────────  │
-│                                                                            │
-│  STDD Copilot (5-Level Defense)                                            │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                                                                     │  │
-│  │  Level 1: Confirm Gates     │  人机确认门 - 关键决策人工审批        │  │
-│  │  Level 2: Micro Tasks       │  微任务隔离 - 每任务 ≤30 分钟         │  │
-│  │  Level 3: Failure Rollback  │  失败熔断 - 连续 3 次自动回滚        │  │
-│  │  Level 4: Static QA         │  静态质检 - 语法/类型/Lint 检查      │  │
-│  │  Level 5: Mutation Review   │  变异审查 - 检测骗绿灯               │  │
-│  │                                                                     │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                                                            │
-│  Comparison Matrix:                                                        │
-│  ┌────────────────┬────────┬────────┬────────┬────────┬────────┐         │
-│  │ Mechanism      │SpecKit │OpenSpec│TDDGuard│Claude  │ STDD   │         │
-│  │                │        │        │        │Pilot   │Copilot │         │
-│  ├────────────────┼────────┼────────┼────────┼────────┼────────┤         │
-│  │ Human Confirm  │   ✅   │   ✅   │   ❌   │   ✅   │   ✅   │         │
-│  │ Micro Tasks    │   ✅   │   ✅   │   ❌   │   ✅   │   ✅   │         │
-│  │ Failure Rollbk │   ❌   │   ❌   │   ❌   │   ❌   │   ✅   │         │
-│  │ Static QA      │   ❌   │   ❌   │   ✅   │   ❌   │   ✅   │         │
-│  │ Mutation Test  │   ❌   │   ❌   │   ❌   │   ❌   │   ✅   │         │
-│  │ Hook Enforcement│  ❌   │   ❌   │   ✅   │   ❌   │   ❌   │         │
-│  │ Constitution   │   ✅   │   ❌   │   ❌   │   ❌   │   ❌   │         │
-│  └────────────────┴────────┴────────┴────────┴────────┴────────┘         │
-│                                                                            │
-└───────────────────────────────────────────────────────────────────────────┘
-```
+**Source:** [github.com/bmad-code-org/BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD)
+
+### Unique Features NOT in STDD
+
+#### ADVERSARIAL REVIEW (HIGH priority)
+- **Forced problem-finding reviews**: No "looks good" allowed. Reviewer MUST find issues. Zero findings triggers a halt and re-analysis.
+- **Information asymmetry**: Reviews run with fresh context (no access to original reasoning) so the artifact itself is evaluated, not the intent.
+- **Diminishing returns tracking**: Multiple passes with awareness that each pass yields less signal.
+
+#### ADVANCED ELICITATION (HIGH priority)
+- **60+ structured reasoning methods**: Pre-mortem Analysis, First Principles Thinking, Inversion, Red Team vs Blue Team, Socratic Questioning, Constraint Removal, Stakeholder Mapping, Analogical Reasoning, and dozens more.
+- **Method selection**: AI suggests 5 relevant methods for your content; you pick one or reshuffle for different options.
+- **Second-pass pattern**: After generating content, run a structured reasoning method to re-examine through a specific lens.
+
+#### PARTY MODE (HIGH priority)
+- **Multi-agent debate in one conversation**: All named agents (PM, Architect, Dev, UX, etc.) in one room, responding in character, agreeing, disagreeing, building on each other's ideas.
+- **BMad Master orchestrator**: Picks relevant agents per message automatically.
+- **Use cases**: Big decisions with tradeoffs, brainstorming, post-mortems, sprint retrospectives.
+
+#### QUICK DEV MODE (HIGH priority)
+- **Intelligent routing**: Automatically decides whether a change is one-shot (go straight to implementation) or needs the full planning path.
+- **Compressed intent**: Turns messy requests into one coherent goal before running autonomously.
+- **Failure layer diagnosis**: If implementation is wrong because intent was wrong, goes back to intent layer rather than patching code.
+- **Review as triage**: Separates findings into "belongs to current change" vs "deferred for later" to prevent scope creep.
+
+#### NAMED AGENTS WITH PERSONALITY (MEDIUM priority)
+- **Persona-based agents**: Mary (Analyst), John (PM), Winston (Architect), Bob (Scrum Master), Amelia (Developer), Quinn (QA), Barry (Solo Dev), Sally (UX Designer), Paige (Tech Writer).
+- **Trigger codes**: Short codes (CP, RS, CB, etc.) for quick invocation.
+- **Conversational triggers**: Some triggers accept arguments alongside the code (e.g., "WD Write a deployment guide").
+
+#### MODULE ECOSYSTEM (MEDIUM priority)
+- **BMad Builder**: Create custom agents and workflows (BMB module).
+- **Test Architect (TEA)**: Risk-based test strategy enterprise module.
+- **Game Dev Studio**: Unity, Unreal, Godot workflows.
+- **Creative Intelligence Suite**: Innovation, brainstorming, design thinking module.
+- **Non-interactive/CI installation**: `npx bmad-method install --yes` for CI/CD pipelines.
+
+#### DOCUMENT SHARDING (LOW priority)
+- **bmad-shard-doc**: Split large documents for token optimization, maintaining coherence across shards.
 
 ---
 
-## 🧪 TDD 支持详细对比
+## 4. AIDD (paralleldrive)
 
-| 特性 | AIDD | TDD Guard | Claude Pilot | Spec-First | ATDD | tdder | STDD Copilot |
-|------|------|-----------|--------------|------------|------|-------|--------------|
-| **测试先行** | ✅ 规则强制 | ✅ Hook 拦截 | ✅ Ralph Loop | ✅ 原子用例 | ✅ GWT Specs | ✅ Baby Steps | ✅ 5 步循环 |
-| **最小实现** | ✅ 规则指导 | ✅ AI 验证 | ✅ 绿灯检查 | ✅ Enhancement | ✅ 双流约束 | ✅ Guessing Game | ✅ 检查门 |
-| **重构阶段** | ✅ 规则指导 | ✅ Lint 集成 | ✅ 变异审查 | ✅ Clean Up | ✅ Spec Review | ✅ Code Review | ✅ 变异审查 |
-| **自动迭代** | ❌ | ❌ | ✅ Ralph Loop | ❌ | ✅ Team Mode | ✅ 可配置 | ✅ Ralph Loop |
-| **失败熔断** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ 3 次熔断 |
-| **变异测试** | ❌ | ❌ | ❌ | ❌ | ✅ Stryker | ❌ | ✅ 伪变异 |
-| **E2E 验证** | ❌ | ❌ | ✅ Chrome 集成 | ❌ | ✅ Acceptance | ❌ | ✅ 可选 |
-| **多语言** | JS/TS | 6 语言 | TS/JS | Any | Any | Java+ | TS/JS |
-| **HITL** | ✅ Vision | ❌ | ✅ Certainty | ✅ Every Phase | ✅ Spec Approval | ✅ 可配置 | ✅ Confirm Gates |
+**Source:** [github.com/paralleldrive/aidd](https://github.com/paralleldrive/aidd)
 
-### Ralph Loop 对比
+### Unique Features NOT in STDD
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         Ralph Loop TDD Evolution                            │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  Claude Pilot Ralph Loop (Original)                                         │
-│  ┌────────┐   ┌────────┐   ┌────────┐   ┌────────┐   ┌────────┐           │
-│  │ 🔴 RED │──►│🔍VERIFY│──►│🟢GREEN │──►│🧪REVIEW│──►│✅ PASS │           │
-│  │        │   │  E2E   │   │        │   │        │   │        │           │
-│  └────────┘   └────────┘   └────────┘   └────────┘   └────────┘           │
-│                                                                              │
-│  STDD Copilot Ralph Loop (Enhanced)                                         │
-│  ┌────────┐   ┌────────┐   ┌────────┐   ┌────────┐   ┌────────┐           │
-│  │ 🔴 RED │──►│🔍CHECK │──►│🟢GREEN │──►│🧪MUTATE│──►│🔵REFACT│           │
-│  │        │   │Static  │   │        │   │Review  │   │        │           │
-│  └────────┘   └────────┘   └────────┘   └────────┘   └────────┘           │
-│       │            │            │            │            │                 │
-│       │            │            │            │            │                 │
-│       ▼            ▼            ▼            ▼            ▼                 │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                      Circuit Breaker                                 │   │
-│  │                                                                      │   │
-│  │   Failure Count: [1] [2] [3] ─────────► FUSE (Auto Rollback)       │   │
-│  │                                                                      │   │
-│  │   Recovery: Manual reset or auto-retry with backoff                 │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-│  Key Differences:                                                           │
-│  ┌─────────────────┬──────────────────┬────────────────────────────────┐  │
-│  │ Aspect          │ Claude Pilot     │ STDD Copilot                   │  │
-│  ├─────────────────┼──────────────────┼────────────────────────────────┤  │
-│  │ Check Phase     │ E2E Verification │ Static QA (Syntax/Type/Lint)   │  │
-│  │ Mutation        │ Manual Review    │ Automated Pseudo-Mutation      │  │
-│  │ Failure Handler │ Retry Loop       │ Circuit Breaker + Auto Rollback│  │
-│  │ Recovery        │ Manual           │ Auto-retry with backoff        │  │
-│  └─────────────────┴──────────────────┴────────────────────────────────┘  │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+#### SUDOLANG PROMPT LANGUAGE (HIGH priority)
+- **Typed pseudocode for AI orchestration**: SudoLang is a pseudocode language with clear structure, strong typing, and explicit control flow designed specifically for prompting LLMs.
+- **20-30% fewer tokens**: Structured pseudocode reduces prompt token cost vs natural language.
+- **Declarative, constraint-based, interface-oriented**: Programs that build programs (metaprograms).
+
+#### PRODUCT DISCOVERY WORKFLOW (HIGH priority)
+- **Story mapping**: `/discover` creates user story maps saved as YAML journey files in `plan/story-map/`.
+- **Persona-based journeys**: Journey files define personas and user journeys for systematic feature discovery.
+- **Progressive discovery principle**: AI agents only read folders relevant to the current task, avoiding context bloat.
+
+#### DUAL USER TESTING (HIGH priority)
+- **Human test scripts**: Think-aloud protocol with video recording for manual testing.
+- **AI agent test scripts**: Executable tests with screenshots and persona-based behavior, generated from journey YAML files.
+- **Nielsen Norman Group integration**: References research that 3-5 users reveal 65-85% of usability problems.
+
+#### VISION DOCUMENT CONFLICT RESOLUTION (MEDIUM priority)
+- **Automatic conflict detection**: When a task conflicts with vision.md, the agent stops and offers options: (1) proceed anyway, (2) suggest alternative, (3) skip task.
+- **Vision-first reading**: Agents read vision.md before every task to check alignment.
+
+#### COMPOSABLE SERVER FRAMEWORK (LOW priority)
+- **asyncPipe patterns**: Function composition instead of middleware chains.
+- **Auth middleware**: Built-in better-auth integration with passkey support.
 
 ---
 
-## 📊 Graph 引擎对比
+## 5. TDD Guard (nizos)
 
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                        Graph Engine Capabilities                           │
-├───────────────────────────────────────────────────────────────────────────┤
-│                                                                            │
-│  ┌────────────────┬────────┬────────┬────────┬────────┬────────┐         │
-│  │ Feature        │SpecKit │OpenSpec│  BMAD  │Claude  │ STDD   │         │
-│  │                │        │        │        │Pilot   │Copilot │         │
-│  ├────────────────┼────────┼────────┼────────┼────────┼────────┤         │
-│  │ Visualization  │   ❌   │   ❌   │   ❌   │   ❌   │   ✅   │         │
-│  │ Analysis       │   ❌   │   ❌   │   ❌   │   ❌   │   ✅   │         │
-│  │ Scheduling     │   ❌   │   ❌   │   ❌   │   ❌   │   ✅   │         │
-│  │ Tracking       │   ❌   │   ❌   │   ❌   │   ✅   │   ✅   │         │
-│  │ Parallel       │   ❌   │   ❌   │   ❌   │   ✅   │   ✅   │         │
-│  │ History/Replay │   ❌   │   ❌   │   ❌   │   ❌   │   ✅   │         │
-│  │ Recommendation │   ❌   │   ❌   │   ❌   │   ❌   │   ✅   │         │
-│  └────────────────┴────────┴────────┴────────┴────────┴────────┘         │
-│                                                                            │
-│  STDD Copilot Graph Commands:                                              │
-│  ┌────────────────────────────────────────────────────────────────────┐   │
-│  │                                                                    │   │
-│  │  /stdd:graph visualize   → Mermaid + HTML 可视化                  │   │
-│  │  /stdd:graph analyze     → 状态/路径/瓶颈分析                      │   │
-│  │  /stdd:graph run         → DAG 调度执行                            │   │
-│  │  /stdd:graph parallel    → 自动识别并行任务                        │   │
-│  │  /stdd:graph history     → 完整执行历史                            │   │
-│  │  /stdd:graph replay      → 历史 replay                            │   │
-│  │  /stdd:graph recommend   → 智能推荐下一步                          │   │
-│  │                                                                    │   │
-│  └────────────────────────────────────────────────────────────────────┘   │
-│                                                                            │
-└───────────────────────────────────────────────────────────────────────────┘
-```
+**Source:** [github.com/nizos/tdd-guard](https://github.com/nizos/tdd-guard)
+
+### Unique Features NOT in STDD
+
+#### MULTI-LANGUAGE TEST REPORTERS (HIGH priority)
+- **Language-specific test reporters**: Dedicated reporter packages for 6 languages:
+  - JavaScript/TypeScript: Vitest (`tdd-guard-vitest`) and Jest (`tdd-guard-jest`)
+  - Python: pytest (`tdd-guard-pytest`)
+  - PHP: PHPUnit (`tdd-guard/phpunit`)
+  - Go: `tdd-guard-go`
+  - Rust: `tdd-guard-rust` (with cargo-nextest support)
+- **Reporter captures test results to JSON**: Test output is captured and fed back to the validation engine.
+
+#### AI MODEL VALIDATION (MEDIUM priority)
+- **Flexible validation model**: Choose faster models for speed or more capable models for accuracy.
+- **LLM-powered TDD compliance checking**: Uses AI to validate whether code changes follow TDD principles, not just regex rules.
+
+#### SESSION CONTROL (MEDIUM priority)
+- **Toggle on/off mid-session**: Enable/disable TDD enforcement without restarting.
+- **Session-aware state**: Maintains TDD state across session lifecycle (startup, resume, clear).
+- **Three-hook architecture**: PreToolUse + UserPromptSubmit + SessionStart hooks combined.
+
+#### LINT INTEGRATION FOR REFACTORING (MEDIUM priority)
+- **Automated refactoring enforcement**: Uses your existing linting rules to enforce refactoring during the refactor phase.
+- **Anti-bypass mechanisms**: Prevents agents from circumventing validation via shell commands or MCP operations.
+
+#### DISTRIBUTION (LOW priority)
+- **Homebrew + npm**: Dual distribution via `brew install tdd-guard` and `npm install -g tdd-guard`.
+- **Plugin-based installation**: `/tdd-guard:setup` auto-detects test framework and configures reporters.
 
 ---
 
-## 🔧 命令系统对比
+## 6. Claude Pilot (changoo89)
 
-### 核心命令对照表
+**Source:** [github.com/changoo89/claude-pilot](https://github.com/changoo89/claude-pilot)
 
-| 功能 | SpecKit | OpenSpec | BMAD | Claude Pilot | STDD Copilot |
-|------|---------|----------|------|--------------|--------------|
-| **初始化** | `speckit init` | `openspec init` | `bmad init` | `/pilot:setup` | `/stdd:init` |
-| **创建变更** | `/speckit.specify` | `/opsx:new` | `bmad propose` | `/00_plan` | `/stdd:new` |
-| **探索** | - | `/opsx:explore` | `bmad explore` | - | `/stdd:explore` |
-| **快速生成** | - | `/opsx:ff` | - | - | `/stdd:ff` |
-| **继续** | - | `/opsx:continue` | - | - | `/stdd:continue` |
-| **实现** | `/speckit.implement` | `/opsx:apply` | `bmad implement` | `/02_execute` | `/stdd:apply` |
-| **验证** | - | `/opsx:verify` | - | `/review` | `/stdd:verify` |
-| **归档** | - | `/opsx:archive` | - | `/03_close` | `/stdd:archive` |
-| **计划** | `/speckit.plan` | - | - | `/01_confirm` | - |
-| **任务** | `/speckit.tasks` | - | - | - | - |
+### Unique Features NOT in STDD
 
-### STDD Copilot 独有命令
+#### GPT CODEX DELEGATION (HIGH priority)
+- **Cross-model delegation**: After 2 consecutive failures in Claude, automatically delegates to GPT Codex for a fresh perspective.
+- **Semantic expert mapping**: Architecture -> Architect agent, Security -> Security Analyst, Large plans -> Plan Reviewer, Coder block -> Agent, Uncertainty -> Self-Assessment.
+ Delegation triggers:
+  - Explicit: "ask GPT"
+  - Semantic: Architecture decisions, security issues, ambiguity
+  - Automatic: After 2nd failure
+  - Self-Assessment: Confidence scoring < 0.7 triggers delegation
+- **CODEX_REASONING_EFFORT config**: Control delegation depth.
 
-| 类别 | 命令 | 说明 |
-|------|------|------|
-| **Graph 引擎** | `/stdd:graph visualize` | 可视化 Skill Graph |
-| | `/stdd:graph analyze` | 分析执行瓶颈 |
-| | `/stdd:graph run` | DAG 调度执行 |
-| | `/stdd:graph parallel` | 并行任务识别 |
-| | `/stdd:graph history` | 执行历史追踪 |
-| | `/stdd:graph replay` | 历史 replay |
-| | `/stdd:graph recommend` | 智能推荐 |
-| **SDD 增强** | `/stdd:api-spec` | API 规格生成 |
-| | `/stdd:schema` | Schema 生成 |
-| | `/stdd:contract` | 契约测试 |
-| | `/stdd:validate` | 规格验证 |
-| **TDD 增强** | `/stdd:outside-in` | Outside-In TDD |
-| | `/stdd:mock` | Mock 生成 |
-| | `/stdd:factory` | 测试工厂 |
-| | `/stdd:mutation` | 变异测试 |
-| **辅助功能** | `/stdd:guard` | 防跑偏守卫 |
-| | `/stdd:prp` | PRP 文档生成 |
-| | `/stdd:supervisor` | 超级监督者 |
-| | `/stdd:context` | 上下文管理 |
-| | `/stdd:iterate` | 迭代执行 |
-| | `/stdd:memory` | 记忆系统 |
-| | `/stdd:parallel` | 并行执行 |
-| | `/stdd:roles` | 角色切换 |
-| | `/stdd:metrics` | 质量指标 |
-| | `/stdd:learn` | 学习改进 |
+ Similar to STDD certainty but but for cross-model delegation.
 
----
+#### PERSISTENT PLAN STATE (MEDIUM priority)
+- **`.pilot/` directory**: Plan state saved persistently across sessions, similar to `.claude/` but for workflow state.
+- **Auto-sync documentation**: Documentation stays in sync with code changes automatically during implementation.
 
-## 📈 总结：STDD Copilot 融合创新
+#### PRE-COMMIT VALIDATION (MEDIUM priority)
+- **JSON validation hook**: Pre-commit hook validates JSON files before committing.
+- **Pre-commit spec-to-code check**: Validates that code changes align with specs before allowing commit.
 
-### 融合来源
+#### E2E VERIFICATION BUILT-IN (MEDIUM priority)
+- **Chrome/browser integration**: Built-in E2E verification using Chrome browser testing during the Ralph Loop.
+- **5-step Ralph Loop**: RED -> VERIFY (E2E) -> GREEN -> MUTATE REVIEW -> PASS.
 
-| 来源 | 借鉴内容 |
-|------|----------|
-| **SpecKit** | 宪法机制思想、模板系统、多代理支持理念 |
-| **OpenSpec** | Delta Specs、变更管理、产物结构、工作目录 |
-| **BMAD-METHOD** | 阶段组织、module.yaml、AGENTS.md |
-| **AIDD** | Vision Document 理念、TDD 规则引擎思想 |
-| **TDD Guard** | Hook 强制理念、多语言支持 |
-| **Claude Pilot** | Ralph Loop、E2E 验证、Agent 团队 |
-| **Spec-First TDD** | 原子用例、人在环中、进化式规格、Enhancement 阶段 |
-| **ATDD** | Given/When/Then 规格、双测试流约束、规格泄漏检测、变异测试集成 |
-| **tdder** | Baby Steps、Clean Code Review、Unfolding Architecture、APP 质量计算 |
-| **TDD Starters** | 多语言 Starter 模板、London School Mockist 风格 |
+ This differs from STDD's 5-step by adding E2E as a dedicated phase.
 
-### STDD Copilot 独创特性
+ Similar to STDD's outside-in but integrated directly into the loop.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        STDD Copilot Unique Features                         │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  1. Ralph Loop TDD (Enhanced)                                               │
-│     ┌────────────────────────────────────────────────────────────────────┐  │
-│     │ 🔴RED → 🔍CHECK → 🟢GREEN → 🧪MUTATION → 🔵REFACTOR → ✅          │  │
-│     │      ↑                                              │               │  │
-│     │      └────────── 3-Failure Circuit Breaker ─────────┘               │  │
-│     └────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
-│  2. 5-Level Anti-Drift Defense                                              │
-│     ┌────────────────────────────────────────────────────────────────────┐  │
-│     │ Level 1: Confirm Gates    │ Human approval at key decisions       │  │
-│     │ Level 2: Micro Tasks      │ Task isolation ≤30 min each           │  │
-│     │ Level 3: Failure Rollback │ Auto rollback after 3 consecutive fails│  │
-│     │ Level 4: Static QA        │ Syntax/Type/Lint checks before test   │  │
-│     │ Level 5: Mutation Review  │ Pseudo-mutation to detect fake green  │  │
-│     └────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
-│  3. Constitution (9 Articles) - NEW!                                        │
-│     ┌────────────────────────────────────────────────────────────────────┐  │
-│     │                                                                    │  │
-│     │   Priority 1 (Blocking):                                          │  │
-│     │   - Article 2: TDD (测试先行)                                     │  │
-│     │   - Article 7: Security (安全优先)                                │  │
-│     │   - Article 9: CI/CD (自动化流水线)                               │  │
-│     │                                                                    │  │
-│     │   Priority 2 (Warning):                                           │  │
-│     │   - Article 1: Library-First (优先使用成熟库)                     │  │
-│     │   - Article 3: Small Commits (原子提交)                           │  │
-│     │   - Article 4: Code Style (统一风格)                              │  │
-│     │                                                                    │  │
-│     │   Priority 3 (Suggestion):                                        │  │
-│     │   - Article 5: Documentation (文档即代码)                         │  │
-│     │   - Article 6: Error Handling (显式错误处理)                      │  │
-│     │   - Article 8: Performance (性能默认)                             │  │
-│     │                                                                    │  │
-│     │   Features: Waivers | Audit Trail | Team Approval                 │  │
-│     └────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
-│  4. Hook Enforcement System - NEW!                                          │
-│     ┌────────────────────────────────────────────────────────────────────┐  │
-│     │                                                                    │  │
-│     │   PreToolUse Hook (Blocking):                                     │  │
-│     │   - Article 2: TDD Check (测试文件存在性)                         │  │
-│     │   - Article 4: Code Style Check (文件长度、TODO 数量)             │  │
-│     │   - Article 7: Security Check (硬编码敏感信息)                    │  │
-│     │                                                                    │  │
-│     │   PostToolUse Hook (Suggestion):                                  │  │
-│     │   - Article 5: Documentation Check (JSDoc 覆盖)                   │  │
-│     │   - Article 6: Error Handling Check (空 catch 块)                 │  │
-│     │   - Article 8: Performance Check (N+1 查询)                       │  │
-│     │                                                                    │  │
-│     │   Commands: stdd hooks install | verify | enable | disable        │  │
-│     └────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
-│  5. Skill Graph Engine                                                      │
-│     ┌────────────────────────────────────────────────────────────────────┐  │
-│     │                                                                    │  │
-│     │   ┌───────┐     ┌───────┐     ┌───────┐     ┌───────┐            │  │
-│     │   │Proposal├────►│ Spec  ├────►│Design ├────►│ Apply │            │  │
-│     │   └───────┘     └───┬───┘     └───────┘     └───────┘            │  │
-│     │                     │                                          │  │
-│     │   ┌───────┐         │         ┌───────┐                        │  │
-│     │   │Explore├─────────┘         │Archive│                        │  │
-│     │   └───────┘                   └───────┘                        │  │
-│     │                                                                    │  │
-│     │   Features: Visualize | Analyze | Schedule | Track | Recommend   │  │
-│     └────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
-│  6. Vector Memory System                                                    │
-│     ┌────────────────────────────────────────────────────────────────────┐  │
-│     │                                                                    │  │
-│     │   stdd/memory/                                                     │  │
-│     │   ├── foundation.md    → Core principles                          │  │
-│     │   ├── components.md    → Component patterns                       │  │
-│     │   └── contracts.md     → API contracts                            │  │
-│     │                                                                    │  │
-│     │   Features: Semantic Search | Cross-Session Context | Learning    │  │
-│     └────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
-│  7. 50+ Commands                                                            │
-│     ┌────────────────────────────────────────────────────────────────────┐  │
-│     │ Core: 9 commands (init/new/explore/ff/continue/apply/verify/archive│  │
-│     │       /graph)                                                      │  │
-│     │ Graph: 7 commands (visualize/analyze/run/parallel/history/replay/  │  │
-│     │        recommend)                                                  │  │
-│     │ SDD: 4 commands (api-spec/schema/contract/validate)                │  │
-│     │ TDD: 4 commands (outside-in/mock/factory/mutation)                 │  │
-│     │ Constitution: 1 command (constitution) - NEW!                      │  │
-│     │ Hooks: 5 commands (install/verify/enable/disable/status) - NEW!    │  │
-│     │ Utils: 10+ commands (guard/prp/supervisor/context/etc.)            │  │
-│     └────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+ Similar concept exists in STDD outside-in skill but Claude Pilot integrates it natively.
 
-### 融合来源 (更新版)
+ Similar pattern but Claude Pilot makes it a core loop phase.
 
-| 来源 | 借鉴内容 |
-|------|----------|
-| **SpecKit** | ✅ Constitution 机制 (9 篇开发条例)、模板系统、多代理支持理念 |
-| **OpenSpec** | ✅ Delta Specs、变更管理、产物结构、工作目录 |
-| **BMAD-METHOD** | ✅ 阶段组织、module.yaml、AGENTS.md |
-| **AIDD** | ✅ Vision Document 理念、TDD 规则引擎思想 |
-| **TDD Guard** | ✅ **Hook Enforcement System** (Claude Code Hooks 集成) |
-| **Claude Pilot** | ✅ Ralph Loop、E2E 验证、Agent 团队 |
-| **Spec-First TDD** | ✅ 原子用例、人在环中、进化式规格、Enhancement 阶段 |
-| **ATDD** | ✅ Given/When/Then 规格、双测试流约束、规格泄漏检测、变异测试集成 |
-| **tdder** | ✅ Baby Steps、Clean Code Review、Unfolding Architecture、APP 质量计算 |
-| **TDD Starters** | ✅ 多语言 Starter 模板、London School Mockist 风格 |
+ Novel vs STDD's separate outside-in skill.
 
-### Constitution + Hooks 集成架构
+ Similar to STDD execute skill. Novel additions: cross-model delegation, E2E as loop phase.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    STDD Copilot Enforcement Architecture                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                      STDD Constitution                                 │  │
-│  │                    (9 篇开发条例)                                      │  │
-│  │                                                                        │  │
-│  │   定义: schemas/constitution/                                         │  │
-│  │   ├── constitution.yaml      # 主配置                                 │  │
-│  │   └── articles/              # 9 篇条例                               │  │
-│  │       ├── 01-library-first.md                                        │  │
-│  │       ├── 02-test-driven-development.md                              │  │
-│  │       ├── 03-small-commits.md                                        │  │
-│  │       ├── 04-code-style.md                                           │  │
-│  │       ├── 05-documentation.md                                        │  │
-│  │       ├── 06-error-handling.md                                       │  │
-│  │       ├── 07-security-first.md                                       │  │
-│  │       ├── 08-performance.md                                          │  │
-│  │       └── 09-continuous-integration.md                               │  │
-│  │                                                                        │  │
-│  └───────────────────────────────┬───────────────────────────────────────┘  │
-│                                  │                                           │
-│                                  ▼                                           │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                      Hook Enforcement                                  │  │
-│  │                    (执行层)                                            │  │
-│  │                                                                        │  │
-│  │   脚本: .claude/hooks/                                                │  │
-│  │   ├── pre-file-write.js      # Article 2, 4, 7 (Blocking)            │  │
-│  │   └── post-file-write.js     # Article 5, 6, 8 (Suggestion)          │  │
-│  │                                                                        │  │
-│  │   配置: ~/.claude/settings.json                                       │  │
-│  │   {                                                                    │  │
-│  │     "hooks": {                                                        │  │
-│  │       "PreToolUse": [...],                                            │  │
-│  │       "PostToolUse": [...]                                            │  │
-│  │     }                                                                 │  │
-│  │   }                                                                   │  │
-│  │                                                                        │  │
-│  └───────────────────────────────┬───────────────────────────────────────┘  │
-│                                  │                                           │
-│                                  ▼                                           │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                      Claude Code Integration                           │  │
-│  │                    (运行时)                                            │  │
-│  │                                                                        │  │
-│  │   用户操作 ──► PreToolUse Hook ──► 验证 ──► 执行/阻断               │  │
-│  │                                │                                       │  │
-│  │                                ▼                                       │  │
-│  │                          PostToolUse Hook ──► 建议                    │  │
-│  │                                                                        │  │
-│  │   CLI 管理:                                                            │  │
-│  │   $ stdd hooks install      # 安装 hooks                              │  │
-│  │   $ stdd hooks verify       # 验证配置                                │  │
-│  │   $ stdd hooks disable      # 禁用 (紧急情况)                         │  │
-│  │   $ stdd constitution       # 查看条例                                │  │
-│  │                                                                        │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+ Similar concept to STDD certainty. Novel: configurable thresholds.
 
-### Hook Enforcement vs TDD Guard 对比
+ Similar to STDD commit. Novel: persistent plan state.
 
-| 特性 | TDD Guard | STDD Copilot Hooks |
-|------|-----------|-------------------|
-| **Hook 类型** | PreToolUse | PreToolUse + PostToolUse |
-| **检查范围** | TDD 合规 | Constitution 9 篇条例 |
-| **阻断级别** | Error only | Error + Warning + Suggestion |
-| **豁免机制** | ❌ 无 | ✅ Waivers with expiration |
-| **审计日志** | ❌ 无 | ✅ waiver.yaml 记录 |
-| **多语言** | 6 语言 | 框架无关 (基于 Node.js) |
-| **CLI 管理** | ❌ 无 | ✅ `stdd hooks` 命令组 |
+ Similar to STDD parallel. Novel: cross-model delegation.
 
-### Constitution vs SpecKit Constitution 对比
+ Similar to STDD final-doc. Novel: auto-sync docs.
 
-| 特性 | SpecKit Constitution | STDD Copilot Constitution |
-|------|---------------------|--------------------------|
-| **条例数量** | 9 篇 | 9 篇 |
-| **执行方式** | 文档指导 | Hook 自动执行 |
-| **豁免管理** | ❌ 无 | ✅ 临时豁免 + 审批流程 |
-| **优先级** | 全部相同 | Blocking/Warning/Suggestion |
-| **命令支持** | 无 CLI | ✅ `/stdd:constitution` 命令 |
-| **审计追踪** | ❌ 无 | ✅ waivers.yaml 记录 |
+ Similar to STDD guard. Novel: pre-commit JSON validation. Similar concept exists in STDD but more specific to JSON.
+
+ Similar to STDD roles. Smaller scale (12 vs STDD's configurable). Similar to STDD context. Novel: explicit 3-tier doc hierarchy. Similar to STDD graph. Novel: persistent `.pilot/` state. Similar to STDD commit. Novel: commit message conventions.
+
+ Similar concept exists but specific prefix format is novel. Similar concept exists across several frameworks but specific naming conventions differ.
+
+ Similar concept of STDD prp. Novel: PRP structured prompts. Similar to STDD brainstorm. Novel: three explicit modes. Similar to STDD issue. Novel: issue resolution mode. Similar to STDD guard hooks. Novel: session start/resume hooks. Similar to STDD guard. Novel: enforcement prevention mechanisms.
+
+ Similar concept but STDD has a novel architecture: explicit anti-bypass measures.
+
+#### Additional Features Found in Claude Pilot
+Note: Many Claude Pilot features overlap significantly with existing STDD skills. The truly unique additions are:
+- **Cross-model (跨AI) delegation**: After 2 failures, delegates to GPT Codex for fresh perspective. STDD has no cross-model delegation.
+- **`CODEX_REASONING_EFFORT` environment variable**: Configurable delegation reasoning depth.
 
 ---
 
-## 🔗 参考链接
+## 7. Spec-First TDD (donnieprakoso)
 
-### SDD 框架
-- **SpecKit**: https://github.com/github/spec-kit
-- **OpenSpec**: https://github.com/Fission-AI/OpenSpec
-- **BMAD-METHOD**: https://github.com/bmad-code-org/BMAD-METHOD
+**Source:** [github.com/donnieprakoso/spec-first-tdd](https://github.com/donnieprakoso/spec-first-tdd)
 
-### TDD 框架
+### Unique Features NOT in STDD
 
-**AI-Assisted TDD**:
-- **AIDD**: https://github.com/paralleldrive/aidd
-- **TDD Guard**: https://github.com/nizos/tdd-guard
-- **Claude Pilot**: https://github.com/changoo89/claude-pilot
-- **TDAID**: https://github.com/joedevon/TDAID (Test-Driven AI Development)
+#### ATOMIC USE CASES ("BEADS") (HIGH priority)
+- **Tiny digestible units**: Instead of monolithic spec documents, work in "beads" of functionality -- one small use case at a time.
+- **Single-file workflow**: Everything lives in three files: `00-sftdd-workflow.md` (system prompt), `00-use-case.md` (tracker), `00-issues.md` (bug tracker).
 
-**Spec-First Approaches**:
-- **Spec-First TDD**: https://github.com/donnieprakoso/spec-first-tdd
-- **ATDD**: https://github.com/swingerman/atdd (Uncle Bob's Acceptance Test Driven)
+#### ENHANCEMENT PHASE (MEDIUM priority)
+- **4-step TDD**: RED -> GREEN -> ENHANCEMENT -> REFACTOR. The Enhancement phase sits between Green and Refactor, specifically for AI-suggested edge cases.
+ This is NOT the same as STDD's 5-step loop which goes RED -> CHECK -> GREEN -> MUTATION -> REFACTOR. STDD has no dedicated edge-case suggestion phase.
 
-**Disciplined TDD**:
-- **tdder**: https://github.com/t1/tdder (Baby Steps + Clean Code Review)
+#### EVOLUTIONARY SPECS (MEDIUM priority)
+- **Specs tighten through building**: The spec becomes airtight BECAUSE you built it, not before you started. Specs evolve as you discover edge cases during implementation.
 
-**TDD Starters**:
-- **TDD Starters**: https://github.com/tdd-starters (Multi-language TDD templates)
+#### THREE-MODE TEMPLATE (MEDIUM priority)
+- **Feature Development mode**: Standard use case -> TDD flow.
+- **Issue Resolution mode**: Bug triage and fix with TDD.
+- **Brainstorming mode**: "Don't change anything yet" -- pure analysis and proposals, no code changes.
 
-### STDD Copilot
-- **STDD Copilot**: https://github.com/Marcher-lam/STDD-COPILOT
-
-### 参考方法论
-- **GOOS Book**: Growing Object-Oriented Software, Guided by Tests (London School)
-- **Kent Beck's TDD**: Test-Driven Development: By Example (Detroit/Classicist)
-- **Uncle Bob's empire-2025**: Spec-Driven Design + ATDD methodology
+#### EVOLUTIONARY SPECS PHILOSOPHY (LOW priority)
+- **"Take the power back"**: Explicitly positions the human as pilot, not the AI. Emphasizes human agency in AI-assisted development.
 
 ---
 
-> Generated by STDD Copilot
-> Document Version: 1.1
-> Last Updated: 2026-03-27
+## 8. ATDD (swingerman)
+
+**Source:** [github.com/swingerman/atdd](https://github.com/swingerman/atdd)
+
+### Unique Features NOT in STDD
+
+#### SPEC GUARDIAN AGENT (HIGH priority)
+- **Implementation leakage detection**: Dedicated agent that catches class names, API endpoints, database tables, and other implementation details leaking into Given/When/Then specs.
+- **Domain language enforcement**: Automatically proposes domain-language rewrites for specs that contain technical implementation terms.
+
+#### PIPELINE BUILDER AGENT (HIGH priority)
+- **Generated test pipeline**: Analyzes your codebase and generates a bespoke parser -> IR (Intermediate Representation) -> test generator for your project.
+- **Language/framework-agnostic**: Works for any language and test framework by analyzing your actual project structure.
+
+#### CUSTOM MUTATION TESTING TOOL (HIGH priority)
+- **3-module architecture**: mutations ( rules + matching), runner(test execution), core(orchestration).
+- **AST/source tree walking**: Language-agnostic mutation by walking the AST.
+- **TDD-built mutation tool**: The mutation tool itself is built using TDD discipline.
+- **Targeted execution**: Run only the tests affected by each mutation (not all tests).
+- **Uncle Bob's empire-2025 reference**: Directly inspired by Robert C. Martin's empire-2025 approach to mutation testing.
+
+#### TEAM WORKFLOW WITH PHASE GATES (MEDIUM priority)
+- **5-phase team workflow**: (1) Spec Writing -> (2) Spec Review -> (3) Pipeline Generation -> (4) Implementation (TDD) -> (5) Post-Implementation Review.
+- **Phase gates**: Explicit approval between each phase before proceeding.
+- **Team extension**: If you already have an active agent team, ATDD detects it and offers to extend with ATDD roles rather than replacing.
+
+#### TWO-STREAM TESTING (MEDIUM priority)
+- **Acceptance tests define WHAT**: Given/When/Then specs describe external observable behavior.
+- **Unit tests define HOW**: Implementation details verified through TDD.
+- **Both streams must pass**: Implementation is not complete until both acceptance AND unit tests are green.
+
+#### MUTATION TESTING AS VALIDATION LAYER (MEDIUM priority)
+- **Phase 6 integration**: Mutation testing added as the final validation layer after post-implementation review.
+- **9-language mutation framework support**: Stryker, mutmut, PIT, Stryker.NET, cargo-mutants, go-mutesting, mutant, Stryker4s, pitest.
+
+---
+
+## 9. tdder (t1)
+
+**Source:** [github.com/t1/tdder](https://github.com/t1/tdder)
+
+### Unique Features NOT in STDD
+
+#### BABY STEPS + GUESSING GAME (HIGH priority)
+- **Minimal test-first increments**: Each test should be the smallest possible step forward. The "guessing game" challenges the developer to write the minimal test that fails, forcing thinking about what the smallest next step is.
+- **Strict Red-Green-Refactor with forced minimalism**: Not just TDD, but the SMALLEST possible test at each step.
+
+#### CLEAN CODE SUBAGENT REVIEWER (HIGH priority)
+- **Automated code review during refactor phase**: A dedicated subagent (`clean-code-reviewer`) performs code review automatically during the refactor phase.
+- **Review scope**: Naming, SOLID principles, code smells, method design -- all checked automatically.
+
+#### UNFOLDING ARCHITECTURE (HIGH priority)
+- **Progressive architectural decisions**: Start with the simplest possible architecture, Add complexity only when it reduces overall complexity.
+- **Integration architecture skill**: Explicit patterns for commands vs events, push vs pull, reliability in distributed systems.
+- **Start simple, evolve on demand**: Anti-over-engineering pattern.
+
+#### APP MASS CALCULATIONS (MEDIUM priority)
+- **Absolute Priority Premise**: Objective code complexity measurement, Quantifies the "mass" of code to guide refactoring priorities.
+- **Similar concept to STDD complexity skill**: But tdder integrates it directly into the TDD cycle as a decision point.
+
+#### NESTED FIXTURE PATTERN (MEDIUM priority)
+- **JUnit nested fixture**: Layered test preconditions using JUnit's nested classes for building up complex test scenarios incrementally.
+
+#### CONFIGURABLE HITL LEVELS (MEDIUM priority)
+- **Three HITL modes**: `every-phase` (stop after every R/G/R), `end-of-cycle` (stop after each complete cycle), `off` (full autonomous).
+- **Persistent configuration**: Saved in `.claude/tdder.local.md` per project.
+
+#### AUTO-SKILL LOADING (LOW priority)
+- **File-pattern-based skill activation**: PreToolUse hook detects file patterns (e.g., `*.java`) and reminds the agent to load the corresponding skill (`java`).
+
+---
+
+## 10. TDAID (joedevon)
+
+**Source:** [github.com/joedevon/TDAID](https://github.com/joedevon/TDAID)
+
+### Unique Features NOT in STDD
+
+#### PATTERN TEACHING (HIGH priority)
+- **Code+test examples as AI training**: Write initial code and tests manually, then these serve as examples for the AI to learn your coding style, conventions, project structure, logging patterns, and test methodology.
+- **Style transfer via examples**: The AI extends patterns from provided examples to similar tasks, maintaining consistency.
+
+#### SELF-MOTIVATED IMPLEMENTATION (MEDIUM priority)
+- **AI fixes without prompting**: After writing tests, the AI runs them and, without explicit prompting, recognizes failing tests and implements the code to make them pass.
+- **Quality observation**: AI-generated code maintains consistent style, error handling, and architectural patterns from the examples.
+
+#### TDAID METHODOLOGY (MEDIUM priority)
+- **TDD + vibe coding fusion**: Faster than traditional TDD (AI generates more), but with code review tradeoff -- you should not skip robust code review.
+- **Origin story**: Emerged from accessibility evaluation where similar patterns needed implementation across multiple criteria.
+
+#### BEST PRACTICES (LOW priority)
+- **Start small**: Begin with well-defined, contained features.
+- **Provide clear examples**: Include several representative code+test examples.
+- **Iterative refinement**: Review AI work, then ask for improvements.
+
+---
+
+## 11. TDD Starters (tdd-starters)
+
+**Source:** [github.com/tdd-starters](https://github.com/tdd-starters)
+
+### Unique Features NOT in STDD
+
+#### MULTI-LANGUAGE STARTER TEMPLATES (HIGH priority)
+- **10 language templates**: Rust, Java, Python, Kotlin, JavaScript, TypeScript, C++ (CMake), C#, Go -- all with testing frameworks pre-configured.
+- **String calculator sample**: Every starter includes the classic string calculator kata to ready-to-go.
+- **GitHub template repos**: Use "Use this template" button on GitHub to bootstrap a new project instantly.
+- **MIT-0 license**: No attribution required -- completely free for any use.
+
+#### KATA-READY SETUP (MEDIUM priority)
+- **Pre-configured test frameworks**: Each language has its standard testing framework set up and ready.
+- **Sample test included**: A working sample test to verify the setup works.
+
+---
+
+## 12. TDG - Test-Driven Generation (chanwit)
+
+**Source:** [github.com/chanwit/tdg](https://github.com/chanwit/tdg)
+
+### Unique Features NOT in STDD
+
+#### ISSUE TRACEABILITY IN COMMITS (HIGH priority)
+- **Phase-prefixed commits**: `red: test spec for user login (#42)`, `green: implement user login (#42)`, `refactor: extract auth service (#42)`.
+- **Issue number mandatory**: Every TDD cycle requires an issue number for full traceability from test to commit to issue tracker.
+
+#### ATOMIC COMMIT SKILL (MEDIUM priority)
+- **Non-TDD atomic commits**: Separate skill for organizing mixed changes into logical atomic commits when not following TDD workflow.
+- **Mixed concern detection**: Analyzes changes and detects when multiple concerns are mixed in one change.
+- **Test validation before commit**: Ensures tests pass before allowing any commit.
+
+#### AUTO TDD PHASE DETECTION (MEDIUM priority)
+- **Current phase awareness**: Automatically detects whether you're in Red, Green, or Refactor phase based on file changes.
+- **Phase-aware commit messages**: Generates appropriate commit message prefix based on detected phase.
+
+#### INITIALIZATION (LOW priority)
+- **Project initialization**: `/tdg:init` detects language, framework, and test commands automatically.
+
+---
+
+## Summary: All Unique Features by Category
+
+### WORKFLOW PATTERNS NOT IN STDD
+
+| Feature | Source | Priority |
+|---------|--------|----------|
+| Delta specs (ADDED/MODIFIED/REMOVED) | OpenSpec | HIGH |
+| Adversarial review (forced problem-finding) | BMAD | HIGH |
+| 60+ ideation techniques for brainstorming | BMAD | HIGH |
+| Advanced elicitation methods | BMAD | HIGH |
+| Party Mode (multi-agent debate) | BMAD | HIGH |
+| Quick Dev (intelligent one-shot vs full-path routing) | BMAD | HIGH |
+| Baby steps + guessing game | tdder | HIGH |
+| Cross-model delegation (Claude->GPT on failure) | Claude Pilot | HIGH |
+| Enhancement phase (between Green and Refactor) | Spec-First TDD | MEDIUM |
+| Evolutionary specs (tighten through building) | Spec-First TDD | MEDIUM |
+| SudoLang prompt language | AIDD | HIGH |
+| Product discovery with story mapping | AIDD | HIGH |
+| Failure layer diagnosis (intent vs spec vs code) | BMAD Quick Dev | HIGH |
+| Phase-prefixed commits with issue traceability | TDG | HIGH |
+| Unfolding architecture (start simple, evolve) | tdder | HIGH |
+| Custom mutation testing tool (3-module AST walker) | ATDD | HIGH |
+
+### TESTING STRATEGIES NOT IN STDD
+
+| Feature | Source | Priority |
+|---------|--------|----------|
+| Two-stream testing (acceptance=WHAT + unit=HOW) | ATDD | HIGH |
+| Spec Guardian (implementation leakage detection) | ATDD | HIGH |
+| Pipeline builder (parser->IR->test generator) | ATDD | HIGH |
+| 9-language mutation framework support | ATDD | MEDIUM |
+| Dual user testing (human think-aloud + AI agent scripts) | AIDD | HIGH |
+| Clean code subagent reviewer during refactor | tdder | HIGH |
+| Nested fixture pattern (layered test preconditions) | tdder | MEDIUM |
+| Pattern teaching (code+test examples for AI learning) | TDAID | HIGH |
+| Multi-language test reporters (Vitest, Jest, pytest, PHPUnit, Go, Rust) | TDD Guard | HIGH |
+| AI model validation (LLM-powered TDD compliance) | TDD Guard | MEDIUM |
+
+### COLLABORATION MECHANISMS NOT IN STDD
+
+| Feature | Source | Priority |
+|---------|--------|----------|
+| 23+ AI agent vendor integrations | SpecKit | HIGH |
+| Extension marketplace with community catalog | SpecKit | HIGH |
+| Party Mode (multi-agent in-character debate) | BMAD | HIGH |
+| Team extension (add roles to existing team) | ATDD | MEDIUM |
+| Named agents with personality | BMAD | MEDIUM |
+| Cross-model delegation | Claude Pilot | HIGH |
+| AGENTS.md standard format | SpecKit | HIGH |
+
+### TOOL INTEGRATIONS NOT IN STDD
+
+| Feature | Source | Priority |
+|---------|--------|----------|
+| SudoLang pseudocode language | AIDD | HIGH |
+| GPT Codex integration | Claude Pilot | HIGH |
+| Multi-language test reporters | TDD Guard | HIGH |
+| Homebrew distribution | TDD Guard | LOW |
+| Composable server framework | AIDD | LOW |
+| 10-language starter templates | TDD Starters | HIGH |
+| Browser/E2E integration in Ralph Loop | Claude Pilot | MEDIUM |
+
+### CONFIGURATION/CUSTOMIZATION NOT IN STDD
+
+| Feature | Source | Priority |
+|---------|--------|----------|
+| Custom workflow schemas (fork, create, validate) | OpenSpec | HIGH |
+| Extension system (catalog, community, publishing) | SpecKit | HIGH |
+| HITL granularity levels (every-phase/end-of-cycle/off) | tdder | MEDIUM |
+| Dynamic instructions (context+rules+templates layers) | OpenSpec | MEDIUM |
+| Module ecosystem (Builder, TEA, Game Dev, Creative) | BMAD | MEDIUM |
+| Session control (toggle mid-session) | TDD Guard | MEDIUM |
+| CODEX_REASONING_EFFORT config | Claude Pilot | MEDIUM |
+| Global + project config layers | OpenSpec | MEDIUM |
+| Profile sync drift detection | OpenSpec | LOW |
+
+### DOCUMENTATION APPROACHES NOT IN STDD
+
+| Feature | Source | Priority |
+|---------|--------|----------|
+| Document sharding for token optimization | BMAD | MEDIUM |
+| Auto-sync documentation with code | Claude Pilot | MEDIUM |
+| 3D verification (completeness, correctness, coherence) | OpenSpec | MEDIUM |
+| Evolutionary specs (tighten through building) | Spec-First TDD | MEDIUM |
+| Progressive disclosure for agents (read only relevant folders) | AIDD | MEDIUM |
+| Auto-generated index.md from frontmatter | AIDD | LOW |
+
+### CI/CD INTEGRATION NOT IN STDD
+
+| Feature | Source | Priority |
+|---------|--------|----------|
+| Non-interactive installation mode | BMAD | MEDIUM |
+| Pre-commit JSON validation hook | Claude Pilot | MEDIUM |
+| Phase-prefixed commit messages | TDG | HIGH |
+| GitHub template repos | TDD Starters | MEDIUM |
+| DevContainer support for AI agents | SpecKit | LOW |
+| PowerShell scripts | SpecKit | LOW |
+
+---
+
+## Top 20 Recommended Features for STDD to Adopt
+
+Based on uniqueness, impact, and feasibility:
+
+1. **Delta Spec system** (OpenSpec) -- Incremental specs with ADDED/MODIFIED/REMOVED
+2. **Adversarial review** (BMAD) -- Forced problem-finding, no rubber-stamp approvals
+3. **Cross-model delegation** (Claude Pilot) -- Delegate to GPT after 2 failures
+4. **Advanced elicitation methods** (BMAD) -- Pre-mortem, First Principles, Inversion, etc.
+5. **23+ agent vendor support** (SpecKit) -- Multi-agent interoperability
+6. **Custom workflow schemas** (OpenSpec) -- Fork and create team-specific workflows
+7. **Two-stream testing** (ATDD) -- Acceptance tests (WHAT) + unit tests (HOW)
+ constraint
+ AI
+ both streams must pass
+8. **Spec Guardian agent** (ATDD) -- Detect implementation leakage in specs
+9. **Dual user testing** (AIDD) -- Human think-aloud + AI agent test scripts
+10. **Extension marketplace** (SpecKit) -- Community extensions catalog
+11. **Baby steps + guessing game** (tdder) -- Force minimal test increments
+12. **Clean code subagent reviewer** (tdder) -- Automated review during refactor phase
+13. **Unfolding architecture** (tdder) -- Start simple, add complexity only when it reduces it
+14. **Pattern teaching** (TDAID) -- Code+test examples for AI learning your style
+15. **Multi-language test reporters** (TDD Guard) -- 6-language test capture
+16. **Story mapping with YAML journeys** (AIDD) -- Product discovery workflow
+17. **Quick Dev routing** (BMAD) -- One-shot vs full-path auto-decision
+18. **Pipeline builder agent** (ATDD) -- Auto-generate parser->IR->test generator
+19. **Issue traceability in commits** (TDG) -- Phase-prefixed commits with issue numbers
+20. **10-language starter templates** (TDD Starters) -- Ready-to-use TDD katas
+
+---
+
+## Reference Links
+
+### SDD Frameworks
+- SpecKit: https://github.com/github/spec-kit
+- OpenSpec: https://github.com/Fission-AI/OpenSpec
+- BMAD-METHOD: https://github.com/bmad-code-org/BMAD-METHOD
+
+ - Docs: https://docs.bmad-method.org
+
+### TDD Frameworks
+- AIDD: https://github.com/paralleldrive/aidd
+- TDD Guard: https://github.com/nizos/tdd-guard
+- Claude Pilot: https://github.com/changoo89/claude-pilot
+- TDAID: https://github.com/joedevon/TDAID
+
+### Spec-First Approaches
+- Spec-First TDD: https://github.com/donnieprakoso/spec-first-tdd
+- ATDD: https://github.com/swingerman/atdd
+
+### Disciplined TDD
+- tdder: https://github.com/t1/tdder
+- TDD Starters: https://github.com/tdd-starters
+- TDG: https://github.com/chanwit/tdg

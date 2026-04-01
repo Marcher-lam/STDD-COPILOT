@@ -1,7 +1,12 @@
 ---
-description: STDD Constitution 管理 - 9 篇开发条例的执行与豁免
+name: stdd-constitution
+description: |
+  STDD Constitution 管理 - 9 篇开发条例的执行与豁免
+  触发场景：用户说 '/stdd-constitution', 'constitution', '条例', '开发条例', '豁免'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD Constitution (/stdd:constitution)
 
 ## 目标
@@ -141,7 +146,7 @@ import { format } from 'date-fns';
 测试文件不存在: src/__tests__/services/UserService.test.ts
 
 修复方式:
-1. 运行: /stdd:red src/services/UserService.ts
+1. 运行: /stdd:apply --task=TASK-001 (红灯阶段先写测试)
 2. 创建失败的测试
 3. 确认红灯状态
 4. 然后再实现功能

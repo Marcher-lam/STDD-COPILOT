@@ -69,13 +69,13 @@ graph TB
     end
 
     subgraph Storage["💾 存储层"]
-        MEMORY[.stdd/memory/<br/>记忆库]
-        GRAPH[.stdd/graph/<br/>Graph配置]
-        HISTORY[.stdd/history/<br/>执行历史]
-        DRAFTS[.stdd/drafts/<br/>草案文件]
-        SPECS[.stdd/specs/<br/>规格文件]
-        PLANS[.stdd/plans/<br/>任务计划]
-        REPORTS[.stdd/reports/<br/>报告文件]
+        MEMORY[stdd/memory/<br/>记忆库]
+        GRAPH[stdd/graph/<br/>Graph配置]
+        HISTORY[stdd/history/<br/>执行历史]
+        DRAFTS[stdd/drafts/<br/>草案文件]
+        SPECS[stdd/specs/<br/>规格文件]
+        PLANS[stdd/plans/<br/>任务计划]
+        REPORTS[stdd/reports/<br/>报告文件]
     end
 
     subgraph ExternalAI["🤖 外部 AI 引擎"]
@@ -215,7 +215,7 @@ graph TB
 ## 存储架构
 
 ```
-.stdd/
+stdd/
 ├── memory/                    # 持久化记忆
 │   ├── foundation.md         # 项目基础约束
 │   └── components.md         # 组件架构

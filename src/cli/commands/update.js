@@ -59,8 +59,81 @@ class UpdateCommand {
   }
 
   async updateSchemas(targetPath, force) {
-    // Similar to init, but only update if files don't exist or force is true
-    // Implementation similar to InitCommand.copySchemas
+    const sourceSchema = path.join(__dirname, '..', '..', '..', 'schemas');
+    const targetSchema = path.join(targetPath, 'schemas');
+
+    if (!await this.exists(sourceSchema)) {
+      return;
+    }
+
+    await fs.mkdir(targetSchema, { recursive: true });
+
+    // Update spec-driven schema
+    const schemaPath = path.join(sourceSchema, 'spec-driven', 'schema.yaml');
+    if (await this.exists(schemaPath)) {
+      const targetDir = path.join(targetSchema, 'spec-driven');
+      await fs.mkdir(targetDir, { recursive: true });
+      const targetFile = path.join(targetDir, 'schema.yaml');
+      if (!await this.exists(targetFile) || force) {
+        const content = await fs.readFile(schemaPath, 'utf-8');
+        await fs.writeFile(targetFile, content);
+      }
+    }
+
+    // Update templates
+    const templatesDir = path.join(sourceSchema, 'spec-driven', 'templates');
+    if (await this.exists(templatesDir)) {
+      const targetTemplatesDir = path.join(targetSchema, 'spec-driven', 'templates');
+      await fs.mkdir(targetTemplatesDir, { recursive: true });
+      const files = await fs.readdir(templatesDir);
+      for (const file of files) {
+        if (file.endsWith('.md')) {
+          const targetFile = path.join(targetTemplatesDir, file);
+          if (!await this.exists(targetFile) || force) {
+            const content = await fs.readFile(path.join(templatesDir, file), 'utf-8');
+            await fs.writeFile(targetFile, content);
+          }
+        }
+      }
+    }
+
+    // Update constitution schemas if available
+    const constitutionDir = path.join(sourceSchema, 'constitution');
+    if (await this.exists(constitutionDir)) {
+      const targetConstitutionDir = path.join(targetSchema, 'constitution');
+      await fs.mkdir(targetConstitutionDir, { recursive: true });
+      const files = await fs.readdir(constitutionDir);
+      for (const file of files) {
+        const srcFile = path.join(constitutionDir, file);
+        const stat = await fs.stat(srcFile);
+        if (stat.isFile()) {
+          const targetFile = path.join(targetConstitutionDir, file);
+          if (!await this.exists(targetFile) || force) {
+            const content = await fs.readFile(srcFile, 'utf-8');
+            await fs.writeFile(targetFile, content);
+          }
+        }
+      }
+    }
+
+    // Update hooks schemas if available
+    const hooksDir = path.join(sourceSchema, 'hooks');
+    if (await this.exists(hooksDir)) {
+      const targetHooksDir = path.join(targetSchema, 'hooks');
+      await fs.mkdir(targetHooksDir, { recursive: true });
+      const files = await fs.readdir(hooksDir);
+      for (const file of files) {
+        const srcFile = path.join(hooksDir, file);
+        const stat = await fs.stat(srcFile);
+        if (stat.isFile()) {
+          const targetFile = path.join(targetHooksDir, file);
+          if (!await this.exists(targetFile) || force) {
+            const content = await fs.readFile(srcFile, 'utf-8');
+            await fs.writeFile(targetFile, content);
+          }
+        }
+      }
+    }
   }
 }
 

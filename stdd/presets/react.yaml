@@ -1,0 +1,29 @@
+name: react
+description: React 组件开发预设
+detect:
+  - file: package.json
+    contains: "react"
+test_framework: vitest
+test_command: "npx vitest run"
+single_test_command: "npx vitest run {file}"
+coverage_command: "npx vitest run --coverage"
+typecheck_command: "npx tsc --noEmit"
+lint_command: "npx eslint ."
+dev_dependencies:
+  - vitest
+  - "@vitest/coverage-v8"
+  - "@testing-library/react"
+  - "@testing-library/jest-dom"
+  - "@testing-library/user-event"
+  - jsdom
+vitest_config:
+  environment: jsdom
+  setup_files:
+    - "./src/test-setup.ts"
+  coverage:
+    include: ["src/**/*.{ts,tsx}"]
+    exclude: ["src/**/*.test.{ts,tsx}", "src/**/*.stories.{ts,tsx}"]
+article_overrides:
+  article_08_performance:
+    enabled: false
+    reason: "React 组件性能由 React DevTools 覆盖"

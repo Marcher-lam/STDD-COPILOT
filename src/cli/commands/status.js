@@ -159,20 +159,32 @@ class StatusCommand {
     try {
       await fs.access(path.join(changeDir, 'proposal.md'));
       status.hasProposal = true;
-    } catch {}
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        console.error(chalk.dim(`Warning: could not check proposal.md - ${error.message}`));
+      }
+    }
 
     // Check specs
     try {
       const specsDir = path.join(changeDir, 'specs');
       const files = await fs.readdir(specsDir);
       status.hasSpecs = files.some(f => f.endsWith('.md'));
-    } catch {}
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        console.error(chalk.dim(`Warning: could not read specs/ - ${error.message}`));
+      }
+    }
 
     // Check design
     try {
       await fs.access(path.join(changeDir, 'design.md'));
       status.hasDesign = true;
-    } catch {}
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        console.error(chalk.dim(`Warning: could not check design.md - ${error.message}`));
+      }
+    }
 
     // Check tasks
     try {
@@ -184,7 +196,11 @@ class StatusCommand {
       if (status.totalTasks > 0) {
         status.tasksProgress = `${status.tasksCompleted}/${status.totalTasks}`;
       }
-    } catch {}
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        console.error(chalk.dim(`Warning: could not read tasks.md - ${error.message}`));
+      }
+    }
 
     // Determine phase
     if (!status.hasProposal) {

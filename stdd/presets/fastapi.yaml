@@ -1,0 +1,21 @@
+name: fastapi
+description: FastAPI 服务开发预设
+detect:
+  - file: requirements.txt
+    contains: "fastapi"
+  - file: pyproject.toml
+    contains: "fastapi"
+test_framework: pytest
+test_command: "pytest -v"
+single_test_command: "pytest {file} -v"
+coverage_command: "pytest --cov=src --cov-report=html"
+typecheck_command: "mypy ."
+lint_command: "ruff check ."
+dev_dependencies:
+  - pytest>=7.4.0
+  - pytest-cov>=4.1.0
+  - pytest-asyncio>=0.23.0
+  - httpx>=0.26.0
+  - mypy>=1.8.0
+  - ruff>=0.1.0
+article_overrides: {}

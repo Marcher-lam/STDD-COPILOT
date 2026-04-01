@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "graphFile": ".stdd/graph/skills.yaml",
-  "historyDir": ".stdd/history",
+  "graphFile": "stdd/graph/skills.yaml",
+  "historyDir": "stdd/history",
   "maxParallelWorkers": 4,
   "defaultTimeout": 3600000,
   "retryPolicy": {
@@ -11,7 +11,7 @@
   },
   "visualization": {
     "defaultFormat": "mermaid",
-    "htmlTemplate": ".stdd/templates/graph.html",
+    "htmlTemplate": "stdd/templates/graph.html",
     "theme": "light"
   },
   "tracking": {

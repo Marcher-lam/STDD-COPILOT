@@ -122,31 +122,19 @@
 
 ## Graph 配置
 
-文件位置: `stdd/graph/config.yaml`
+文件位置: `stdd/graph/config.json`
 
-```yaml
-version: "1.0"
-name: "STDD Copilot Skill Graph"
-
-skills:
-  stdd-init:
-    description: "初始化环境"
-    phase: init
-    next: [stdd-new]
-
-  stdd-new:
-    description: "创建新变更"
-    phase: propose
-    next: [stdd-clarify, stdd-spec]
-
-  # ... 更多 Skills
-
-dependencies:
-  stdd-spec:
-    requires: [stdd-clarify]
-
-parallel_groups:
-  verification:
-    skills: [stdd-mutation, stdd-validate, stdd-contract]
-    strategy: "all"
+```json
+{
+  "version": "1.0",
+  "graphFile": "stdd/graph/skills.yaml",
+  "historyDir": "stdd/history",
+  "maxParallelWorkers": 4,
+  "defaultTimeout": 3600000,
+  "retryPolicy": {
+    "maxRetries": 3,
+    "backoffMs": 1000,
+    "multiplier": 2
+  }
+}
 ```

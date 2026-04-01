@@ -1,7 +1,12 @@
 ---
-description: 测试数据工厂 - 自动生成测试数据和 Fixtures
+name: stdd-factory
+description: |
+  测试数据工厂 - 自动生成测试数据和 Fixtures
+  触发场景：用户说 '/stdd-factory', 'factory', '数据工厂', '测试数据', 'fixture'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 测试数据工厂 (/stdd-factory)
 
 ## 目标
@@ -530,7 +535,9 @@ describe('TodoService', () => {
 
 ## 配置
 
-在 `.stdd/memory/factory-config.json` 中：
+在 `stdd/memory/factory-config.json` 中：
+
+<!-- 配置 Schema: 参见 schemas/shared/skill-config-schema.json -->
 
 ```json
 {
@@ -550,4 +557,202 @@ describe('TodoService', () => {
 
 ---
 
-> **引用**: 借鉴自 Factory Boy (Python)、Test Data Builder 模式和 Faker.js
+## Nested Fixture 模式（JUnit 5 / Jest 嵌套风格）
+
+参考 tdder/JUnit 5 `@Nested` 模式，将相关测试用例组织为嵌套结构，每个层级共享该层级的 Fixture，减少重复的 setup/teardown。
+
+### 概念
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              Nested Fixture 层级                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│   describe('TodoService')            ← Layer 0: 共享 Service│
+│     beforeAll: 创建 service 实例                             │
+│     │                                                        │
+│     ├── describe('创建 Todo')        ← Layer 1: 创建场景    │
+│     │     beforeEach: 准备空列表                             │
+│     │     │                                                  │
+│     │     ├── describe('正常输入')   ← Layer 2: 细分        │
+│     │     │     it('应创建新 Todo')                           │
+│     │     │     it('应设默认完成状态')                        │
+│     │     │                                                  │
+│     │     └── describe('异常输入')   ← Layer 2: 细分        │
+│     │           it('空标题应拒绝')                            │
+│     │           it('超长标题应截断')                          │
+│     │                                                        │
+│     ├── describe('删除 Todo')        ← Layer 1: 删除场景    │
+│     │     beforeEach: 准备 3 个 Todo                         │
+│     │     it('应移除指定 Todo')                               │
+│     │     it('不存在时应返回 404')                             │
+│     │                                                        │
+│     └── describe('导出')            ← Layer 1: 导出场景     │
+│           beforeEach: 准备已完成的 Todo                      │
+│           it('应导出 Markdown')                               │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+
+关键: 内层 Fixture 继承外层，无需重复 setup
+```
+
+### 使用方式
+
+```bash
+# 生成嵌套 Fixture 测试文件
+/stdd-factory nested --feature=TodoService --depth=3
+
+# 从 BDD 场景自动生成嵌套结构
+/stdd-factory nested --from-spec=stdd/changes/change-xxx/specs/todo-list.feature
+```
+
+### 生成模板（TypeScript/Jest/Vitest）
+
+```typescript
+import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach } from 'vitest';
+import { TodoService } from '../../services/TodoService';
+import { createTodo } from '../factories/todo.factory';
+
+describe('TodoService', () => {
+  // ═══ Layer 0: 服务级 Fixture ═══
+  let service: TodoService;
+
+  beforeAll(() => {
+    service = new TodoService();
+  });
+
+  describe('创建 Todo', () => {
+    // ═══ Layer 1: 场景级 Fixture ═══
+    let result: Todo;
+
+    beforeEach(() => {
+      // 每个测试前重置
+    });
+
+    describe('正常输入', () => {
+      // ═══ Layer 2: 细分 Fixture ═══
+      const validInput = { title: 'Buy milk' };
+
+      it('应创建新 Todo', () => {
+        result = service.create(validInput);
+        expect(result.title).toBe('Buy milk');
+      });
+
+      it('应设默认完成状态为 false', () => {
+        result = service.create(validInput);
+        expect(result.completed).toBe(false);
+      });
+    });
+
+    describe('异常输入', () => {
+      it('空标题应抛出错误', () => {
+        expect(() => service.create({ title: '' })).toThrow('Title is required');
+      });
+
+      it('超长标题应截断到 200 字符', () => {
+        const longTitle = 'a'.repeat(201);
+        result = service.create({ title: longTitle });
+        expect(result.title.length).toBeLessThanOrEqual(200);
+      });
+    });
+  });
+
+  describe('删除 Todo', () => {
+    // ═══ Layer 1: 不同场景不同 Fixture ═══
+    beforeEach(() => {
+      // 准备 3 个 Todo
+      service.create({ title: 'Todo 1' });
+      service.create({ title: 'Todo 2' });
+      service.create({ title: 'Todo 3' });
+    });
+
+    it('应移除指定 Todo', () => {
+      service.delete('todo-1');
+      expect(service.list()).toHaveLength(2);
+    });
+
+    it('不存在时应抛出 NotFound 错误', () => {
+      expect(() => service.delete('non-existent')).toThrow('Not found');
+    });
+  });
+});
+```
+
+### 生成模板（Python/pytest）
+
+```python
+import pytest
+
+class TestTodoService:
+    """Layer 0: 服务级 Fixture"""
+
+    @pytest.fixture(autouse=True)
+    def setup_service(self):
+        self.service = TodoService()
+
+    class TestCreate:
+        """Layer 1: 创建场景"""
+
+        class TestNormalInput:
+            """Layer 2: 正常输入"""
+
+            def test_should_create_todo(self):
+                result = self.service.create(title="Buy milk")
+                assert result.title == "Buy milk"
+
+            def test_should_default_to_incomplete(self):
+                result = self.service.create(title="Buy milk")
+                assert result.completed is False
+
+        class TestAbnormalInput:
+            """Layer 2: 异常输入"""
+
+            def test_should_reject_empty_title(self):
+                with pytest.raises(ValueError, match="Title is required"):
+                    self.service.create(title="")
+
+            def test_should_truncate_long_title(self):
+                result = self.service.create(title="a" * 201)
+                assert len(result.title) <= 200
+
+    class TestDelete:
+        """Layer 1: 删除场景"""
+
+        @pytest.fixture(autouse=True)
+        def setup_todos(self):
+            self.service.create(title="Todo 1")
+            self.service.create(title="Todo 2")
+            self.service.create(title="Todo 3")
+
+        def test_should_remove_todo(self):
+            self.service.delete("todo-1")
+            assert len(self.service.list()) == 2
+
+        def test_should_raise_not_found(self):
+            with pytest.raises(NotFoundError):
+                self.service.delete("non-existent")
+```
+
+### Fixture 继承规则
+
+| 层级 | 生命周期 | 适用场景 |
+|------|---------|---------|
+| Layer 0 | `beforeAll` | 服务实例、数据库连接 |
+| Layer 1 | `beforeEach` | 场景数据（3 个 Todo、空列表） |
+| Layer 2 | 内联变量 | 具体输入（标题字符串、参数） |
+| 清理 | `afterEach`/`afterAll` | 还原状态、清理数据 |
+
+### 与 stdd-factory 集成
+
+```bash
+# 从工厂自动生成嵌套 Fixture
+/stdd-factory nested --feature=TodoService \
+  --factories=todo.factory.ts,user.factory.ts \
+  --depth=2
+```
+
+自动使用 `createTodo()`、`createUser()` 工厂函数填充每层的 Fixture。
+
+---
+
+> **引用**: 借鉴自 Factory Boy (Python)、Test Data Builder 模式、Faker.js 和 JUnit 5 @Nested

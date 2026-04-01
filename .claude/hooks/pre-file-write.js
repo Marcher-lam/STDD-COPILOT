@@ -104,7 +104,7 @@ function checkTDD(filePath, content) {
         article: 2,
         level: 'warning', // 改为警告，允许创建文件
         message: `新文件建议先创建测试: ${path.basename(testFile)}`,
-        suggestion: `考虑先运行: /stdd:red 创建失败的测试`
+        suggestion: `考虑先运行: /stdd:apply --task=TASK-001 创建失败的测试`
       });
     }
   }

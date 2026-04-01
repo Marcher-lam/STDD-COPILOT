@@ -1,7 +1,12 @@
 ---
-description: 自主迭代循环 - 自动检测失败并智能修复直到通过
+name: stdd-iterate
+description: |
+  自主迭代循环 - 自动检测失败并智能修复直到通过
+  触发场景：用户说 '/stdd-iterate', 'iterate', '迭代', '自动修复', '重试'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 自主迭代循环 (/stdd-iterate)
 
 ## 目标
@@ -174,7 +179,7 @@ function selectStrategy(iteration, failures) {
 
 ## 迭代日志
 
-在 `.stdd/active_feature/iteration_log.md` 中记录：
+在 `stdd/active_feature/iteration_log.md` 中记录：
 
 ```markdown
 # 迭代日志

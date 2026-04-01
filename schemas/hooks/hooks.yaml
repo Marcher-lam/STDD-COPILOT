@@ -147,7 +147,7 @@ async function runChecks(data) {
         article: 2,
         level: 'error',
         message: `测试文件不存在: ${testFile}`,
-        suggestion: `请先运行: /stdd:red ${filePath}`
+        suggestion: `请先运行: /stdd:apply 创建对应测试`
       });
     }
   }

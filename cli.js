@@ -79,7 +79,7 @@ program
   .description('Update STDD Copilot files in your project')
   .option('--force', 'Force update even when files exist')
   .action(async (targetPath = '.', options = {}) => {
-    const spinner = ora('Updating STDD Copilot...').start();
+    const spinner = createSpinner('Updating STDD Copilot...').start();
     try {
       const resolvedPath = path.resolve(targetPath);
       const updateCommand = new UpdateCommand(spinner);
@@ -134,7 +134,7 @@ newCmd
   .option('--title <title>', 'Change title')
   .option('--description <desc>', 'Change description')
   .action(async (name, options = {}) => {
-    const spinner = ora(`Creating change: ${name}...`).start();
+    const spinner = createSpinner(`Creating change: ${name}...`).start();
     try {
       const newCommand = new NewCommand(spinner);
       await newCommand.createChange(name, options);
@@ -149,7 +149,7 @@ newCmd
   .command('spec <domain>')
   .description('Create a new spec file')
   .action(async (domain, options = {}) => {
-    const spinner = ora(`Creating spec: ${domain}...`).start();
+    const spinner = createSpinner(`Creating spec: ${domain}...`).start();
     try {
       const newCommand = new NewCommand(spinner);
       await newCommand.createSpec(domain, options);

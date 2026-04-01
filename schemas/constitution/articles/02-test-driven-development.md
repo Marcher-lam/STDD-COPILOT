@@ -140,15 +140,13 @@ if (isImplementationFile(targetFile)) {
 ## 执行命令
 
 ```bash
-# 启动 TDD 循环
+# 启动 TDD 循环 (Ralph Loop 自动完成红→绿→重构)
 /stdd:apply
 
-# 手动阶段
-/stdd:red      # 只执行红灯阶段
-/stdd:green    # 只执行绿灯阶段
-/stdd:refactor # 只执行重构阶段
+# 指定特定任务
+/stdd:apply --task=TASK-001
 
 # 验证
-/stdd:verify   # 验证测试覆盖率
+/stdd:verify   # 验证规范一致性
 /stdd:mutation # 运行变异测试
 ```

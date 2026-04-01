@@ -169,6 +169,80 @@ src/
 
 ---
 
+## 完整示例项目
+
+### 示例 5: Todo List 完整项目结构
+
+**完整 STDD 工作流端到端演示**
+
+```
+todo-app/
+├── stdd/
+│   ├── config.yaml                    # STDD 配置
+│   ├── memory/
+│   │   ├── foundation.md              # 自动检测的技术栈
+│   │   ├── components.md              # 组件架构追踪
+│   │   ├── contracts.md               # 接口契约
+│   │   └── learning/                  # Pattern Teaching 数据
+│   ├── changes/
+│   │   └── change-20260401-100000/
+│   │       ├── proposal.md            # /stdd-propose 产出
+│   │       ├── specs/
+│   │       │   ├── todo-list.feature  # /stdd-spec 产出 (BDD)
+│   │       │   ├── create-todo.usecase.yaml  # 原子用例
+│   │       │   └── .pipeline/
+│   │       │       ├── ir.json        # Test Pipeline IR
+│   │       │       └── leak-report.json
+│   │       ├── design.md              # /stdd-plan 产出
+│   │       ├── tasks.md               # /stdd-plan 产出
+│   │       └── fix-report.md          # (如为 bug fix)
+│   └── reports/
+│       ├── test-report.json           # 测试报告
+│       └── mutation/                  # 变异测试报告
+├── src/
+│   ├── types/
+│   │   └── todo.types.ts              # 类型定义
+│   ├── services/
+│   │   ├── TodoService.ts             # 业务逻辑
+│   │   └── ExportService.ts           # 导出逻辑
+│   ├── components/
+│   │   └── TodoList.tsx               # UI 组件
+│   └── __tests__/
+│       ├── todo-list.spec.ts          # 测试骨架（自动生成）
+│       ├── TodoService.test.ts        # 服务测试
+│       └── mutations/                 # 变异测试
+├── stdd.config.json                   # 项目级 STDD 配置
+└── vision.md                          # 项目愿景
+```
+
+**完整执行流程**:
+```bash
+# 1. 初始化
+/stdd:init                              # → 生成 stdd/config.yaml + vision.md
+
+# 2. 需求阶段
+/stdd:propose                           # → proposal.md
+/stdd:clarify                           # → 澄清记录
+/stdd:confirm                           # → <!-- Confirmed --> 标记
+
+# 3. 规格阶段
+/stdd:spec                              # → .feature + .usecase.yaml + 测试骨架
+
+# 4. 计划阶段
+/stdd:plan                              # → design.md + tasks.md + IMPLEMENTATION_ORDER
+
+# 5. 实现阶段
+/stdd:apply                             # → 选择微任务
+/stdd:execute                           # → Ralph Loop (Red→Green→Refactor)
+
+# 6. 验证阶段
+/stdd:verify                            # → 规范一致性验证
+/stdd:validate --review                 # → 代码审查
+/stdd:commit                            # → 原子提交 + 归档
+```
+
+---
+
 ## 社区贡献
 
 欢迎贡献您的示例！请遵循以下格式：
@@ -200,4 +274,4 @@ src/
 
 - [完整使用指南](./USAGE.md)
 - [安装指南](./INSTALL.md)
-- [API 参考](./.agents/workflows/)
+- [命令参考](./docs/commands.md)

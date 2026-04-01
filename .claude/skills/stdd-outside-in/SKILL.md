@@ -1,7 +1,12 @@
 ---
-description: 外向内 TDD - E2E → 集成 → 单元 层层推进
+name: stdd-outside-in
+description: |
+  外向内 TDD - E2E → 集成 → 单元 层层推进
+  触发场景：用户说 '/stdd-outside-in', 'outside-in', '外向内', 'E2E优先', '由外向内'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 外向内 TDD (/stdd-outside-in)
 
 ## 目标
@@ -404,7 +409,9 @@ E2E 测试结果: 🟢 绿灯
 
 ## 配置
 
-在 `.stdd/memory/outside-in-config.json` 中：
+在 `stdd/memory/outside-in-config.json` 中：
+
+<!-- 配置 Schema: 参见 schemas/shared/skill-config-schema.json -->
 
 ```json
 {
@@ -413,7 +420,15 @@ E2E 测试结果: 🟢 绿灯
   "autoProgress": true,
   "e2e": {
     "framework": "playwright",
-    "testDir": "tests/e2e"
+    "testDir": "tests/e2e",
+    "browsers": ["chromium", "firefox", "webkit"],
+    "headless": true,
+    "baseUrl": "http://localhost:3000",
+    "auto_setup": {
+      "detect_playwright": true,
+      "generate_config": true,
+      "install_browsers": false
+    }
   },
   "integration": {
     "framework": "vitest",
@@ -424,6 +439,39 @@ E2E 测试结果: 🟢 绿灯
     "testDir": "src/__tests__"
   }
 }
+```
+
+### E2E 浏览器集成
+
+E2E 层支持以下浏览器测试框架：
+
+| 框架 | 配置命令 | 支持浏览器 |
+|------|----------|------------|
+| Playwright | `npx playwright install` | Chromium, Firefox, WebKit |
+| Cypress | `npx cypress open` | Chrome, Firefox, Edge |
+| Puppeteer | `npm install puppeteer` | Chrome/Chromium |
+
+**自动检测**：`stdd-outside-in` 启动时自动扫描 `package.json` 中的依赖，选择已安装的 E2E 框架。
+
+**E2E 测试模板**（Playwright）：
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('Feature: Todo List', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('http://localhost:3000');
+  });
+
+  test('should add a new todo', async ({ page }) => {
+    // Given: 用户在 Todo 页面
+    // When: 输入标题并点击添加
+    await page.fill('[data-testid="todo-input"]', 'Buy milk');
+    await page.click('[data-testid="add-button"]');
+
+    // Then: 新 Todo 出现在列表中
+    await expect(page.locator('[data-testid="todo-list"]')).toContainText('Buy milk');
+  });
+});
 ```
 
 ---

@@ -71,7 +71,7 @@ Ralph Loop:
 
 违规时:
 ❌ 测试文件不存在: src/__tests__/services/UserService.test.ts
-   运行: /stdd:red src/services/UserService.ts
+   运行: /stdd:apply --task=TASK-001 (TDD 红灯阶段)
 
 豁免: 临时豁免需 team-lead 审批
 ```

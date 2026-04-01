@@ -44,8 +44,8 @@ cd /path/to/your/project
 ```
 
 初次运行 `/stdd-init` 时，系统会自动：
-1. 创建 `.stdd/memory` 与 `.stdd/active_feature` 目录结构。
-2. 扫描系统或本地目录下已安装的 AI 插件（基于 `plugins.json` 或 `.agents/skills` 下的 `SKILL.md`）。
+1. 创建 `stdd/memory` 与 `stdd/active_feature` 目录结构。
+2. 扫描系统或本地目录下已安装的 AI 插件（基于 `plugins.json` 或 `.claude/skills` 下的 `SKILL.md`）。
 3. 统一生成 `registry.json`，完成外部 Skill 的注册。
 4. 生成项目基础约束日志 `foundation.md`（如记录当前使用的测试框架）。
 
@@ -54,6 +54,6 @@ cd /path/to/your/project
 STDD Copilot 不绑定单一的大模型通道，而是将其他完善的代码助手包装为 **Skill**。
 
 当您在官方渠道安装了支持 STDD 规范的 Claude Code 或 Qwen Code 插件时，它们会将自己的能力清单写入：
-`~/.stdd_plugins/plugins.json` 或项目级 `.stdd/memory/plugins.json`。
+`~/.stdd_plugins/plugins.json` 或项目级 `stdd/memory/plugins.json`。
 
 `stdd-init` 会自动检测并把对应工具（例如提供前端预览的 `openclaw`，主打代码重构的 `claude-code`）无缝编排进 TDD 工作流的图中。

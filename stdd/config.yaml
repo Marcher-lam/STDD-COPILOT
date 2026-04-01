@@ -5,6 +5,16 @@ version: "1.0"
 name: "STDD Copilot"
 description: "Specification & Test-Driven Development Framework"
 
+# 多语言支持
+i18n:
+  default_language: "zh"          # 默认语言: zh / en
+  supported_languages:
+    - zh
+    - en
+  docs_dir:
+    zh: "docs/"                   # 中文文档目录
+    en: "docs/en/"                # 英文文档目录
+
 # 项目信息
 project:
   type: "${PROJECT_TYPE:-node}"
@@ -16,7 +26,7 @@ project:
 # Skill Graph 配置
 graph:
   max_parallel: 4
-  timeout: 3600
+  timeout: 3600000  # 毫秒 (1小时)，与 graph/config.json 保持一致
   retry_count: 3
   on_failure: "rollback"
 
@@ -46,6 +56,25 @@ tdd:
     failure_threshold: 3
     auto_rollback: true
 
+  # Human-in-the-Loop 粒度控制（参考 tdder）
+  # 控制 Ralph Loop 中 AI 暂停等待用户确认的频率
+  hitl:
+    # 模式选择:
+    #   "every-phase"  — 每个 Red/Green/Refactor 阶段后暂停（最严格，适合高风险功能）
+    #   "end-of-cycle" — 每个完整 Red-Green-Refactor 循环后暂停（推荐默认值）
+    #   "off"          — 全自主运行，仅在熔断时暂停（适合 turbo 模式）
+    mode: "end-of-cycle"
+
+    # 哪些阶段需要确认（仅在 every-phase 模式下生效）
+    phases_requiring_confirm:
+      - green   # 绿灯后确认实现是否正确
+      - refactor # 重构后确认变更范围
+
+    # 自动跳过确认的条件
+    auto_skip_when:
+      test_passes: true      # 测试通过时自动继续
+      no_code_changes: true  # 仅文档/注释变更时自动继续
+
   static_check:
     enabled: true
     commands:
@@ -53,8 +82,24 @@ tdd:
       python: "mypy ."
       java: "mvn compile"
 
+  # Certainty Protocol（参考 Claude Pilot）
+  # 在关键决策点评估置信度，低于阈值自动暂停请求确认
+  certainty:
+    enabled: true
+    confirm_threshold: 0.7     # 低于此值暂停
+    warning_threshold: 0.85    # 低于此值警告
+    auto_threshold: 0.95       # 高于此值自动推进
+    check_points:
+      - cp1_spec               # BDD 规格生成后
+      - cp2_plan               # 任务拆解后
+      - cp3_red                # 写测试时
+      - cp4_green              # 实现后
+      - cp5_refactor           # 重构后
+    consecutive_low_max: 3     # 连续低置信度触发熔断
+
   mutation:
     enabled: true
+    mode: "auto"              # auto / quick / deep (auto: 检测 Stryker 可用则用 deep)
     threshold: 80
     operators:
       - arithmetic
@@ -62,6 +107,22 @@ tdd:
       - boolean
       - string
       - null
+    stryker:
+      enabled: "auto"          # auto / true / false
+      config_file: "stryker.conf.json"
+      concurrency: 4
+      test_runner: "vitest"
+      fallback_to_quick: true  # Stryker 不可用时降级到伪变异
+
+  # Test Pipeline 自动生成（参考 ATDD）
+  # BDD 规格确认后自动生成测试代码骨架
+  test_pipeline:
+    enabled: true
+    auto_generate: true          # spec 确认后自动生成测试骨架
+    spec_guardian: true          # 启用泄漏检测
+    placeholder_mode: "todo"     # todo / skip / pending
+    output_dir: "src/__tests__"  # 测试骨架输出目录
+    ir_dir: "specs/.pipeline"    # IR 中间文件目录
 
 # 5 级防跑偏
 defense:
@@ -88,20 +149,44 @@ defense:
     enabled: true
     detect_fake_green: true
 
-# 外部 AI 引擎
+# 外部 AI 引擎（完整注册表见 stdd/config/engines.yaml）
+# 支持 24 种 AI 代码助手，按兼容性分 4 个 Tier
 ai_engines:
+  registry_file: "stdd/config/engines.yaml"
+
+  # Tier 1: 完整适配（所有 Skill 可用）
   claude_code:
     enabled: true
     model: "${CLAUDE_MODEL:-claude-sonnet-4-6}"
     max_tokens: 128000
+  cursor:
+    enabled: "${CURSOR_ENABLED:-false}"
+  windsurf:
+    enabled: "${WINDSURF_ENABLED:-false}"
 
+  # Tier 2: 高兼容（核心 Skill 可用）
+  copilot:
+    enabled: "${COPILOT_ENABLED:-false}"
+  aider:
+    enabled: "${AIDER_ENABLED:-false}"
+  cline:
+    enabled: "${CLINE_ENABLED:-false}"
+  continue_dev:
+    enabled: "${CONTINUE_ENABLED:-false}"
+  amazon_q:
+    enabled: "${AMAZON_Q_ENABLED:-false}"
+
+  # Tier 3: 基础兼容（Constitution + Guard 注入）
   qwen_code:
     enabled: "${QWEN_ENABLED:-false}"
     model: "${QWEN_MODEL:-qwen-max}"
+  gemini_code:
+    enabled: "${GEMINI_ENABLED:-false}"
+  chatgpt_codex:
+    enabled: "${CODEX_ENABLED:-false}"
 
-  openai:
-    enabled: "${OPENAI_ENABLED:-false}"
-    model: "${OPENAI_MODEL:-gpt-4-turbo}"
+  # Tier 4: 新兴/实验性（通过 engines.yaml 扩展）
+  # augument, pearai, melty, bolt, ellipsis, devin, sweep, cody, tabnine...
 
 # 报告配置
 reports:
@@ -130,3 +215,48 @@ hooks:
   on_failure:
     - skill: "stdd-iterate"
       max_retries: 3
+
+# Sprint 级别 Spec 范围控制（参考 ATDD "just enough specs"）
+sprint_spec:
+  enabled: true
+  philosophy: "just_enough"    # just_enough / exhaustive / balanced
+  max_scenarios_per_feature: 8
+  max_features_per_sprint: 3
+  scope_control:
+    must_have:
+      - "happy_path"            # 正常路径必须覆盖
+      - "error_path"            # 错误路径必须覆盖
+    nice_to_have:
+      - "edge_cases"            # 边界情况建议覆盖
+      - "performance"           # 性能测试按需
+    skip_in_mvp:
+      - "accessibility"         # MVP 阶段可跳过
+      - "i18n"                  # 国际化按需
+      - "offline"               # 离线支持按需
+  auto_scope:
+    enabled: true
+    # 自动判断当前迭代阶段的覆盖深度
+    rules:
+      - phase: "mvp"
+        level: "must_have_only"
+        max_scenarios: 5
+      - phase: "growth"
+        level: "must_have + nice_to_have"
+        max_scenarios: 8
+      - phase: "mature"
+        level: "all"
+        max_scenarios: 15
+
+# 文档站点生成器（参考 BMAD Astro 站点）
+docs_site:
+  enabled: false               # 默认关闭，按需启用
+  framework: "astro"           # astro (默认) / vitepress / docusaurus
+  theme: "starlight"           # Astro Starlight 主题
+  title: "STDD Copilot Docs"
+  description: "Specification & Test-Driven Development Framework"
+  output_dir: "docs-dist"      # 构建输出目录
+  template_dir: "stdd/templates/docs-site"
+  auto_sidebar: true           # 自动生成侧边栏
+  search: true                 # 启用搜索 (flexsearch)
+  deploy:
+    target: "github-pages"     # github-pages / vercel / netlify

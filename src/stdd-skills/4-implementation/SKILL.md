@@ -43,7 +43,7 @@ version: "1.0"
 │       └───────────────────────────────┘                     │
 │                    循环直到所有测试通过                       │
 │                                                              │
-│  ⚠️ 连续失败 3 次 → 熔断 (/stdd:revert)                      │
+│  ⚠️ 连续失败 3 次 → 熔断 (手动 git stash 回退)               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -162,7 +162,7 @@ Actions:
 1. Review the task and design
 2. Run /stdd:clarify to refine requirements
 3. Update design.md if approach needs change
-4. Reset with /stdd:revert and try again
+4. Reset with `git stash` and try again
 
 Manual intervention recommended.
 ```

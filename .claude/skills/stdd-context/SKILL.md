@@ -1,7 +1,12 @@
 ---
-description: 三层文档架构 - Foundation/Component/Feature 层级优化 Token 使用
+name: stdd-context
+description: |
+  三层文档架构 - Foundation/Component/Feature 层级优化 Token 使用
+  触发场景：用户说 '/stdd-context', 'context', '上下文', '文档架构', '加载上下文'.
+metadata:
+  author: Marcher-lam
+  version: "1.0.0"
 ---
-
 # STDD 三层文档架构 (/stdd-context)
 
 ## 目标
@@ -15,7 +20,7 @@ description: 三层文档架构 - Foundation/Component/Feature 层级优化 Toke
 ┌─────────────────────────────────────────────────────────────┐
 │                      Layer 0: Foundation                    │
 │  (永久性、技术栈无关的约束)                                    │
-│  文件: .stdd/memory/foundation.md                            │
+│  文件: stdd/memory/foundation.md                            │
 │  加载时机: 项目初始化时 /stdd-init                            │
 │  Token 占用: ~500                                            │
 └─────────────────────────────────────────────────────────────┘
@@ -24,7 +29,7 @@ description: 三层文档架构 - Foundation/Component/Feature 层级优化 Toke
 ┌─────────────────────────────────────────────────────────────┐
 │                      Layer 1: Component                     │
 │  (组件拓扑、模块依赖、共享契约)                                 │
-│  文件: .stdd/memory/components.md + contracts.md            │
+│  文件: stdd/memory/components.md + contracts.md            │
 │  加载时机: 涉及跨模块变更时                                    │
 │  Token 占用: ~1000                                           │
 └─────────────────────────────────────────────────────────────┘
@@ -33,7 +38,7 @@ description: 三层文档架构 - Foundation/Component/Feature 层级优化 Toke
 ┌─────────────────────────────────────────────────────────────┐
 │                      Layer 2: Feature                       │
 │  (当前功能特化的上下文)                                        │
-│  文件: .stdd/active_feature/*                                │
+│  文件: stdd/active_feature/*                                │
 │  加载时机: 执行当前功能任务时                                  │
 │  Token 占用: ~2000                                           │
 └─────────────────────────────────────────────────────────────┘
@@ -312,7 +317,7 @@ Layer 2: Feature ✅ (已加载)
 
 1. **保持 Foundation 精简** - 只包含真正全局的约束
 2. **Component 按需更新** - 只有架构变更时更新
-3. **Feature 完成后归档** - 移动到 `.stdd/archive/`
+3. **Feature 完成后归档** - 移动到 `stdd/archive/`
 4. **定期清理缓存** - 避免 Token 浪费
 
 ---

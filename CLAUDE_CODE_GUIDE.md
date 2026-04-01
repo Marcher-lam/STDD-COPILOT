@@ -1,6 +1,6 @@
 # 在 Claude Code 中使用 STDD Copilot (最佳实践)
 
-STDD Copilot 的核心本质是将**开发流程固化为基于 Markdown 的工作流指令（在 `.agents/skills/` 下）**，而 Claude Code 天生能够理解这些 Markdown 树形逻辑并完美执行！
+STDD Copilot 的核心本质是将**开发流程固化为基于 Markdown 的工作流指令（在 `.claude/skills/` 下）**，而 Claude Code 天生能够理解这些 Markdown 树形逻辑并完美执行！
 
 两者结合的体验，无需复杂的代码插件编写，直接获得一个**不跑偏、懂测试约束**的超级 AI 结对编程专家。
 
@@ -35,25 +35,25 @@ claude
 由于 Claude Code 会实时扫描并理解当前项目的文件结构，你在对话框中可以直接指定路径让其接管流程：
 
 ```text
-> 请严格按照本地 .agents/skills/stdd-propose/SKILL.md 中的定义执行需求。我的需求是：编写一个支持 Markdown 导出的简易 Todo-List。
+> 请严格按照本地 .claude/skills/stdd-propose/SKILL.md 中的定义执行需求。我的需求是：编写一个支持 Markdown 导出的简易 Todo-List。
 ```
 
 **遇到需要连续执行的防疲劳模式：**
 
 ```text
-> 遵循 .agents/skills/stdd-turbo/SKILL.md 的步骤流水线。需求：开发一个登录页组件。遇到 "confirm" 或需要 user 输入 `yes/no` 的挂起环节，必须停下来提问我。
+> 遵循 .claude/skills/stdd-turbo/SKILL.md 的步骤流水线。需求：开发一个登录页组件。遇到 "confirm" 或需要 user 输入 `yes/no` 的挂起环节，必须停下来提问我。
 ```
 
 ---
 
 ## 3. 高阶配置：无感植入 STDD (全局系统约定)
 
-每一次都去打路径（如 `.agents/skills/.../SKILL.md`）显然太麻烦。你可以依靠 Claude 对上文契约的遵守力度，在项目第一次启动时为其**"注入身份"**：
+每一次都去打路径（如 `.claude/skills/.../SKILL.md`）显然太麻烦。你可以依靠 Claude 对上文契约的遵守力度，在项目第一次启动时为其**"注入身份"**：
 
-在对话伊始，抛出这段通用约束（你可以把它存为 `stdd-rules.txt` 并让 Claude 读取）：
+在对话伊始，抛出这段通用约束（你可以把它存为 `stdd-rules.md` 并让 Claude 读取）：
 
 > **[项目顶层纪律设定]：**
-> 你的身份是受 STDD Copilot 监管的执行体。从现在起，一旦我输入任何以 `/stdd-` 开头的斜杠指令（例如 `/stdd-plan`, `/stdd-commit`），你必须:**立刻、无条件**读取本项目根目录下 `.agents/skills/{指令名称}/SKILL.md` 文件，并将其声明的具体步骤视作最高优先级的任务规则（System Prompt）进行运转。如果流程需要与我确认交互，严禁自作主张。
+> 你的身份是受 STDD Copilot 监管的执行体。从现在起，一旦我输入任何以 `/stdd-` 开头的斜杠指令（例如 `/stdd-plan`, `/stdd-commit`），你必须:**立刻、无条件**读取本项目根目录下 `.claude/skills/{指令名称}/SKILL.md` 文件，并将其声明的具体步骤视作最高优先级的任务规则（System Prompt）进行运转。如果流程需要与我确认交互，严禁自作主张。
 
 **自此之后，你的体验将产生质变：**
 

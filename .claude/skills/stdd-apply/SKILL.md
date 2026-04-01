@@ -10,44 +10,94 @@ metadata:
 
 # STDD 开始实现向导 (/stdd-apply)
 
-## 目标
-在 **FINAL_REQUIREMENT.md** 完成后，自动启动实现阶段，依据需求文档生成实现计划并调用外部代码生成 skill，随后进入标准的 TDD 流程。
+目标：在需求文档和任务清单就绪后，编排实现流程：解析需求 → 调用代码生成 → 启动 TDD 循环。
 
-## 步骤
-1. **检查需求文档**
-   - 确认 `.stdd/active_feature/FINAL_REQUIREMENT.md` 已存在。
-   - 若不存在，输出错误并提示用户先运行 `/stdd-final-doc`。
+## 前置条件
 
-2. **解析需求文档**
-   - 读取 `FINAL_REQUIREMENT.md`，提取以下关键章节：
-     - **原始需求**
-     - **需求澄清**（所有 `Round #N`）
-     - **BDD 规格**（`Feature:` 块）
-     - **任务拆解**（编号任务列表）
-   - 将上述内容拼装成 **实现输入**（`implementation_input.md`），放在 `.stdd/active_feature/` 中，供后续 skill 使用。
+- `tasks.md` 已生成且包含可执行任务
+- `contracts.md`（或共享类型文件）已存在
 
-3. **生成实现计划**
-   - 调用外部代码助手插件 **Claude Code**（或已注册的任意实现 skill）
-   - 使用指令 `/claude-code:implement`，将 `implementation_input.md` 作为上下文传入。
-   - 该 skill 负责：
-     - 为每个任务生成 **实现概要**（文件路径、主要函数、关键技术点）。
-     - 在 `src/` 目录下创建对应的 **骨架文件**（如 `TodoList.jsx`、`exportMarkdown.ts` 等），并在文件顶部写入 `/*** Implementation Summary ***/` 注释块。
-   - 将 skill 的返回信息写入 `implementation_summary.md`（位于 `.stdd/active_feature/`），供后续审阅。
+## 执行步骤
 
-4. **启动 TDD 循环**
-   - 自动调用核心工作流 `/stdd-execute`，此时 **graph.deps.json** 已包含实现所需的外部测试生成 skill（如 `qwen-code`）以及 UI 预览 skill（如 `openclaw`）。
-   - `stdd-execute` 将按照 **红灯 → 绿灯 → 伪变异 → 重构** 的顺序完成代码实现、单元测试生成与执行、代码重构。
+### 1. 检查任务清单
 
-5. **记录实现日志**
-   - 在 `implementation_log.md` 中追加本次实现的时间戳、涉及的外部 skill 列表以及关键里程碑（如 "生成骨架文件"、 "完成第一轮红灯" 等）。
-   - 调用 Documenter Agent (`/documenter:update`) 自动在设计文档中记录本次实现步骤。
+确认 `tasks.md` 存在且包含未勾选的 `[ ]` 任务。若所有任务已勾选 `[x]`，提示用户运行 `/stdd:verify`。
 
-6. **结束提示**
-   - 输出 **实现已启动** 的提示，提供后续可执行的指令列表：
-     - `/stdd-execute`（若需手动重新运行）
-     - `/stdd-commit`（查看提交日志）
-     - `/stdd-final-doc`（重新生成需求文档）
+### 2. 解析需求上下文
 
----
-> **使用方式**：在完成 `/stdd-final-doc` 之后，直接运行 `/stdd-apply` 即可开始实现。
-> 若想一次性完成全部流程，可使用防疲劳模式 `/stdd-turbo <需求>`，该模式内部已经包含 `/stdd-apply` 步骤。
+读取以下文件拼装实现输入：
+- **原始需求** — `proposal.md`
+- **BDD 规格** — `specs/*.feature`
+- **架构设计** — `design.md`
+- **任务清单** — `tasks.md`
+- **接口契约** — `contracts.md`
+
+将上述内容合并为 `implementation_context.md`，供 TDD 循环的每个微任务作为参考。
+
+### 3. 启动 Ralph Loop
+
+自动调用 `/stdd:execute`，进入严格的 TDD 执行闭环。
+
+此时按 `tasks.md` 的任务顺序，逐个执行：
+- 每个任务遵循 Ralph Loop 五步流程
+- 每完成一个任务打勾 `[x]`
+- 遇到熔断暂停并提示用户
+
+### 4. 记录实现日志
+
+在 `implementation_log.md` 中追加：
+
+```markdown
+## 实现日志
+
+### 启动时间
+<timestamp>
+
+### 涉及任务
+- TASK-001: 创建数据模型与契约类型 ✅
+- TASK-002: 实现 IndexedDB 存储层 ✅
+- ...
+
+### 关键里程碑
+- [时间] TASK-001 红灯完成
+- [时间] TASK-001 绿灯完成
+- [时间] TASK-003 熔断（用户介入后恢复）
+- [时间] 全部任务完成
+```
+
+### 5. 结束提示
+
+输出实现完成的提示和后续指令：
+
+```
+✅ 实现已完成！
+
+后续步骤:
+  /stdd:verify      验证规范一致性
+  /stdd:final-doc   生成最终需求文档
+  /stdd:archive     归档变更
+```
+
+## 选项
+
+| 选项 | 说明 |
+|------|------|
+| `--task=TASK-003` | 只执行特定任务 |
+| `--next` | 执行下一个未完成任务 |
+| `--fix` | 修复上次失败的任务 |
+| `--dry-run` | 只输出执行计划，不实际运行 |
+
+## 边界情况
+
+| 情况 | 处理方式 |
+|------|----------|
+| tasks.md 不存在 | 报错，提示先运行 `/stdd:plan` |
+| 部分任务已完成 | 从第一个未勾选任务继续 |
+| 用户中断 | 保存进度，可随时用 `/stdd:apply` 继续 |
+| 全部任务已完成 | 跳过实现，直接提示验证 |
+
+## 与其他 Skill 的关系
+
+```
+/stdd-plan ──► /stdd-apply ──► /stdd:verify
+```

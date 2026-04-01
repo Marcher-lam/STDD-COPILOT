@@ -12,20 +12,42 @@ class NewCommand {
     this.spinner = spinner;
   }
 
+  /**
+   * 校验名称合法性：防路径遍历、非法字符、长度
+   */
+  validateName(name) {
+    if (!name || typeof name !== 'string') {
+      throw new Error('Name is required.');
+    }
+    if (name.length > 128) {
+      throw new Error(`Name too long: ${name.length} characters (max 128).`);
+    }
+    if (name !== path.basename(name)) {
+      throw new Error(`Invalid name '${name}': must not contain path separators.`);
+    }
+    if (/\.\./.test(name)) {
+      throw new Error(`Invalid name '${name}': path traversal not allowed.`);
+    }
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(name)) {
+      throw new Error(`Invalid name '${name}': only alphanumeric, hyphens, underscores, and dots are allowed.`);
+    }
+  }
+
   async createChange(name, options = {}) {
+    this.validateName(name);
+
     const changesDir = path.join(process.cwd(), 'stdd', 'changes');
     const changeDir = path.join(changesDir, name);
 
-    // Check if change already exists
+    // 原子创建：直接 mkdir，如果已存在则报错
     try {
-      await fs.access(changeDir);
-      throw new Error(`Change '${name}' already exists.`);
+      await fs.mkdir(changeDir, { recursive: false });
     } catch (error) {
-      if (error.code !== 'ENOENT') throw error;
+      if (error.code === 'EEXIST') {
+        throw new Error(`Change '${name}' already exists.`);
+      }
+      throw error;
     }
-
-    // Create change directory
-    await fs.mkdir(changeDir, { recursive: true });
 
     // Create proposal.md
     const title = options.title || name;
@@ -47,11 +69,13 @@ class NewCommand {
   }
 
   async createSpec(domain, options = {}) {
+    this.validateName(domain);
+
     const specsDir = path.join(process.cwd(), 'stdd', 'specs');
     const specDir = path.join(specsDir, domain);
     const specFile = path.join(specDir, 'spec.md');
 
-    // Check if spec already exists
+    // 检查 spec 文件是否已存在
     try {
       await fs.access(specFile);
       throw new Error(`Spec '${domain}' already exists.`);

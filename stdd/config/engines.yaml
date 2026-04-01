@@ -1,0 +1,291 @@
+# STDD Copilot AI 引擎注册表
+# 定义所有支持的 AI 代码助手及其适配配置
+# 由 /stdd-init 读取并生成 stdd/memory/registry.json
+
+# ─── Tier 1: 完整适配（深度集成，全部 Skill 可用）───
+
+claude_code:
+  name: "Claude Code"
+  vendor: "Anthropic"
+  type: "cli"
+  enabled: "${CLAUDE_ENABLED:-true}"
+  model: "${CLAUDE_MODEL:-claude-sonnet-4-6}"
+  max_tokens: 128000
+  detection:
+    command: "claude --version"
+    config_file: ".claude/"
+  skills_compatibility: "full"
+  notes: "主要开发目标平台，所有 Skill 完全兼容"
+
+cursor:
+  name: "Cursor"
+  vendor: "Cursor Inc."
+  type: "ide"
+  enabled: "${CURSOR_ENABLED:-false}"
+  model: "${CURSOR_MODEL:-claude-sonnet-4-6}"
+  detection:
+    config_file: ".cursorrules"
+    directory: ".cursor/"
+  skills_compatibility: "full"
+  adaptation:
+    skill_format: ".cursorrules"
+    command_prefix: "@"
+  notes: "通过 .cursorrules 映射 SKILL.md"
+
+windsurf:
+  name: "Windsurf (Codeium)"
+  vendor: "Codeium"
+  type: "ide"
+  enabled: "${WINDSURF_ENABLED:-false}"
+  model: "${WINDSURF_MODEL:-cascade}"
+  detection:
+    config_file: ".windsurfrules"
+    directory: ".windsurf/"
+  skills_compatibility: "full"
+  adaptation:
+    skill_format: ".windsurfrules"
+  notes: "通过 .windsurfrules 映射"
+
+# ─── Tier 2: 高兼容（核心 Skill 可用，部分需适配）───
+
+copilot:
+  name: "GitHub Copilot"
+  vendor: "GitHub / Microsoft"
+  type: "ide"
+  enabled: "${COPILOT_ENABLED:-false}"
+  model: "${COPILOT_MODEL:-gpt-4o}"
+  detection:
+    config_file: ".github/copilot-instructions.md"
+  skills_compatibility: "partial"
+  adaptation:
+    skill_format: "copilot-instructions.md"
+    supported_skills: ["stdd-spec", "stdd-execute", "stdd-guard", "stdd-metrics"]
+  notes: "通过 copilot-instructions.md 注入规则"
+
+aider:
+  name: "Aider"
+  vendor: "Open Source"
+  type: "cli"
+  enabled: "${AIDER_ENABLED:-false}"
+  model: "${AIDER_MODEL:-gpt-4o}"
+  detection:
+    command: "aider --version"
+    config_file: ".aider.conf.yml"
+  skills_compatibility: "partial"
+  adaptation:
+    skill_format: "CONVENTION.md"
+    supported_skills: ["stdd-spec", "stdd-execute", "stdd-commit"]
+  notes: "开源 CLI，通过 CONVENTION.md 映射"
+
+cline:
+  name: "Cline"
+  vendor: "Open Source"
+  type: "ide"
+  enabled: "${CLINE_ENABLED:-false}"
+  model: "${CLINE_MODEL:-claude-sonnet-4-6}"
+  detection:
+    config_file: ".clinerules"
+    directory: ".cline/"
+  skills_compatibility: "partial"
+  adaptation:
+    skill_format: ".clinerules"
+  notes: "VS Code 扩展，通过 .clinerules 映射"
+
+continue_dev:
+  name: "Continue.dev"
+  vendor: "Continue"
+  type: "ide"
+  enabled: "${CONTINUE_ENABLED:-false}"
+  detection:
+    config_file: ".continue/config.yaml"
+    directory: ".continue/"
+  skills_compatibility: "partial"
+  adaptation:
+    skill_format: "config.yaml"
+  notes: "开源 IDE 扩展，通过 config.yaml 配置"
+
+amazon_q:
+  name: "Amazon Q Developer"
+  vendor: "AWS"
+  type: "ide"
+  enabled: "${AMAZON_Q_ENABLED:-false}"
+  model: "${AMAZON_Q_MODEL:-q-developer}"
+  detection:
+    config_file: ".amazonq/rules"
+  skills_compatibility: "partial"
+  adaptation:
+    skill_format: "rules"
+  notes: "通过 .amazonq/rules 注入"
+
+# ─── Tier 3: 基础兼容（仅 Constitution + Guard 规则注入）───
+
+qwen_code:
+  name: "Qwen Code (通义灵码)"
+  vendor: "Alibaba"
+  type: "ide"
+  enabled: "${QWEN_ENABLED:-false}"
+  model: "${QWEN_MODEL:-qwen-max}"
+  detection:
+    config_file: ".tongyi/"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: ".tongyi/rules"
+    inject_only: ["constitution", "guard"]
+  notes: "通过 .tongyi/ 注入 Constitution 规则"
+
+doubao:
+  name: "Doubao (豆包MarsCode)"
+  vendor: "ByteDance"
+  type: "ide"
+  enabled: "${DOUBAO_ENABLED:-false}"
+  model: "${DOUBAO_MODEL:-doubao-pro}"
+  detection:
+    config_file: ".marscode/"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: ".marscode/rules"
+    inject_only: ["constitution", "guard"]
+
+baidu_comate:
+  name: "Baidu Comate (文心快码)"
+  vendor: "Baidu"
+  type: "ide"
+  enabled: "${BAIDU_COMATE_ENABLED:-false}"
+  detection:
+    config_file: ".comate/"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: ".comate/rules"
+    inject_only: ["constitution", "guard"]
+
+gemini_code:
+  name: "Gemini Code Assist"
+  vendor: "Google"
+  type: "ide"
+  enabled: "${GEMINI_ENABLED:-false}"
+  model: "${GEMINI_MODEL:-gemini-2.5-pro}"
+  detection:
+    config_file: ".gemini/"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: ".gemini/GEMINI.md"
+
+chatgpt_codex:
+  name: "ChatGPT Codex"
+  vendor: "OpenAI"
+  type: "cli"
+  enabled: "${CODEX_ENABLED:-false}"
+  model: "${CODEX_MODEL:-codex-1}"
+  detection:
+    command: "codex --version"
+    config_file: "AGENTS.md"
+  skills_compatibility: "partial"
+  adaptation:
+    skill_format: "AGENTS.md"
+
+devin:
+  name: "Devin"
+  vendor: "Cognition"
+  type: "cloud"
+  enabled: "${DEVIN_ENABLED:-false}"
+  detection:
+    config_file: "devin.yaml"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: "devin.yaml"
+
+sweep:
+  name: "Sweep"
+  vendor: "Sweep AI"
+  type: "cloud"
+  enabled: "${SWEEP_ENABLED:-false}"
+  detection:
+    config_file: "sweep.yaml"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: "sweep.yaml"
+
+# ─── Tier 4: 新兴/实验性 ───
+
+augment:
+  name: "Augment Code"
+  vendor: "Augment"
+  type: "ide"
+  enabled: "${AUGMENT_ENABLED:-false}"
+  detection:
+    config_file: ".augment/"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: ".augment/rules"
+
+pearai:
+  name: "PearAI"
+  vendor: "PearAI"
+  type: "ide"
+  enabled: "${PEARAI_ENABLED:-false}"
+  detection:
+    config_file: ".pearai/"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: ".pearai/rules"
+
+melty:
+  name: "Melty"
+  vendor: "Melty"
+  type: "ide"
+  enabled: "${MELTY_ENABLED:-false}"
+  detection:
+    config_file: ".melty/"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: ".melty/rules"
+
+ellipsis:
+  name: "Ellipsis"
+  vendor: "Ellipsis"
+  type: "cloud"
+  enabled: "${ELLIPSIS_ENABLED:-false}"
+  detection:
+    config_file: ".ellipsis/"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: ".ellipsis/config.yaml"
+
+bolt:
+  name: "Bolt.new"
+  vendor: "StackBlitz"
+  type: "cloud"
+  enabled: "${BOLT_ENABLED:-false}"
+  detection:
+    config_file: "bolt.md"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: "bolt.md"
+
+sourcegraph_cody:
+  name: "Sourcegraph Cody"
+  vendor: "Sourcegraph"
+  type: "ide"
+  enabled: "${CODY_ENABLED:-false}"
+  detection:
+    config_file: ".cody/"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: ".cody/rules"
+
+tabnine:
+  name: "Tabnine"
+  vendor: "Tabnine"
+  type: "ide"
+  enabled: "${TABNINE_ENABLED:-false}"
+  detection:
+    config_file: ".tabnine/"
+  skills_compatibility: "basic"
+  adaptation:
+    skill_format: ".tabnine/rules"
+
+# ─── 自定义引擎注册 ───
+
+custom: {}
+  # 用户可在此注册自定义 AI 引擎
+  # 格式同上，name/type/model/detection/compatibility 均可自定义

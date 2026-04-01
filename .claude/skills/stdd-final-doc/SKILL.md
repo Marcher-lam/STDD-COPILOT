@@ -16,7 +16,7 @@ metadata:
 2. 所有澄清轮次及答案（`<!-- Clarify -->` 区块）
 3. 需求确认报告（`<!-- Confirmed -->` 标记）
 4. BDD 规格（`02_bdd_specs.feature`）
-5. 任务拆解清单（`03_tasks.md`）
+5. 任务拆解清单（`04_tasks.md`）
 6. 关键实现摘要（自动抽取自生成的代码文件头部注释）
 7. 测试概览（测试用例列表、通过率、伪变异审查结果）
 8. 变更日志（从 `stdd-commit` 生成的原子提交信息）
@@ -32,7 +32,7 @@ metadata:
 4. **插入 BDD 规格**
    - 将 `02_bdd_specs.feature` 前 20 行（或全部）作为 **规格章节**，保持原始 Given/When/Then 格式。
 5. **任务清单**
-   - 读取 `03_tasks.md`，生成 **任务章节**，每条任务前加序号。
+   - 读取 `04_tasks.md`，生成 **任务章节**，每条任务前加序号。
 6. **实现摘要**
    - 对 `src/` 目录下的每个实现文件（`.js/.ts/.jsx/.tsx`），读取文件顶部的 `/***` 注释块（若存在），汇总为 **实现概览**。若文件缺少注释，则使用文件路径作为占位。
 7. **测试概览**
@@ -43,7 +43,7 @@ metadata:
    - 在文档最顶部写入 **版本号**（读取 `STDD_Copilot_Design_Document.md` 中的 `Version:` 行），若不存在则使用 `v1.0.0` 并在后续每次生成时递增次要版本。
    - 写入 **生成时间**（ISO 8601），例如 `2026-03-26T17:32:14+08:00`。
 10. **写入最终文档**
-    - 将所有章节拼接为 Markdown，写入 `.stdd/active_feature/FINAL_REQUIREMENT.md`。
+    - 将所有章节拼接为 Markdown，写入 `stdd/active_feature/FINAL_REQUIREMENT.md`。
     - 同时复制一份到项目根目录 `FINAL_REQUIREMENT.md`，便于外部审阅。
 11. **自动记录**
     - 调用 Documenter Agent (`/documenter:update`) 自动在设计文档中追加一条更新日志：`生成最终需求文档 vX.Y.Z`。
