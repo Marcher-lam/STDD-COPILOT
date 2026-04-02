@@ -104,20 +104,59 @@ class InitCommand {
   }
 
   async execute(targetPath, options = {}) {
+    const inquirer = require('inquirer');
+    
+    // Check if already initialized
     const stddDir = path.join(targetPath, 'stdd');
     const claudeDir = path.join(targetPath, '.claude');
 
     // Check if already initialized
     const stddExists = await this.exists(stddDir);
-    const claudeExists = await this.exists(claudeDir);
 
     if (stddExists && !options.force) {
       throw new Error('STDD already initialized. Use --force to overwrite.');
     }
 
+    const SUPPORTED_AGENTS = [
+      { name: 'Claude Code (.claude)', value: '.claude', checked: true },
+      { name: 'Qwen Code (.qwen)', value: '.qwen' },
+      { name: 'Cursor (.cursor)', value: '.cursor' },
+      { name: 'Codex (.codex)', value: '.codex' },
+      { name: 'Kiro (.kiro)', value: '.kiro' },
+      { name: 'CodeBuddy (.codebuddy)', value: '.codebuddy' },
+      { name: 'VSCode (.vscode)', value: '.vscode' },
+      { name: 'OpenClaw (.openclaw)', value: '.openclaw' },
+      { name: 'Antigravity (.antigravity)', value: '.antigravity' },
+      { name: 'OpenCode (.opencode)', value: '.opencode' }
+    ];
+
+    let selectedAgents = ['.claude']; // Default
+
+    // In interactive mode, prompt user for extensions
+    if (this.spinner) {
+      if (this.spinner.stop) this.spinner.stop();
+      console.log('\n');
+      const answers = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          message: 'Select the AI CLI engines you want to support:',
+          name: 'agents',
+          choices: SUPPORTED_AGENTS,
+          validate(answer) {
+            if (answer.length < 1) {
+              return 'You must choose at least one CLI engine.';
+            }
+            return true;
+          },
+        },
+      ]);
+      selectedAgents = answers.agents;
+      if (this.spinner.start) this.spinner.start();
+    }
+
     // Create directory structure
     this.spinner.text = 'Creating directory structure...';
-    await this.createDirectories(targetPath);
+    await this.createDirectories(targetPath, selectedAgents);
 
     // Create AGENTS.md
     this.spinner.text = 'Creating AGENTS.md...';
@@ -129,7 +168,7 @@ class InitCommand {
 
     // Copy .claude commands
     this.spinner.text = 'Copying Claude commands...';
-    await this.copyClaudeCommands(targetPath);
+    await this.copyClaudeCommands(targetPath, selectedAgents);
 
     // Copy schemas
     this.spinner.text = 'Copying schemas...';
@@ -152,7 +191,7 @@ class InitCommand {
     }
   }
 
-  async createDirectories(targetPath) {
+  async createDirectories(targetPath, selectedAgents) {
     const baseDirs = [
       'stdd',
       'stdd/specs',
@@ -163,24 +202,11 @@ class InitCommand {
       'stdd/explorations'
     ];
 
-    const supportedAgents = [
-      ".claude",
-      ".qwen",
-      ".cursor",
-      ".codex",
-      ".kiro",
-      ".codebuddy",
-      ".vscode",
-      ".openclaw",
-      ".antigravity",
-      ".opencode"
-];
-
     for (const dir of baseDirs) {
       await fs.mkdir(path.join(targetPath, dir), { recursive: true });
     }
 
-    for (const agent of supportedAgents) {
+    for (const agent of selectedAgents) {
       await fs.mkdir(path.join(targetPath, agent, 'commands', 'stdd'), { recursive: true });
       await fs.mkdir(path.join(targetPath, agent, 'skills'), { recursive: true });
     }
@@ -201,22 +227,10 @@ class InitCommand {
   }
 
   
-  async copyClaudeCommands(targetPath) {
+  async copyClaudeCommands(targetPath, selectedAgents) {
     const sourceDir = path.join(__dirname, '..', '..', '..', '.claude', 'commands', 'stdd');
-    const supportedAgents = [
-      ".claude",
-      ".qwen",
-      ".cursor",
-      ".codex",
-      ".kiro",
-      ".codebuddy",
-      ".vscode",
-      ".openclaw",
-      ".antigravity",
-      ".opencode"
-];
 
-    for (const agent of supportedAgents) {
+    for (const agent of selectedAgents) {
       const targetDir = path.join(targetPath, agent, 'commands', 'stdd');
       await this.copyDirContents(sourceDir, targetDir);
     }

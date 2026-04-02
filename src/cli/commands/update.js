@@ -56,7 +56,7 @@ class UpdateCommand {
       ".opencode"
 ];
 
-    for (const agent of supportedAgents) {
+    for (const agent of selectedAgents) {
       const targetDir = path.join(targetPath, agent, 'commands', 'stdd');
       await this.updateDirContents(sourceDir, targetDir, force);
     }
