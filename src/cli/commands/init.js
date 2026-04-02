@@ -25,7 +25,7 @@ STDD Copilot (Spec + Test Driven Development) 是一个融合了 SDD 和 TDD 最
 
 ## 可用命令
 
-在 Claude Code 中使用以下斜杠命令：
+在支持的 AI Code 终端（Claude Code, Qwen Code, Cursor 等）中使用以下斜杠命令：
 
 | 命令 | 说明 |
 |------|------|
