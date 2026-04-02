@@ -153,22 +153,36 @@ class InitCommand {
   }
 
   async createDirectories(targetPath) {
-    const dirs = [
+    const baseDirs = [
       'stdd',
       'stdd/specs',
       'stdd/changes',
       'stdd/changes/archive',
       'stdd/memory',
       'stdd/graph',
-      'stdd/explorations',
-      '.claude/commands/stdd',
-      '.claude/skills',
-      '.qwen/commands/stdd',
-      '.qwen/skills'
+      'stdd/explorations'
     ];
 
-    for (const dir of dirs) {
+    const supportedAgents = [
+      ".claude",
+      ".qwen",
+      ".cursor",
+      ".codex",
+      ".kiro",
+      ".codebuddy",
+      ".vscode",
+      ".openclaw",
+      ".antigravity",
+      ".opencode"
+];
+
+    for (const dir of baseDirs) {
       await fs.mkdir(path.join(targetPath, dir), { recursive: true });
+    }
+
+    for (const agent of supportedAgents) {
+      await fs.mkdir(path.join(targetPath, agent, 'commands', 'stdd'), { recursive: true });
+      await fs.mkdir(path.join(targetPath, agent, 'skills'), { recursive: true });
     }
   }
 
@@ -189,18 +203,28 @@ class InitCommand {
   
   async copyClaudeCommands(targetPath) {
     const sourceDir = path.join(__dirname, '..', '..', '..', '.claude', 'commands', 'stdd');
-    
-    // Support Claude
-    const claudeTargetDir = path.join(targetPath, '.claude', 'commands', 'stdd');
-    await this.copyDirContents(sourceDir, claudeTargetDir);
-    
-    // Support Qwen Code
-    const qwenTargetDir = path.join(targetPath, '.qwen', 'commands', 'stdd');
-    await this.copyDirContents(sourceDir, qwenTargetDir);
+    const supportedAgents = [
+      ".claude",
+      ".qwen",
+      ".cursor",
+      ".codex",
+      ".kiro",
+      ".codebuddy",
+      ".vscode",
+      ".openclaw",
+      ".antigravity",
+      ".opencode"
+];
+
+    for (const agent of supportedAgents) {
+      const targetDir = path.join(targetPath, agent, 'commands', 'stdd');
+      await this.copyDirContents(sourceDir, targetDir);
+    }
   }
 
   async copyDirContents(sourceDir, targetDir) {
     if (await this.exists(sourceDir)) {
+      await fs.mkdir(targetDir, { recursive: true });
       const files = await fs.readdir(sourceDir);
       for (const file of files) {
         if (file.endsWith('.md')) {
@@ -210,7 +234,6 @@ class InitCommand {
       }
     }
   }
-
 
   async copySchemas(targetPath) {
     const sourceSchema = path.join(__dirname, '..', '..', '..', 'schemas');

@@ -43,14 +43,23 @@ class UpdateCommand {
   
   async updateClaudeCommands(targetPath, force) {
     const sourceDir = path.join(__dirname, '..', '..', '..', '.claude', 'commands', 'stdd');
-    
-    // Support Claude
-    const claudeTargetDir = path.join(targetPath, '.claude', 'commands', 'stdd');
-    await this.updateDirContents(sourceDir, claudeTargetDir, force);
-    
-    // Support Qwen Code
-    const qwenTargetDir = path.join(targetPath, '.qwen', 'commands', 'stdd');
-    await this.updateDirContents(sourceDir, qwenTargetDir, force);
+    const supportedAgents = [
+      ".claude",
+      ".qwen",
+      ".cursor",
+      ".codex",
+      ".kiro",
+      ".codebuddy",
+      ".vscode",
+      ".openclaw",
+      ".antigravity",
+      ".opencode"
+];
+
+    for (const agent of supportedAgents) {
+      const targetDir = path.join(targetPath, agent, 'commands', 'stdd');
+      await this.updateDirContents(sourceDir, targetDir, force);
+    }
   }
 
   async updateDirContents(sourceDir, targetDir, force) {
@@ -68,7 +77,6 @@ class UpdateCommand {
       }
     }
   }
-
 
   async updateSchemas(targetPath, force) {
     const sourceSchema = path.join(__dirname, '..', '..', '..', 'schemas');
