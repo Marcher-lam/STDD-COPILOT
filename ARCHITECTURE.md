@@ -130,15 +130,21 @@ graph TB
 
 ### 1. Skill Graph 引擎
 
-| 组件 | 职责 | 输入 | 输出 |
-|------|------|------|------|
-| **Visualizer** | 生成依赖图可视化 | YAML Graph 定义 | Mermaid/HTML 图 |
-| **Analyzer** | 分析状态和路径 | 当前状态、Graph 定义 | 分析报告、路径列表 |
-| **Scheduler** | 调度 Skill 执行 | 任务列表、依赖关系 | 执行计划 |
-| **Tracker** | 追踪执行历史 | 执行事件 | 历史记录 |
-| **Condition Engine** | 条件判断 | 条件表达式 | 布尔结果 |
-| **Parallel Executor** | 并行执行无依赖任务 | 任务列表 | 并行执行结果 |
-| **Recommender** | 智能推荐 | 上下文、历史 | 推荐列表 |
+| 组件 | 职责 | 输入 | 输出 | 源文件 |
+|------|------|------|------|--------|
+| **Visualizer** | 生成依赖图可视化 | YAML Graph 定义 | Mermaid/HTML 图 | *规划中* |
+| **Analyzer** | 分析状态和路径 | 当前状态、Graph 定义 | 分析报告、路径列表 | *规划中* |
+| **Scheduler** | 调度 Skill 执行 | 任务列表、依赖关系 | 执行计划 | *规划中* |
+| **Tracker** | 追踪执行历史 | 执行事件 | 历史记录 | *规划中* |
+| **Condition Engine** | 条件判断 | 条件表达式 | 布尔结果 | `stdd/graph/conditions.json` |
+| **Dynamic Router** | 意图自适应拓扑裁剪 | 用户意图 | 编译后 DAG | `src/utils/dynamic-router.js` |
+| **Graph Executor** | 生命周期执行 + 反向自愈 | DAG + 输入 | 执行结果 | `src/utils/graph-executor.js` |
+| **Graph Cache** | DAG 幂等断点缓存 | 节点+输入 | SHA256 指纹缓存 | `src/utils/graph-cache.js` |
+| **Evidence Capture** | 结构化错误证据采集 | 错误对象+上下文 | 证据链快照 | `src/utils/evidence-capture.js` |
+| **Error Propagator** | 多跳向上传播 + 决策点定位 | 失败节点 | 回炉目标+证据报告 | `src/utils/error-propagator.js` |
+| **Heterogeneous Adapter** | 异构引擎适配 + Tier 降级 | Skill 名称 | 引擎分配+标准化输出 | `src/utils/heterogeneous-adapter.js` |
+| **Parallel Executor** | DAG 分层并行执行 | DAG + 引擎适配器 | 并行执行结果 | `src/utils/parallel-executor.js` |
+| **Recommender** | 智能推荐 | 上下文、历史 | 推荐列表 | *规划中* |
 
 ### 2. 核心 Skills (5 阶段工作流)
 
@@ -218,9 +224,10 @@ stdd/
 │   ├── contracts.md            # 接口契约
 │   └── arch-evolution.md       # 架构演进日志
 ├── graph/                      # Skill Graph 配置
-│   ├── skills.yaml             # Graph 节点定义
+│   ├── skills.yaml             # Graph 节点定义 (28 Skills)
 │   ├── config.json             # 引擎配置
-│   └── conditions.json         # 条件引擎配置
+│   ├── conditions.json         # 条件引擎配置
+│   └── cache/                  # DAG 幂等执行缓存
 ├── config/                     # 配置文件
 │   └── engines.yaml            # 22 个 AI 引擎注册
 ├── templates/                  # 模板系统
@@ -345,3 +352,59 @@ stdd/
 | **Tier 4** | Augment, PearAI, Melty, Ellipsis, Bolt, Cody, Tabnine | 实验性 |
 
 完整引擎列表见 `stdd/config/engines.yaml` (22 个引擎)。
+
+---
+
+## Graph 运行时模块 (src/utils/)
+
+已实现的 Graph 引擎核心运行时模块：
+
+| 模块 | 职责 | 关键能力 |
+|------|------|----------|
+| **dynamic-router.js** | 意图自适应拓扑 | hotfix/feature/research 三条路径编译，DAG 动态裁剪 |
+| **graph-cache.js** | 幂等断点缓存 | SHA256 输入指纹化，JSON 持久化，缓存失效清理 |
+| **graph-executor.js** | 生命周期执行引擎 | 线性执行 + 反向自愈 + 异构并行调度集成 |
+| **evidence-capture.js** | 结构化错误证据采集 | 错误快照、指纹去重、多跳链累积、指令合成 |
+| **error-propagator.js** | 多跳向上传播 | 智能决策点定位（planning/gate/扇出）、逐跳证据增强、根节点熔断 |
+| **heterogeneous-adapter.js** | 异构引擎适配层 | 22 引擎 Tier 分层、Skill 兼容映射、跨引擎结果标准化、Tier 降级链 |
+| **parallel-executor.js** | DAG 分层并行执行 | Kahn's 拓扑分层、Worker 池、异构引擎分配、并行组策略（all/any/race）、文件冲突检测 |
+
+### 反向自愈流程
+
+```
+节点执行失败
+     │
+     ▼
+EvidenceCapture 截取证据
+     │
+     ▼
+ErrorPropagator 多跳传播 ──→ 寻找决策点（planning/gate/扇出）
+     │                            │
+     │                     找到决策点
+     │                            │
+     ▼                            ▼
+  部分缓存清理 ←──── 注入证据链到策划节点
+     │
+     ▼
+策划节点回炉重造 → 重新执行下游
+```
+
+### 异构并行执行流程
+
+```
+DAG 拓扑分层 (Kahn's Algorithm)
+     │
+     ▼
+Layer 0: [stdd-propose] ←── HeterogeneousAdapter 分配引擎
+     │
+Layer 1: [stdd-spec]
+     │
+Layer 2: [stdd-plan]
+     │
+Layer 3: [stdd-apply]
+     │
+Layer 4: [stdd-mutation, stdd-validate, stdd-contract] ←── 同层并行
+     │
+     ▼
+结果聚合 + 文件冲突检测
+```

@@ -72,6 +72,15 @@ stdd-copilot/
 ├── cli.js                       # CLI 入口（Commander.js）
 ├── src/
 │   ├── cli/commands/            # CLI 子命令：init, new, status, list, hooks, update
+│   ├── utils/                   # Graph 运行时核心模块
+│   │   ├── graph-executor.js    # 生命周期执行 + 反向自愈引擎
+│   │   ├── graph-cache.js       # DAG 幂等断点缓存（SHA256 指纹化）
+│   │   ├── dynamic-router.js    # 意图自适应拓扑裁剪（hotfix/feature/research）
+│   │   ├── evidence-capture.js  # 结构化错误证据采集器
+│   │   ├── error-propagator.js  # 多跳向上传播引擎（智能决策点定位）
+│   │   ├── heterogeneous-adapter.js  # 异构引擎适配层（22 引擎 Tier 降级链）
+│   │   ├── parallel-executor.js # DAG 分层并行执行器（Kahn's 拓扑分层）
+│   │   └── path-resolver.js     # NPM 全局链接路径穿透解析
 │   └── stdd-skills/             # STDD Skill 定义，按 5 阶段组织
 │       ├── 1-proposal/          # propose/clarify/confirm
 │       ├── 2-specification/     # spec
