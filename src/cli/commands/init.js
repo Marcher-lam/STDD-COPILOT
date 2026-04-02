@@ -102,7 +102,7 @@ const enginesConfig = require('../../config/engines.json');
 
 class InitCommand {
   constructor(spinner) {
-    this.spinner = spinner;
+    this.spinner = spinner || { text: '', start() {}, stop() {}, succeed() {}, fail() {} };
   }
 
   async execute(targetPath, options = {}) {
