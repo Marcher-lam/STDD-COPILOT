@@ -170,6 +170,10 @@ class InitCommand {
     this.spinner.text = 'Copying Claude commands...';
     await this.copyClaudeCommands(targetPath, selectedAgents);
 
+    // Copy skills payload
+    this.spinner.text = 'Copying STDD skills...';
+    await this.copySkills(targetPath, selectedAgents);
+
     // Copy schemas
     this.spinner.text = 'Copying schemas...';
     await this.copySchemas(targetPath);
@@ -227,6 +231,20 @@ class InitCommand {
   }
 
   
+  
+  async copySkills(targetPath, selectedAgents) {
+    const sourceDir = path.join(__dirname, '..', '..', '..', '.claude', 'skills');
+    
+    // Copy the entire skills directory recursively
+    for (const agent of selectedAgents) {
+      const targetDir = path.join(targetPath, agent, 'skills');
+      if (await this.exists(sourceDir)) {
+        await fs.mkdir(targetDir, { recursive: true });
+        await require('fs').promises.cp(sourceDir, targetDir, { recursive: true });
+      }
+    }
+  }
+
   async copyClaudeCommands(targetPath, selectedAgents) {
     const sourceDir = path.join(__dirname, '..', '..', '..', '.claude', 'commands', 'stdd');
 
