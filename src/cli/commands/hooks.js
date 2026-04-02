@@ -1,20 +1,37 @@
 /**
  * STDD CLI - Hooks Command
- * 管理 Claude Code Hook 系统
+ * 管理 AI Code Hook 系统 (支持多引擎环境)
  */
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const chalk = require('chalk');
+
+const ALL_SUPPORTED_AGENTS = [
+  ".claude", ".qwen", ".cursor", ".codex", ".kiro",
+  ".codebuddy", ".vscode", ".openclaw", ".antigravity", ".opencode"
+];
 
 /**
- * 获取 settings.json 路径
+ * 智能嗅探当前环境，获取所有存活终端的 settings.json 路径
  */
-function getSettingsPath(global = false) {
-  if (global) {
-    return path.join(os.homedir(), '.claude', 'settings.json');
+function getSettingsPaths(global = false) {
+  const baseDir = global ? os.homedir() : process.cwd();
+  
+  try {
+    const items = fs.readdirSync(baseDir);
+    const activeAgents = ALL_SUPPORTED_AGENTS.filter(agent => items.includes(agent));
+    
+    // 如果没有任何引擎，默认回退给 .claude
+    if (activeAgents.length === 0) {
+      return [path.join(baseDir, '.claude', 'settings.json')];
+    }
+    
+    return activeAgents.map(agent => path.join(baseDir, agent, 'settings.json'));
+  } catch(e) {
+    return [path.join(baseDir, '.claude', 'settings.json')];
   }
-  return path.join(process.cwd(), '.claude', 'settings.json');
 }
 
 /**
@@ -43,14 +60,13 @@ function writeSettings(settingsPath, settings) {
 }
 
 /**
- * 获取 STDD hooks 脚本路径
+ * 获取 STDD hooks 脚本路径 (全局同一入口)
  */
 function getSTDDHooksPath() {
-  // 尝试多个可能的位置
   const possiblePaths = [
-    path.join(__dirname, '..', '..', '..', '.claude', 'hooks'),
-    path.join(process.cwd(), '.claude', 'hooks'),
-    path.join(os.homedir(), 'stdd-copilot', '.claude', 'hooks')
+    path.join(__dirname, '..', '..', '..', '.claude', 'hooks'), // 源码目录
+    path.join(process.cwd(), '.claude', 'hooks'),               // 项目目录兼容
+    path.join(os.homedir(), 'stdd-copilot', '.claude', 'hooks') // 全局链接兼容
   ];
 
   for (const p of possiblePaths) {
@@ -71,33 +87,17 @@ function generateHooksConfig(hooksPath, options = {}) {
       PreToolUse: [
         {
           matcher: "Edit|Write",
-          hooks: [
-            {
-              type: "command",
-              command: `node ${path.join(hooksPath, 'pre-file-write.js')}`
-            }
-          ]
+          hooks: [{ type: "command", command: `node ${path.join(hooksPath, 'pre-file-write.js')}` }]
         }
       ],
       PostToolUse: [
         {
           matcher: "Edit|Write",
-          hooks: [
-            {
-              type: "command",
-              command: `node ${path.join(hooksPath, 'post-file-write.js')}`
-            }
-          ]
+          hooks: [{ type: "command", command: `node ${path.join(hooksPath, 'post-file-write.js')}` }]
         }
       ]
     }
   };
-
-  // 如果指定了只启用部分 hooks
-  if (options.articles) {
-    // 可以根据 articles 过滤
-  }
-
   return config;
 }
 
@@ -107,49 +107,43 @@ function generateHooksConfig(hooksPath, options = {}) {
 function installHooks(options) {
   const { global = false, force = false } = options;
 
-  console.log('\n🔧 STDD Hooks 安装\n');
+  console.log(chalk.bold('\n🔧 STDD Hooks 安装 (Multi-Agent Adaptation)\n'));
 
-  // 检查 hooks 脚本
   const hooksPath = getSTDDHooksPath();
   if (!hooksPath) {
-    console.log('❌ 错误: 找不到 STDD hooks 脚本');
-    console.log('   请确保 STDD Copilot 已正确安装');
+    console.log(chalk.red('❌ 错误: 找不到 STDD hooks 脚本'));
     return false;
   }
-
   console.log(`📁 Hooks 脚本位置: ${hooksPath}`);
 
-  // 检查目标配置
-  const settingsPath = getSettingsPath(global);
-  console.log(`📝 配置文件: ${settingsPath}`);
+  const settingsPaths = getSettingsPaths(global);
+  
+  let successCount = 0;
 
-  const existingSettings = readSettings(settingsPath);
+  for (const settingsPath of settingsPaths) {
+    console.log(chalk.cyan(`\n🎯 检测到目标引擎配置: ${settingsPath}`));
+    const existingSettings = readSettings(settingsPath);
 
-  if (existingSettings.hooks && !force) {
-    console.log('\n⚠️  配置文件已包含 hooks 配置');
-    console.log('   使用 --force 覆盖现有配置');
-    return false;
+    if (existingSettings.hooks && !force) {
+      console.log(chalk.yellow('   ⚠️ 配置文件已包含 hooks 配置 (跳过)'));
+      continue;
+    }
+
+    const hooksConfig = generateHooksConfig(hooksPath, options);
+    const newSettings = { ...existingSettings, ...hooksConfig };
+    
+    writeSettings(settingsPath, newSettings);
+    console.log(chalk.green('   ✅ Hooks 注入成功!'));
+    successCount++;
   }
 
-  // 生成配置
-  const hooksConfig = generateHooksConfig(hooksPath, options);
-
-  // 合并配置
-  const newSettings = {
-    ...existingSettings,
-    ...hooksConfig
-  };
-
-  // 写入配置
-  writeSettings(settingsPath, newSettings);
-
-  console.log('\n✅ Hooks 安装成功!\n');
-  console.log('已安装的 Hooks:');
-  console.log('  • PreToolUse: Article 2, 4, 7 (TDD, Style, Security)');
-  console.log('  • PostToolUse: Article 5, 6, 8 (Docs, Errors, Performance)');
-  console.log('\n配置位置: ' + settingsPath);
-  console.log('\n验证安装: stdd hooks verify');
-  console.log('禁用 Hooks: stdd hooks disable');
+  if (successCount > 0) {
+    console.log(chalk.bold('\n✅ Multi-Agent Hooks 安装完成!\n'));
+    console.log('已拦截的方法集:');
+    console.log('  • PreToolUse: Article 2, 4, 7 (TDD, Style, Security)');
+    console.log('  • PostToolUse: Article 5, 6, 8 (Docs, Errors, Performance)');
+    console.log('\n验证安装: stdd hooks verify');
+  }
 
   return true;
 }
@@ -159,59 +153,56 @@ function installHooks(options) {
  */
 function verifyHooks(options) {
   const { global = false } = options;
+  console.log(chalk.bold('\n🔍 验证 STDD Hooks 安装\n'));
 
-  console.log('\n🔍 验证 STDD Hooks 安装\n');
-
-  const settingsPath = getSettingsPath(global);
-  const settings = readSettings(settingsPath);
-
+  const settingsPaths = getSettingsPaths(global);
   let allOk = true;
 
-  // 检查 PreToolUse
-  if (settings.hooks?.PreToolUse) {
-    console.log('✅ PreToolUse Hook: 已配置');
-  } else {
-    console.log('❌ PreToolUse Hook: 未配置');
-    allOk = false;
+  for (const settingsPath of settingsPaths) {
+    console.log(chalk.cyan(`\n📂 检查引擎: ${settingsPath}`));
+    const settings = readSettings(settingsPath);
+
+    if (settings.hooks?.PreToolUse) {
+      console.log(chalk.green('  ✅ PreToolUse Hook: 已配置'));
+    } else {
+      console.log(chalk.red('  ❌ PreToolUse Hook: 未配置'));
+      allOk = false;
+    }
+
+    if (settings.hooks?.PostToolUse) {
+      console.log(chalk.green('  ✅ PostToolUse Hook: 已配置'));
+    } else {
+      console.log(chalk.red('  ❌ PostToolUse Hook: 未配置'));
+      allOk = false;
+    }
   }
 
-  // 检查 PostToolUse
-  if (settings.hooks?.PostToolUse) {
-    console.log('✅ PostToolUse Hook: 已配置');
-  } else {
-    console.log('❌ PostToolUse Hook: 未配置');
-    allOk = false;
-  }
-
-  // 检查脚本文件
   const hooksPath = getSTDDHooksPath();
   if (hooksPath) {
-    const preScript = path.join(hooksPath, 'pre-file-write.js');
-    const postScript = path.join(hooksPath, 'post-file-write.js');
-
-    if (fs.existsSync(preScript)) {
-      console.log('✅ pre-file-write.js: 存在');
+    console.log(chalk.cyan('\n📜 检查脚本文件'));
+    if (fs.existsSync(path.join(hooksPath, 'pre-file-write.js'))) {
+      console.log(chalk.green('  ✅ pre-file-write.js: 存在'));
     } else {
-      console.log('❌ pre-file-write.js: 不存在');
+      console.log(chalk.red('  ❌ pre-file-write.js: 不存在'));
       allOk = false;
     }
 
-    if (fs.existsSync(postScript)) {
-      console.log('✅ post-file-write.js: 存在');
+    if (fs.existsSync(path.join(hooksPath, 'post-file-write.js'))) {
+      console.log(chalk.green('  ✅ post-file-write.js: 存在'));
     } else {
-      console.log('❌ post-file-write.js: 不存在');
+      console.log(chalk.red('  ❌ post-file-write.js: 不存在'));
       allOk = false;
     }
   } else {
-    console.log('❌ Hooks 脚本目录: 不存在');
+    console.log(chalk.red('\n❌ Hooks 脚本目录: 不存在'));
     allOk = false;
   }
 
   console.log('');
   if (allOk) {
-    console.log('✅ 所有 Hooks 验证通过!');
+    console.log(chalk.green('✅ 该环境下所有引擎Hooks验证通过!'));
   } else {
-    console.log('❌ 部分验证失败，请运行: stdd hooks install');
+    console.log(chalk.red('❌ 部分验证失败，请运行: stdd hooks install --force'));
   }
 
   return allOk;
@@ -222,36 +213,27 @@ function verifyHooks(options) {
  */
 function disableHooks(options) {
   const { global = false, article = null } = options;
+  console.log(chalk.bold('\n⏸️  禁用 STDD Hooks\n'));
 
-  console.log('\n⏸️  禁用 STDD Hooks\n');
-
-  const settingsPath = getSettingsPath(global);
-  const settings = readSettings(settingsPath);
-
-  if (!settings.hooks) {
-    console.log('⚠️  没有已配置的 Hooks');
+  const settingsPaths = getSettingsPaths(global);
+  
+  if (article) {
+    console.log(chalk.yellow('⚠️ 部分禁用暂不支持，建议设置环境变量: STDD_HOOKS_DISABLED=1'));
     return true;
   }
 
-  if (article) {
-    // 禁用特定条例
-    console.log(`禁用 Article ${article} 检查...`);
-    // 实际实现需要修改 hook 脚本逻辑
-    console.log('⚠️  部分禁用暂不支持，建议设置环境变量:');
-    console.log(`   STDD_HOOKS_DISABLED=1`);
-  } else {
-    // 完全禁用
+  for (const settingsPath of settingsPaths) {
+    const settings = readSettings(settingsPath);
+    if (!settings.hooks) continue;
+
     const backupPath = settingsPath + '.backup';
     fs.copyFileSync(settingsPath, backupPath);
-    console.log(`📦 备份配置到: ${backupPath}`);
+    console.log(chalk.green(`📦 [备份] ${backupPath}`));
 
     delete settings.hooks;
     writeSettings(settingsPath, settings);
-
-    console.log('✅ Hooks 已禁用');
-    console.log('\n恢复: mv ' + backupPath + ' ' + settingsPath);
+    console.log(chalk.green(`✅ [禁用] ${settingsPath}`));
   }
-
   return true;
 }
 
@@ -260,22 +242,20 @@ function disableHooks(options) {
  */
 function enableHooks(options) {
   const { global = false } = options;
+  console.log(chalk.bold('\n▶️  启用 STDD Hooks\n'));
 
-  console.log('\n▶️  启用 STDD Hooks\n');
-
-  // 检查备份
-  const settingsPath = getSettingsPath(global);
-  const backupPath = settingsPath + '.backup';
-
-  if (fs.existsSync(backupPath)) {
-    fs.copyFileSync(backupPath, settingsPath);
-    fs.unlinkSync(backupPath);
-    console.log('✅ 从备份恢复成功');
-  } else {
-    // 重新安装
-    return installHooks({ ...options, force: true });
+  const settingsPaths = getSettingsPaths(global);
+  
+  for (const settingsPath of settingsPaths) {
+    const backupPath = settingsPath + '.backup';
+    if (fs.existsSync(backupPath)) {
+      fs.copyFileSync(backupPath, settingsPath);
+      fs.unlinkSync(backupPath);
+      console.log(chalk.green(`✅ [恢复] ${settingsPath}`));
+    } else {
+      installHooks({ ...options, force: true });
+    }
   }
-
   return true;
 }
 
@@ -284,44 +264,20 @@ function enableHooks(options) {
  */
 function statusHooks(options) {
   const { global = false } = options;
+  console.log(chalk.bold('\n📊 STDD Hooks 状态\n'));
 
-  console.log('\n📊 STDD Hooks 状态\n');
+  const settingsPaths = getSettingsPaths(global);
+  
+  for (const settingsPath of settingsPaths) {
+    console.log(chalk.cyan(`\n🔧 引擎配置: ${settingsPath}`));
+    const settings = readSettings(settingsPath);
 
-  const settingsPath = getSettingsPath(global);
-  const settings = readSettings(settingsPath);
-
-  console.log(`配置文件: ${settingsPath}`);
-  console.log('');
-
-  if (settings.hooks) {
-    console.log('Hooks 配置:');
-
-    if (settings.hooks.PreToolUse) {
-      console.log('  PreToolUse:');
-      settings.hooks.PreToolUse.forEach(hook => {
-        console.log(`    • Matcher: ${hook.matcher}`);
-        hook.hooks.forEach(h => {
-          console.log(`      Command: ${h.command}`);
-        });
-      });
+    if (settings.hooks) {
+      console.log(chalk.green('  状态: ✅ 已启用'));
+    } else {
+      console.log(chalk.yellow('  状态: ⏸️  未配置'));
     }
-
-    if (settings.hooks.PostToolUse) {
-      console.log('  PostToolUse:');
-      settings.hooks.PostToolUse.forEach(hook => {
-        console.log(`    • Matcher: ${hook.matcher}`);
-        hook.hooks.forEach(h => {
-          console.log(`      Command: ${h.command}`);
-        });
-      });
-    }
-
-    console.log('\n状态: ✅ 已启用');
-  } else {
-    console.log('状态: ⏸️  未配置');
-    console.log('\n运行: stdd hooks install');
   }
-
   return true;
 }
 
@@ -330,49 +286,32 @@ function statusHooks(options) {
  */
 module.exports = function(program) {
   const hooks = program.command('hooks')
-    .description('管理 STDD Hook 系统');
+    .description('管理 STDD Hook 系统 (多引擎适配版)');
 
-  // 安装
   hooks.command('install')
-    .description('安装 STDD Hooks')
+    .description('自动嗅探并安装 STDD Hooks 到所有活跃引擎')
     .option('-g, --global', '安装到全局配置')
     .option('-f, --force', '强制覆盖现有配置')
-    .option('--articles <list>', '指定要启用的条例 (逗号分隔)')
-    .action((options) => {
-      installHooks(options);
-    });
+    .action((options) => installHooks(options));
 
-  // 验证
   hooks.command('verify')
-    .description('验证 Hooks 安装')
+    .description('验证各个引擎内的 Hooks 安装')
     .option('-g, --global', '验证全局配置')
-    .action((options) => {
-      const result = verifyHooks(options);
-      process.exit(result ? 0 : 1);
-    });
+    .action((options) => { process.exit(verifyHooks(options) ? 0 : 1); });
 
-  // 禁用
   hooks.command('disable')
-    .description('禁用 Hooks')
+    .description('禁用选定范围内的 Hooks')
     .option('-g, --global', '禁用全局配置')
     .option('--article <n>', '禁用特定条例')
-    .action((options) => {
-      disableHooks(options);
-    });
+    .action((options) => disableHooks(options));
 
-  // 启用
   hooks.command('enable')
-    .description('启用 Hooks')
+    .description('恢复并启用 Hooks')
     .option('-g, --global', '启用全局配置')
-    .action((options) => {
-      enableHooks(options);
-    });
+    .action((options) => enableHooks(options));
 
-  // 状态
   hooks.command('status')
-    .description('显示 Hooks 状态')
+    .description('显示所有支持引擎的 Hooks 状态')
     .option('-g, --global', '显示全局状态')
-    .action((options) => {
-      statusHooks(options);
-    });
+    .action((options) => statusHooks(options));
 };
