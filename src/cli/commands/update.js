@@ -5,6 +5,7 @@
 
 const fs = require('fs').promises;
 const path = require('path');
+const { getPackageRoot } = require('../../utils/path-resolver');
 const chalk = require('chalk');
 
 class UpdateCommand {
@@ -42,7 +43,7 @@ class UpdateCommand {
 
   
   async updateClaudeCommands(targetPath, force) {
-    const sourceDir = path.join(__dirname, '..', '..', '..', '.claude', 'commands', 'stdd');
+    const sourceDir = path.join(getPackageRoot(), '.claude', 'commands', 'stdd');
     const supportedAgents = [
       ".claude",
       ".qwen",
@@ -79,7 +80,7 @@ class UpdateCommand {
   }
 
   async updateSchemas(targetPath, force) {
-    const sourceSchema = path.join(__dirname, '..', '..', '..', 'schemas');
+    const sourceSchema = path.join(getPackageRoot(), 'schemas');
     const targetSchema = path.join(targetPath, 'schemas');
 
     if (!await this.exists(sourceSchema)) {

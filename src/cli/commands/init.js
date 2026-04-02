@@ -5,6 +5,7 @@
 
 const fs = require('fs').promises;
 const path = require('path');
+const { getPackageRoot } = require('../../utils/path-resolver');
 const chalk = require('chalk');
 
 // Template files
@@ -223,7 +224,7 @@ class InitCommand {
   
   
   async copySkills(targetPath, selectedAgents) {
-    const sourceDir = path.join(__dirname, '..', '..', '..', '.claude', 'skills');
+    const sourceDir = path.join(getPackageRoot(), '.claude', 'skills');
     
     // Copy the entire skills directory recursively
     for (const agent of selectedAgents) {
@@ -236,7 +237,7 @@ class InitCommand {
   }
 
   async copyClaudeCommands(targetPath, selectedAgents) {
-    const sourceDir = path.join(__dirname, '..', '..', '..', '.claude', 'commands', 'stdd');
+    const sourceDir = path.join(getPackageRoot(), '.claude', 'commands', 'stdd');
 
     for (const agent of selectedAgents) {
       const targetDir = path.join(targetPath, agent, 'commands', 'stdd');
@@ -258,7 +259,7 @@ class InitCommand {
   }
 
   async copySchemas(targetPath) {
-    const sourceSchema = path.join(__dirname, '..', '..', '..', 'schemas');
+    const sourceSchema = path.join(getPackageRoot(), 'schemas');
     const targetSchema = path.join(targetPath, 'schemas');
 
     if (await this.exists(sourceSchema)) {

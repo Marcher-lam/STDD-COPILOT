@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getPackageRoot } = require('../../utils/path-resolver');
 const os = require('os');
 const chalk = require('chalk');
 
@@ -62,7 +63,7 @@ function writeSettings(settingsPath, settings) {
  */
 function getSTDDHooksPath() {
   const possiblePaths = [
-    path.join(__dirname, '..', '..', '..', '.claude', 'hooks'), // 源码目录
+    path.join(getPackageRoot(), '.claude', 'hooks'), // 源码目录
     path.join(process.cwd(), '.claude', 'hooks'),               // 项目目录兼容
     path.join(os.homedir(), 'stdd-copilot', '.claude', 'hooks') // 全局链接兼容
   ];
