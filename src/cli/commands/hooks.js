@@ -22,14 +22,17 @@ function getSettingsPaths(global = false) {
     const items = fs.readdirSync(baseDir);
     const activeAgents = ALL_SUPPORTED_AGENTS.filter(agent => items.includes(agent));
     
-    // 如果没有任何引擎，默认回退给 .claude
+    // 如果没有任何引擎，fallback到配置中选中的主要配置
     if (activeAgents.length === 0) {
-      return [path.join(baseDir, '.claude', 'settings.json')];
+      const defaultEngine = enginesConfig.engines.find(e => e.checked) || enginesConfig.engines[0];
+    return [path.join(baseDir, defaultEngine.value, 'settings.json')];
     }
     
     return activeAgents.map(agent => path.join(baseDir, agent, 'settings.json'));
   } catch(e) {
-    return [path.join(baseDir, '.claude', 'settings.json')];
+    const enginesConfig = require('../../config/engines.json');
+      const defaultEngine = enginesConfig.engines.find(e => e.checked) || enginesConfig.engines[0];
+      return [path.join(baseDir, defaultEngine.value, 'settings.json')];
   }
 }
 
@@ -63,9 +66,9 @@ function writeSettings(settingsPath, settings) {
  */
 function getSTDDHooksPath() {
   const possiblePaths = [
-    path.join(getPackageRoot(), '.claude', 'hooks'), // 源码目录
-    path.join(process.cwd(), '.claude', 'hooks'),               // 项目目录兼容
-    path.join(os.homedir(), 'stdd-copilot', '.claude', 'hooks') // 全局链接兼容
+    ...enginesConfig.engines.map(e => path.join(getPackageRoot(), e.value, 'hooks')), // 源码目录
+    ...enginesConfig.engines.map(e => path.join(process.cwd(), e.value, 'hooks')),               // 项目目录兼容
+    ...enginesConfig.engines.map(e => path.join(os.homedir(), 'stdd-copilot', e.value, 'hooks')) // 全局链接兼容
   ];
 
   for (const p of possiblePaths) {

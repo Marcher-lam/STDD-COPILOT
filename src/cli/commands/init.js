@@ -96,7 +96,7 @@ const GITIGNORE_ENTRIES = `
 # STDD Copilot
 stdd/graph/cache/
 stdd/memory/*.bin
-.claude/tdd-guard/
+${agent}/tdd-guard/
 `;
 
 class InitCommand {
@@ -109,7 +109,7 @@ class InitCommand {
     
     // Check if already initialized
     const stddDir = path.join(targetPath, 'stdd');
-    const claudeDir = path.join(targetPath, '.claude');
+    // Dynamic agent dirs
 
     // Check if already initialized
     const stddExists = await this.exists(stddDir);
@@ -121,7 +121,7 @@ class InitCommand {
     const enginesConfig = require('../../config/engines.json');
     const SUPPORTED_AGENTS = enginesConfig.engines;
 
-    let selectedAgents = ['.claude']; // Default
+    let selectedAgents = enginesConfig.engines.filter(e => e.checked).map(e => e.value);
 
     // In interactive mode, prompt user for extensions
     if (this.spinner) {
@@ -157,7 +157,7 @@ class InitCommand {
     this.spinner.text = 'Creating config.yaml...';
     await this.createConfigYaml(targetPath);
 
-    // Copy .claude commands
+    // Copy Engine commands
     this.spinner.text = 'Copying Claude commands...';
     await this.copyClaudeCommands(targetPath, selectedAgents);
 
@@ -224,7 +224,7 @@ class InitCommand {
   
   
   async copySkills(targetPath, selectedAgents) {
-    const sourceDir = path.join(getPackageRoot(), '.claude', 'skills');
+    const sourceDir = path.join(getPackageRoot(), enginesConfig.engines.find(e => e.checked)?.value || enginesConfig.engines[0].value, 'skills');
     
     // Copy the entire skills directory recursively
     for (const agent of selectedAgents) {
@@ -237,7 +237,8 @@ class InitCommand {
   }
 
   async copyClaudeCommands(targetPath, selectedAgents) {
-    const sourceDir = path.join(getPackageRoot(), '.claude', 'commands', 'stdd');
+    const defaultEngine = enginesConfig.engines.find(e => e.checked) || enginesConfig.engines[0];
+    const sourceDir = path.join(getPackageRoot(), defaultEngine.value, 'commands', 'stdd');
 
     for (const agent of selectedAgents) {
       const targetDir = path.join(targetPath, agent, 'commands', 'stdd');

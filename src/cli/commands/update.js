@@ -21,9 +21,9 @@ class UpdateCommand {
       throw new Error('STDD not initialized. Run `stdd init` first.');
     }
 
-    // Update .claude commands
-    this.spinner.text = 'Updating Claude commands...';
-    await this.updateClaudeCommands(targetPath, options.force);
+    const enginesConfig = require('../../config/engines.json');
+    this.spinner.text = 'Updating Engine commands...';
+    await this.updateEngineCommands(targetPath, options.force, enginesConfig.engines);
 
     // Update schemas if needed
     this.spinner.text = 'Updating schemas...';
@@ -42,24 +42,18 @@ class UpdateCommand {
   }
 
   
-  async updateClaudeCommands(targetPath, force) {
-    const sourceDir = path.join(getPackageRoot(), '.claude', 'commands', 'stdd');
-    const supportedAgents = [
-      ".claude",
-      ".qwen",
-      ".cursor",
-      ".codex",
-      ".kiro",
-      ".codebuddy",
-      ".vscode",
-      ".openclaw",
-      ".antigravity",
-      ".opencode"
-];
-
-    for (const agent of selectedAgents) {
-      const targetDir = path.join(targetPath, agent, 'commands', 'stdd');
-      await this.updateDirContents(sourceDir, targetDir, force);
+  async updateEngineCommands(targetPath, force, engines) {
+    const defaultEngine = engines.find(e => e.checked) || engines[0];
+    const sourceDir = path.join(getPackageRoot(), defaultEngine.value, 'commands', 'stdd');
+    
+    for (const engine of engines) {
+      const agentDir = path.join(targetPath, engine.value);
+      try {
+        await fs.access(agentDir);
+        // Exists! Update commands
+        const targetDir = path.join(agentDir, 'commands', 'stdd');
+        await this.updateDirContents(sourceDir, targetDir, force);
+      } catch (e) {}
     }
   }
 
