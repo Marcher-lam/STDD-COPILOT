@@ -7,8 +7,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org/)
 [![npm](https://img.shields.io/npm/v/@marcher-lam/stdd-copilot)](https://www.npmjs.com/package/@marcher-lam/stdd-copilot)
-[![Tests](https://img.shields.io/badge/tests-4158%2F4158%20passing-brightgreen.svg)](CONTRIBUTING.md)
-[![Coverage](https://img.shields.io/badge/coverage-97%25%20stmts%20%7C%2093%25%20branch-brightgreen.svg)](CONTRIBUTING.md)
+[![Tests](https://img.shields.io/badge/tests-4172%2F4172%20passing-brightgreen.svg)](CONTRIBUTING.md)
+[![Coverage](https://img.shields.io/badge/coverage-85.6%25%20stmts%20%7C%2079.37%25%20branch-green.svg)](CONTRIBUTING.md)
 
 [简体中文](./README.md) · [English](./README_EN.md)
 
@@ -45,9 +45,9 @@
 | CLI Commands | 75 |
 | Command Templates | 80 (`/stdd:*` slash commands) |
 | Skill Templates | 47 |
-| Test Suites | **191** suites, **4,158** tests, 100% passing |
-| Statement Coverage | **97.7%** |
-| Branch Coverage | **93.2%** |
+| Test Suites | **192** suites, **4,172** tests, 100% passing |
+| Statement Coverage | **85.6%** |
+| Branch Coverage | **79.37%** |
 | Supported AI Engines | 24 (Claude Code, Cursor, Windsurf, etc. across 4 tiers) |
 | Code Generation Targets | TypeScript/JS, Python, Java, Go, Rust, C#, PHP |
 
@@ -422,7 +422,7 @@ stdd-copilot/
 │   ├── memory/                     # Project memory store
 │   ├── config/                     # Additional config (engines.yaml, etc.)
 │   └── reporters/                  # Test reporter plugins
-├── __tests__/                      # 191 suites / 4,158 tests
+├── __tests__/                      # 192 suites / 4,172 tests
 ├── docs/                           # Documentation
 │   ├── agent-protocol.md           # AI Agent behavior protocol
 │   ├── cli-guide.md                # Full CLI reference
@@ -483,7 +483,7 @@ See [INSTALL.md](./INSTALL.md) for details.
 ### Development & Testing
 
 ```bash
-npm test                # Run 191 suites / 4,158 tests
+npm test                # Run 192 suites / 4,172 tests
 npm run lint            # ESLint check
 npm run premerge        # Full pre-merge check (audit + lint + docs + coverage)
 npm run test:coverage   # Run with coverage report

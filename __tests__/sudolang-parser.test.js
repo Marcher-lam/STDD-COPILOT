@@ -23,8 +23,22 @@ describe('SudoLangParser', () => {
   });
 
   describe('parse', () => {
-    it('throws when file does not exist', () => {
-      expect(() => parser.parse('/nonexistent/file.sudo')).toThrow('File not found');
+    it('throws when cwd-local file does not exist', () => {
+      expect(() => parser.parse('missing.sudo')).toThrow('File not found');
+    });
+
+    it('rejects absolute paths outside cwd', () => {
+      const outside = path.join(os.tmpdir(), 'outside.sudo');
+      fs.writeFileSync(outside, 'goal: outside\n  nope', 'utf8');
+      try {
+        expect(() => parser.parse(outside)).toThrow('Unsafe SudoLang source path');
+      } finally {
+        fs.rmSync(outside, { force: true });
+      }
+    });
+
+    it('rejects traversal paths outside cwd', () => {
+      expect(() => parser.parse('../outside.sudo')).toThrow('Unsafe SudoLang source path');
     });
 
     it('parses a single interface', () => {

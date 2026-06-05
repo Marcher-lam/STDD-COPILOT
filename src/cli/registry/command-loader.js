@@ -15,6 +15,7 @@ class CommandLoader {
     this.commandFactories = context.commandFactories || {};
     this.createSpinner = context.createSpinner || null;
     this.skipNames = context.skipNames || [];
+    this.strictFactories = Boolean(context.strictFactories);
     this.commands = new Map();
   }
 
@@ -31,7 +32,12 @@ class CommandLoader {
   _wireAction(cmd, def) {
     const className = def.action;
     const Factory = className ? this.commandFactories[className] : null;
-    if (!Factory) return;
+    if (!Factory) {
+      if (this.strictFactories) {
+        throw new Error(`Missing command factory for action: ${className}`);
+      }
+      return;
+    }
 
     const spinnerText = def.spinner || null;
     const successText = def.success || null;
@@ -96,18 +102,23 @@ class CommandLoader {
     if (subDef.action) {
       const [factoryName, actionMethod] = String(subDef.action).split('.');
       const Factory = this.commandFactories[factoryName];
-      if (Factory) {
-        sub.action(async (...actionArgs) => {
-          try {
-            const instance = new Factory();
-            const method = subDef.method || actionMethod || 'execute';
-            await instance[method](...actionArgs);
-          } catch (error) {
-            console.error(chalk.red(error.message));
-            process.exitCode = 1;
-          }
-        });
+      if (!Factory) {
+        if (this.strictFactories) {
+          throw new Error(`Missing command factory for action: ${factoryName}`);
+        }
+        return;
       }
+
+      sub.action(async (...actionArgs) => {
+        try {
+          const instance = new Factory();
+          const method = subDef.method || actionMethod || 'execute';
+          await instance[method](...actionArgs);
+        } catch (error) {
+          console.error(chalk.red(error.message));
+          process.exitCode = 1;
+        }
+      });
     }
   }
 

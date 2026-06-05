@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { ensureInsideDir } = require('../utils/change-utils');
 
 class SudoLangParser {
   constructor(cwd = process.cwd()) {
@@ -13,8 +14,10 @@ class SudoLangParser {
   }
 
   parse(filePath) {
-    if (!fs.existsSync(filePath)) throw new Error(`File not found: ${filePath}`);
-    const content = fs.readFileSync(filePath, 'utf8');
+    const resolvedPath = path.resolve(this.cwd, filePath);
+    ensureInsideDir(this.cwd, resolvedPath, 'SudoLang source path');
+    if (!fs.existsSync(resolvedPath)) throw new Error(`File not found: ${resolvedPath}`);
+    const content = fs.readFileSync(resolvedPath, 'utf8');
     const lines = content.split('\n');
 
     const result = { interfaces: [], constraints: [], commands: [], goals: [], raw: [] };

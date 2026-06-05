@@ -19,30 +19,28 @@ beforeEach(() => mkdirp(TMP));
 afterEach(() => fs.rmSync(TMP, { recursive: true, force: true }));
 
 describe('BrainstormCommand', () => {
-  const { BrainstormCommand } = require('../src/cli/commands/brainstorm');
-  it('execute text', async () => {
+  const { BrainstormCommand, normalizeTopic } = require('../src/cli/commands/brainstorm');
+  it('delegates string topics to elicitation output', async () => {
     const c = cap();
     try { await new BrainstormCommand().execute('user auth', {}); } finally { c.r(); }
-    expect(c.l.join('\n')).toContain('auth');
+    expect(c.l.join('\n')).toContain('user auth');
   });
-  it('execute json', async () => {
+  it('delegates array topics to elicitation output', async () => {
     const c = cap();
-    try { await new BrainstormCommand().execute('search', { format: 'json' }); } finally { c.r(); }
-    expect(JSON.parse(c.l.join('\n')).topic).toBe('search');
+    try { await new BrainstormCommand().execute(['search', 'ranking'], {}); } finally { c.r(); }
+    expect(c.l.join('\n')).toContain('search ranking');
   });
-  it('throws no topic', async () => {
+  it('throws no topic unless listing methods', async () => {
     await expect(new BrainstormCommand().execute('', {})).rejects.toThrow('Topic');
   });
-  it('custom angles', async () => {
+  it('allows list mode without topic', async () => {
     const c = cap();
-    try { await new BrainstormCommand().execute('test', { angles: 'technical,user' }); } finally { c.r(); }
+    try { await new BrainstormCommand().execute('', { list: true }); } finally { c.r(); }
+    expect(c.l.join('\n')).toContain('Available Elicitation Methods');
   });
-  it('custom solutions', async () => {
-    const c = cap();
-    try { await new BrainstormCommand().execute('test', { solutions: '5' }); } finally { c.r(); }
-  });
-  it('unknown angle ignored', () => {
-    expect(Object.keys(new BrainstormCommand().analyzeFromAngles('x', ['zzz']))).toHaveLength(0);
+  it('normalizes topic values', () => {
+    expect(normalizeTopic(['a', 'b'])).toBe('a b');
+    expect(normalizeTopic('  x  ')).toBe('x');
   });
 });
 

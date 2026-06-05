@@ -27,6 +27,11 @@ const {
   ProposeCommand, ClarifyCommand, ConfirmCommand, PlanCommand,
   ExecuteCommand, FinalDocCommand, CommitTddCommand,
 } = require('../commands/index');
+const { BrowserCommand } = require('../commands/browser');
+const { SpecGenerator } = require('../commands/spec-generator');
+const { ApiSpecCommand } = require('../commands/api-spec');
+const { MemoryScanner } = require('../commands/memory-scan');
+const { TddInitCommand } = require('../commands/tdd-init');
 
 function buildCommandFactories() {
   return {
@@ -51,6 +56,14 @@ function buildCommandFactories() {
     ProposeCommand, ClarifyCommand, ConfirmCommand, PlanCommand,
     ExecuteCommand, FinalDocCommand, CommitTddCommand,
     AgentEngine, SudoLangParser, SudoExecutor, createAgentExecutor,
+    RuntimeAgentCommand: AgentEngine,
+    RuntimeSudoCommand: SudoLangParser,
+    SudoExecutorCommand: SudoExecutor,
+    BrowserCommand,
+    SpecGenerator,
+    ApiSpecCommand,
+    MemoryCommand: MemoryScanner,
+    TddInitCommand,
   };
 }
 

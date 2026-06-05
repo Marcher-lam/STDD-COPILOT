@@ -6,8 +6,11 @@
  * Enforced Constitution Articles:
  * - Article 5: Documentation
  * - Article 6: Error Handling
+ * - Article 7: Security
  * - Article 8: Performance
  */
+
+const { detectSecrets, redactSensitiveInfo } = require('../../utils/security');
 
 async function analyzeCode(data) {
   const { tool_input, tool_name } = data;
@@ -38,6 +41,17 @@ async function analyzeCode(data) {
       level: 'warning',
       message: 'Empty catch block detected',
       suggestion: 'Handle the error or add a comment explaining why it is ignored'
+    });
+  }
+
+  // Article 7: Security
+  const secrets = detectSecrets(content);
+  for (const secret of secrets) {
+    suggestions.push({
+      article: 7,
+      level: 'warning',
+      message: `Potential hardcoded ${secret.name} detected on line ${secret.line}`,
+      suggestion: 'Move secrets to environment variables or a secure secrets manager'
     });
   }
 
@@ -146,7 +160,7 @@ if (require.main === module) {
 
       process.exit(0);
     } catch (error) {
-      console.error('STDD Hook error:', error.message);
+      console.error('STDD Hook error:', redactSensitiveInfo(error.message));
       process.exit(0);
     }
   });

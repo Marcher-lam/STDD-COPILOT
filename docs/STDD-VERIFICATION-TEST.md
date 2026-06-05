@@ -1,6 +1,6 @@
 # STDD Copilot 全命令验证文档
 
-> **项目**: STDD Copilot CLI v1.0.5
+> **项目**: STDD Copilot CLI v1.0.7
 > **验证日期**: 2026-05-23
 > **覆盖范围**: 75 个 CLI 命令 + 80 个 Command 模板 + 47 个 Skill 模板 (全部审查完成 ✅)
 > **质量基线**: `npm run premerge` (audit + zero-warning lint + docs + coverage)
@@ -8,6 +8,8 @@
 ---
 
 ## 质量基线
+
+以下数据为验证日期的测试快照；当前数值请以 `npm test` 和 `npm run test:coverage` 的实际输出为准。
 
 | 指标 | 数值 |
 |------|------|
@@ -869,7 +871,7 @@ T42-T44  → 进度追踪与辅助工具
 
 ---
 
-> **STDD Copilot v1.0.5**
+> **STDD Copilot v1.0.7**
 > - 75 个 CLI 命令 ✅
 > - 80 个 Command 模板 ✅
 > - 47 个 Skill 模板 ✅

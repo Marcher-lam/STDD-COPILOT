@@ -107,7 +107,7 @@ describe('CommandLoader registerSubcommand', () => {
     }
   });
 
-  test('skips wiring when factory not found', () => {
+  test('skips wiring when factory not found in compatible mode', () => {
     const program = createProgram();
     const loader = new CommandLoader(program, { commandFactories: {} });
     const parent = program.command('parent').description('Parent');
@@ -117,6 +117,17 @@ describe('CommandLoader registerSubcommand', () => {
       description: 'Child',
       action: 'NonExistent.method',
     });
+  });
+
+  test('throws when factory not found in strict mode', () => {
+    const program = createProgram();
+    const loader = new CommandLoader(program, { commandFactories: {}, strictFactories: true });
+    const parent = program.command('parent').description('Parent');
+    expect(() => loader.registerSubcommand(parent, {
+      name: 'child',
+      description: 'Child',
+      action: 'NonExistent.method',
+    })).toThrow('Missing command factory for action: NonExistent');
   });
 
   test('registers subcommand with options', () => {

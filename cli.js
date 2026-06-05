@@ -14,6 +14,7 @@ const chalk = require('chalk');
 const path = require('path');
 const fs = require('fs');
 const { CommandLoader } = require('./src/cli/registry/command-loader');
+const { buildCommandFactories } = require('./src/cli/helpers/command-factories');
 
 // ─── Command imports ───
 const {
@@ -81,57 +82,12 @@ For Claude Code slash commands: stdd commands
 `);
 
 // ─── Command factories for dynamic loader ───
-const commandFactories = {
-  InitCommand, UpdateCommand, ListCommand, NewCommand, StatusCommand,
-  ApplyCommand, VerifyCommand, ArchiveCommand, FFCommand, TurboCommand,
-  MetricsCommand, GuardCommand, ExploreCommand, StartersCommand,
-  ContinueCommand, IssueCommand, CommitCommand, ContextCommand,
-  CiGeneratorCommand, AuditCommand, WorkspaceCommand, DepcheckCommand,
-  SchemaCommand, ContractCommand, MockGenCommand, ValidateCommand,
-  LearnCommand, RolesCommand, ExtensionsCommand, StoryCommand,
-  UserTestCommand, PipelineCommand, FixPacketCommand, OutsideInCommand,
-  MutationCommand,
-  ElicitationCommand,
-  BabyStepsCommand,
-  SudoExecutorCommand: SudoExecutor,
-  BrowserCommand,
-  RuntimeAgentCommand: AgentEngine,
-  RuntimeSudoCommand: SudoLangParser,
-  SpecGenerator,
-  ApiSpecCommand,
-  MemoryCommand: MemoryScanner,
-  GraphHistoryCommand,
-  GraphRunCommand,
-  WaiverManagerCommand,
-  TddInitCommand,
-  SkillsCommand,
-  CommandsCommand,
-  ProductProposalCommand,
-  // New CLI commands for previously Skill-only features
-  VisionCommand,
-  PrpCommand,
-  DesignCommand,
-  CertaintyCommand,
-  ComplexityCommand,
-  FactoryCommand,
-  MockCommand,
-  IterateCommand,
-  HelpCommand,
-  ParallelCommand,
-  SupervisorCommand,
-  // Skill-based workflow commands
-  ProposeCommand,
-  ClarifyCommand,
-  ConfirmCommand,
-  PlanCommand,
-  ExecuteCommand,
-  FinalDocCommand,
-  CommitTddCommand,
-};
+const commandFactories = buildCommandFactories();
 
 const loader = new CommandLoader(program, {
   commandFactories,
   createSpinner,
+  strictFactories: true,
   skipNames: ['constitution [action] [target]', 'hooks', 'graph', 'runtime', 'recommend', 'doctor', 'start', 'memory <action> [args...]', 'baby-steps [task]', 'sudo run [file]', 'list', 'status [change]', 'progress', 'vision [action]', 'prp [action]', 'design [action]', 'certainty [action]', 'complexity [action]', 'factory [action]', 'iterate [action]', 'help [topic]', 'parallel [action]', 'supervisor [action]', 'memory-scan [action]', 'graph-history [action] [id]'],
 });
 loader.registerAll();

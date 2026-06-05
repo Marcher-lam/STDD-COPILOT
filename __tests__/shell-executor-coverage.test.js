@@ -73,6 +73,8 @@ describe('ShellAgentExecutor coverage boost', () => {
         const lines = fs.readFileSync(auditFile, 'utf8').trim().split('\n');
         const last = JSON.parse(lines[lines.length - 1]);
         expect(last.status).toBe('blocked');
+        expect(last.argsHash).toMatch(/^[a-f0-9]{16}$/);
+        expect(last.argsHash).not.toContain('-rf');
       }
     });
   });
@@ -84,6 +86,23 @@ describe('ShellAgentExecutor coverage boost', () => {
       expect(result.status).toBe('success');
       expect(result.adapter).toBe('shell');
       expect(result.exitCode).toBe(0);
+    });
+
+    it('redacts sensitive output and audit fields', async () => {
+      const secret = 'abcdefghijklmnopqrstuvwxyz123456';
+      const exec = new ShellAgentExecutor({ cwd: TMP, command: `node -e "process.stdout.write('token=\\\"${secret}\\\"')"` });
+      const result = await exec.run({ goal: `ship token=\"${secret}\"` });
+      expect(result.command).not.toContain(secret);
+      expect(result.stdout).not.toContain(secret);
+      expect(result.output).not.toContain(secret);
+      expect(result.output).toContain('*** REDACTED ***');
+
+      const auditFile = path.join(TMP, 'stdd', 'logs', 'shell-executor-audit.jsonl');
+      const lines = fs.readFileSync(auditFile, 'utf8').trim().split('\n');
+      const last = JSON.parse(lines[lines.length - 1]);
+      expect(last.argsHash).toMatch(/^[a-f0-9]{16}$/);
+      expect(last.goal).not.toContain(secret);
+      expect(last.goal).toContain('*** REDACTED ***');
     });
   });
 

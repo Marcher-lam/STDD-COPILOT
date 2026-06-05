@@ -1,6 +1,7 @@
 const { Command } = require('commander');
 const { CommandLoader } = require('../src/cli/registry/command-loader');
 const { commandRegistry } = require('../src/cli/registry/command-registry');
+const { buildCommandFactories } = require('../src/cli/helpers/command-factories');
 
 describe('CommandLoader', () => {
   function createProgram() {
@@ -22,7 +23,13 @@ describe('CommandLoader', () => {
         skipNames: ['foo'],
       });
       expect(loader.skipNames).toContain('foo');
+      expect(loader.strictFactories).toBe(false);
       expect(loader.commands).toBeInstanceOf(Map);
+    });
+
+    test('supports strict factory validation mode', () => {
+      const loader = new CommandLoader(createProgram(), { strictFactories: true });
+      expect(loader.strictFactories).toBe(true);
     });
 
     test('uses defaults when context is empty', () => {
@@ -184,11 +191,19 @@ describe('CommandLoader', () => {
       }
     });
 
-    test('skips wiring when factory is not found', () => {
+    test('skips wiring when factory is not found in compatible mode', () => {
       const program = new Command();
       const loader = new CommandLoader(program, { commandFactories: {} });
       const cmd = program.command('test');
       loader._wireAction(cmd, { action: 'NonExistent' });
+    });
+
+    test('throws when factory is not found in strict mode', () => {
+      const program = new Command();
+      const loader = new CommandLoader(program, { commandFactories: {}, strictFactories: true });
+      const cmd = program.command('test');
+      expect(() => loader._wireAction(cmd, { action: 'NonExistent' }))
+        .toThrow('Missing command factory for action: NonExistent');
     });
 
     test('successText function is not called when spinner is null', async () => {
@@ -289,8 +304,49 @@ describe('commandRegistry', () => {
   });
 
   test('entries with action reference a known factory', () => {
-    const actions = new Set(commandRegistry.filter(c => c.action).map(c => c.action));
-    expect(actions.size).toBeGreaterThan(0);
+    const factories = buildCommandFactories();
+    const skipped = new Set([
+      'constitution [action] [target]',
+      'hooks',
+      'graph',
+      'runtime',
+      'recommend',
+      'doctor',
+      'start',
+      'memory <action> [args...]',
+      'baby-steps [task]',
+      'sudo run [file]',
+      'list',
+      'status [change]',
+      'progress',
+      'vision [action]',
+      'prp [action]',
+      'design [action]',
+      'certainty [action]',
+      'complexity [action]',
+      'factory [action]',
+      'iterate [action]',
+      'help [topic]',
+      'parallel [action]',
+      'supervisor [action]',
+      'memory-scan [action]',
+      'graph-history [action] [id]',
+    ]);
+    const actions = [];
+
+    for (const cmd of commandRegistry) {
+      if (skipped.has(cmd.name)) continue;
+      if (cmd.action) actions.push(cmd.action);
+      for (const sub of cmd.subcommands || []) {
+        if (sub.action) actions.push(sub.action);
+      }
+    }
+
+    expect(actions.length).toBeGreaterThan(0);
+    for (const action of actions) {
+      const factoryName = String(action).split('.')[0];
+      expect(factories[factoryName]).toBeDefined();
+    }
   });
 
   test('entries with subcommands have valid structure', () => {

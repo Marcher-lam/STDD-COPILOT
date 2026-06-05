@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { AgentExecutor } = require('./executor-interface');
 const { parseCommand: sharedParseCommand } = require('../../utils/parse-command');
+const { hashSensitiveData, redactSensitiveInfo } = require('../../utils/security');
 
 const DEFAULT_ALLOWED_BINS = new Set(['node', process.execPath]);
 
@@ -19,6 +20,16 @@ function basename(value) {
 
 function parseCommand(command) {
   return sharedParseCommand(command, 'Shell agent command');
+}
+
+function hashArgs(args) {
+  return hashSensitiveData((args || []).join('\0'));
+}
+
+function redact(value, maxLength = null) {
+  const normalized = String(value || '').replace(/\\(["'])/g, '$1');
+  const redacted = redactSensitiveInfo(normalized);
+  return maxLength ? redacted.slice(0, maxLength) : redacted;
 }
 
 class ShellAgentExecutor extends AgentExecutor {
@@ -70,13 +81,13 @@ class ShellAgentExecutor extends AgentExecutor {
       this._writeAudit({
         ts: new Date().toISOString(),
         bin: parsed.bin,
-        argsHash: parsed.args.join(' ').slice(0, 200),
+        argsHash: hashArgs(parsed.args),
         cwd: this.cwd,
         allowUnsafe: this.allowUnsafe,
         allowlisted: false,
         status: 'blocked',
         role: request.role,
-        goal: String(request.goal || '').slice(0, 256),
+        goal: redact(request.goal, 256),
       });
       throw err;
     }
@@ -95,15 +106,15 @@ class ShellAgentExecutor extends AgentExecutor {
       this._writeAudit({
         ts: new Date().toISOString(),
         bin: parsed.bin,
-        argsHash: parsed.args.join(' ').slice(0, 200),
+        argsHash: hashArgs(parsed.args),
         cwd: this.cwd,
         allowUnsafe: this.allowUnsafe,
         allowlisted: true,
         status: 'spawn-error',
-        error: String(spawnErr.message).slice(0, 256),
+        error: redact(spawnErr.message, 256),
         elapsedMs: Date.now() - startedAt,
         role: request.role,
-        goal: String(request.goal || '').slice(0, 256),
+        goal: redact(request.goal, 256),
       });
       throw spawnErr;
     }
@@ -112,26 +123,26 @@ class ShellAgentExecutor extends AgentExecutor {
     this._writeAudit({
       ts: new Date().toISOString(),
       bin: parsed.bin,
-      argsHash: parsed.args.join(' ').slice(0, 200),
+      argsHash: hashArgs(parsed.args),
       cwd: this.cwd,
       allowUnsafe: this.allowUnsafe,
       allowlisted: true,
       status,
       exitCode: result.status,
       elapsedMs: Date.now() - startedAt,
-      stderrTail: String(result.stderr || '').slice(-200),
+      stderrTail: redact(String(result.stderr || '').slice(-200)),
       role: request.role,
-      goal: String(request.goal || '').slice(0, 256),
+      goal: redact(request.goal, 256),
     });
 
     return {
       status: status,
       adapter: 'shell',
-      command: this.command,
+      command: redact(this.command),
       exitCode: result.status,
-      stdout: result.stdout || '',
-      stderr: result.stderr || '',
-      output: (result.stdout || result.stderr || '').trim(),
+      stdout: redact(result.stdout || ''),
+      stderr: redact(result.stderr || ''),
+      output: redact((result.stdout || result.stderr || '').trim()),
     };
   }
 }

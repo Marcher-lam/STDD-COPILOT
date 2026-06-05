@@ -10,7 +10,7 @@ describe('verify CLI command', () => {
     return spawnSync(process.execPath, [cliPath, ...args], {
       cwd,
       encoding: 'utf8',
-      env: { ...process.env, CI: '1' },
+      env: { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1' },
     });
   }
 

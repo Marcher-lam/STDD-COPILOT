@@ -191,6 +191,31 @@ describe('post-file-write hook exported functions', () => {
       expect(catchIssue).toBeDefined();
     });
 
+    it('flags hardcoded secrets without echoing the secret value', async () => {
+      const result = await analyzeCode({
+        tool_name: 'Write',
+        tool_input: {
+          file_path: '/tmp/test.js',
+          content: '/** doc */\nconst token = "abcdefghijklmnopqrstuvwxyz123456";',
+        },
+      });
+      const securityIssue = result.find(s => s.article === 7);
+      expect(securityIssue).toBeDefined();
+      expect(securityIssue.message).toContain('Token');
+      expect(securityIssue.message).toContain('line 2');
+      expect(securityIssue.message).not.toContain('abcdefghijklmnopqrstuvwxyz123456');
+    });
+
+    it('detects secrets in Edit new_string content', async () => {
+      const result = await analyzeCode({
+        tool_name: 'Edit',
+        tool_input: { file_path: '/tmp/test.js', new_string: 'const password = "super-secret-password";' },
+      });
+      const securityIssue = result.find(s => s.article === 7);
+      expect(securityIssue).toBeDefined();
+      expect(securityIssue.message).toContain('Password');
+    });
+
     it('returns empty for non-source files without issues', async () => {
       const result = await analyzeCode({
         tool_name: 'Write',
@@ -210,7 +235,7 @@ describe('post-file-write stdin entry point (integration)', () => {
       tool_name: 'Write',
       tool_input: { file_path: '/tmp/test.js', content: 'try { x(); } catch(e) {}' },
     });
-    const result = execSync(`echo '${input}' | node "${hookPath}"`, { encoding: 'utf8' });
+    const result = execSync(`node "${hookPath}"`, { input, encoding: 'utf8' });
     const parsed = JSON.parse(result.trim());
     expect(parsed).toHaveProperty('suggestions');
     expect(parsed.suggestions.length).toBeGreaterThan(0);
@@ -247,11 +272,24 @@ describe('post-file-write stdin entry point (integration)', () => {
       tool_name: 'Edit',
       tool_input: { file_path: '/tmp/test.js', new_string: 'try { x(); } catch(e) {}' },
     });
-    const result = execSync(`echo '${input}' | node "${hookPath}"`, { encoding: 'utf8' });
+    const result = execSync(`node "${hookPath}"`, { input, encoding: 'utf8' });
     const parsed = JSON.parse(result.trim());
     expect(parsed.suggestions.length).toBeGreaterThan(0);
     const catchIssue = parsed.suggestions.find(s => s.article === 6);
     expect(catchIssue).toBeDefined();
+  });
+
+  it('reports hardcoded secrets via stdin without leaking values', () => {
+    const secret = 'abcdefghijklmnopqrstuvwxyz123456';
+    const input = JSON.stringify({
+      tool_name: 'Write',
+      tool_input: { file_path: '/tmp/test.js', content: `/** doc */\nconst token = "${secret}";` },
+    });
+    const result = execSync(`node "${hookPath}"`, { input, encoding: 'utf8' });
+    const parsed = JSON.parse(result.trim());
+    const securityIssue = parsed.suggestions.find(s => s.article === 7);
+    expect(securityIssue).toBeDefined();
+    expect(result).not.toContain(secret);
   });
 
   it('returns empty for non-Write/Edit tools via stdin', () => {

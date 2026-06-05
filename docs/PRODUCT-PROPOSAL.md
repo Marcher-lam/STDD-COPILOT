@@ -4,7 +4,7 @@
 >
 > 文档类型：产品方案报告
 > 产品名称：STDD Copilot — Specification & Test-Driven Development Copilot
-> 产品版本：v1.0.5
+> 产品版本：v1.0.7
 > 作者：Marcher-lam
 > 仓库：https://github.com/Marcher-lam/STDD-COPILOT
 
@@ -448,7 +448,7 @@ stdd-copilot/
 ├── schemas/                     # JSON/YAML Schema
 ├── docs/                        # 文档集
 ├── stdd/                        # 运行时工作目录
-└── package.json                 # @marcher-lam/stdd-copilot v1.0.5
+└── package.json                 # @marcher-lam/stdd-copilot v1.0.7
 ```
 
 ---
@@ -637,7 +637,7 @@ stdd constitution fix --article 2 --dry-run            # 修复建议
 
 ## 12. 产品路线图
 
-### 12.1 已完成（v1.0.5）
+### 12.1 已完成（v1.0.7）
 
 | 阶段 | 交付物 |
 |------|--------|
