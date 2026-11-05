@@ -1,6 +1,43 @@
 # STDD Copilot 边际优化追踪
 
-> Last Updated: 2026-05-24 | Round 34 完成
+> Last Updated: 2026-11-05 | Round 38 完成（v1.1.0）
+
+## v1.1.0 基线（Round 35-38，2026-11-05）
+
+```
+Test Suites: 214 passed
+Tests:       4335 passed (100%)
+Coverage:    84.9% lines | 78.03% branch | 85.5% funcs（premerge 阈值全过）
+```
+
+### Round 35 — 框架对标（superpowers + BMAD + OpenSpec，18 项落地）
+
+OpenSpec 语义 delta 引擎（真实合并/RENAMED/冲突阻断/幂等）+ validate --strict +
+归档 strict 门禁 + tasks 模板（Verification/Sources/Interfaces）；BMAD（deferred-work
+台账 / baseline_commit / 前置情报回灌 / triage 审查 / AD-n / 复盘判定）；superpowers
+（红灯证据门禁 / 3-strikes 熔断 / ruling ledger / 审查异构）。详见
+docs/framework-benchmark.md（全部 18 条含代码位置）。
+
+### Round 36 — DAG 引擎增强
+
+graph-cache 接线（此前从未接线、且写入包根跨项目污染）、progressive rigor、
+节点重试 + 委托证据、断点续跑。见 benchmark 第 18 条。
+
+### Round 37 — 模型强度适配（P0-P2 全落地）
+
+任务预算自适应（废除硬编码 6）、confirm 风险触发（certainty + 不可逆信号）、
+变更级 rigor 贯穿主工作流、clarify 对话式、中断预算、legacy 标记、配置诚实化。
+战略文档 docs/model-strength-adaptation.md。**累计修复 6 个潜伏 bug**
+（confirm 正则崩溃 / clarify 选项丢弃 / cache 未接线 / 死配置 / certainty 层级 /
+planning 劫持）。
+
+### Round 38 — open-code-review 全量修复（55 条清零）
+
+critical 1（TASK_PATTERN 污染）+ high 5 + medium ~12 + low 全部；含安全修复
+（--change-name 路径穿越拒绝）与门禁互锁类修复（strict 结构化裁剪、rename 感知、
+exitCode 检测）。测试 +160；npm audit fix（js-yaml 链，3 high→0）。
+
+## 历史基线（v1.0.7 及之前）
 
 ## 当前质量基线
 

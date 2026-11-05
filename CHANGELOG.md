@@ -2,7 +2,7 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
-## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
+## [1.1.0] - 2026-11-05 — 框架对标与模型强度适配
 
 ### Fixed (open-code-review round 10 — low/maintainability sweep)
 - Fail-fast ordering: ff/issue validate --rigor BEFORE any filesystem writes (no more orphan half-created changes on a typo'd flag).
