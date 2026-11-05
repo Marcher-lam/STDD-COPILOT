@@ -9,6 +9,9 @@ const path = require('path');
 
 const mockFs = {
   existsSync: jest.fn(),
+  // checkTDDEvidence reads apply.log when existsSync returns true; an empty
+  // log means "no phase evidence", which is a legitimate non-blocking state.
+  readFileSync: jest.fn(() => ''),
 };
 jest.mock('fs', () => mockFs);
 

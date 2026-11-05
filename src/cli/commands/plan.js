@@ -8,6 +8,7 @@ const path = require('path');
 const chalk = require('chalk');
 const { createLogger } = require('../../utils/logger');
 const { TechStackDetector } = require('../../utils/tech-stack-detector');
+const { readDeferred } = require('../../utils/deferred-work');
 const logger = createLogger('plan');
 
 class PlanCommand {
@@ -17,7 +18,8 @@ class PlanCommand {
   }
 
   async execute(changeName, options = {}) {
-    const changesDir = path.join(process.cwd(), 'stdd', 'changes');
+    const stddDir = path.join(process.cwd(), 'stdd');
+    const changesDir = path.join(stddDir, 'changes');
     const changeDir = changeName
       ? path.join(changesDir, changeName)
       : await this.getActiveChangeDir(changesDir);
@@ -54,7 +56,8 @@ class PlanCommand {
     }
 
     const tasksPath = path.join(changeDir, 'tasks.md');
-    await fs.writeFile(tasksPath, tasksContent);
+    const intelligence = await this.buildPreviousIntelligence(stddDir);
+    await fs.writeFile(tasksPath, intelligence ? `${tasksContent.trimEnd()}\n${intelligence}` : tasksContent);
 
     console.log(chalk.green(`✓ Tasks generated: ${tasksPath}`));
     console.log('');
@@ -193,6 +196,48 @@ class PlanCommand {
     ];
 
     return templates;
+  }
+
+  /**
+   * Previous Change Intelligence (BMAD create-story practice): feed the
+   * still-open deferred-work items of the most recently archived change
+   * back into the new task list so deferred findings loop instead of
+   * rotting in the archive. Returns '' when there is nothing to feed back.
+   */
+  async buildPreviousIntelligence(stddDir) {
+    try {
+      const archiveDir = path.join(stddDir, 'changes', 'archive');
+      const exists = await this.fileExists(archiveDir);
+      if (!exists) return '';
+      const entries = await fs.readdir(archiveDir, { withFileTypes: true });
+      const names = entries.filter(e => e.isDirectory()).map(e => e.name).sort();
+      if (names.length === 0) return '';
+      const latest = names[names.length - 1];
+      const state = readDeferred(path.join(archiveDir, latest));
+      const openItems = state.entries.filter(e => !e.checked);
+      if (openItems.length === 0) return '';
+
+      const lines = [
+        '',
+        '---',
+        '',
+        '## Previous Change Intelligence',
+        '',
+        `> 来自最近归档变更 \`${latest}\` 的未决暂缓项（defer 不是丢弃）：`,
+        '',
+      ];
+      for (const item of openItems) {
+        lines.push(`- [ ] #${item.n} [${item.date}] ${item.text}`);
+        lines.push(`  - Source: stdd/changes/archive/${latest}/deferred-work.md`);
+      }
+      lines.push('');
+      lines.push('在本次变更中评估是否处理以上事项；暂不处理则继续以 `stdd verify <change> --defer` 记录。');
+      lines.push('');
+      return lines.join('\n');
+    } catch (err) {
+      logger.warn(`Previous change intelligence skipped: ${err.message}`);
+      return '';
+    }
   }
 
   formatTasks(tasks) {

@@ -27,6 +27,54 @@ function runCommand(cmd, cwd, additionalEnv) {
 }
 
 class VerifyCommand {
+  /**
+   * TDD RED-phase evidence gate: every task that went through the TDD phase
+   * state machine must have a recorded RED pass (tests observed failing)
+   * before its GREEN pass, otherwise the green may be fake. Legacy-mode
+   * tasks (logged without phases) are counted but not blocked.
+   */
+  checkTDDEvidence(changeDir) {
+    const logPath = path.join(changeDir, 'apply.log');
+    if (!fs.existsSync(logPath)) {
+      return { available: false, tasksWithPhaseEvidence: 0, withRedEvidence: 0, missingRed: [], legacyTasks: 0 };
+    }
+    const entries = [];
+    for (const line of fs.readFileSync(logPath, 'utf8').split('\n')) {
+      const jsonPart = line.replace(/^\[[^\]]+\]\s*/, '');
+      if (!jsonPart) continue;
+      try {
+        entries.push(JSON.parse(jsonPart));
+      } catch {
+        // Skip malformed log lines.
+      }
+    }
+    const byTask = new Map();
+    for (const entry of entries) {
+      if (!entry.task) continue;
+      if (!byTask.has(entry.task)) {
+        byTask.set(entry.task, { hasRed: false, hasGreen: false, isLegacy: true });
+      }
+      const state = byTask.get(entry.task);
+      if (entry.phase === 'red' && entry.status === 'passed') state.hasRed = true;
+      if (entry.phase === 'green' && entry.status === 'passed') state.hasGreen = true;
+      if (entry.phase) state.isLegacy = false;
+    }
+    let withRedEvidence = 0;
+    let legacyTasks = 0;
+    const missingRed = [];
+    let tasksWithPhaseEvidence = 0;
+    for (const [task, state] of byTask) {
+      if (state.isLegacy) {
+        legacyTasks++;
+        continue;
+      }
+      tasksWithPhaseEvidence++;
+      if (state.hasRed) withRedEvidence++;
+      if (state.hasGreen && !state.hasRed) missingRed.push(task);
+    }
+    return { available: true, tasksWithPhaseEvidence, withRedEvidence, missingRed, legacyTasks };
+  }
+
   async execute(changeName, options = {}) {
     const cwd = process.cwd();
     const stddDir = path.join(cwd, 'stdd');
@@ -236,6 +284,23 @@ class VerifyCommand {
       report.lint = null;
     }
 
+    // 1.5) TDD RED-phase evidence gate (superpowers: watch the test fail)
+    const tdd = this.checkTDDEvidence(changeDir);
+    report.tdd = tdd;
+    if (tdd.available) {
+      if (tdd.missingRed.length > 0) {
+        console.log(`  ${chalk.red('✗')} TDD: ${tdd.missingRed.length} task(s) reached GREEN without a recorded RED pass`);
+        tdd.missingRed.forEach(d => {
+          console.log(`      ${chalk.red('–')} ${d}`);
+        });
+        healthy = false;
+      } else if (tdd.tasksWithPhaseEvidence > 0) {
+        console.log(`  ${chalk.green('✓')} TDD: RED evidence present for ${tdd.withRedEvidence}/${tdd.tasksWithPhaseEvidence} task(s)${tdd.legacyTasks > 0 ? chalk.dim(` (+${tdd.legacyTasks} legacy)`) : ''}`);
+      } else if (tdd.legacyTasks > 0) {
+        console.log(`  ${chalk.dim(`TDD: ${tdd.legacyTasks} legacy-mode task(s), no phase evidence to check`)}`);
+      }
+    }
+
     // 5) Deferred-work ledger status
     const deferred = readDeferred(changeDir);
     report.deferred = { open: deferred.open, total: deferred.total };
@@ -257,6 +322,9 @@ class VerifyCommand {
     console.log(`  Constitution: ${report.constitution.status === 'pass' ? chalk.green('PASS') : chalk.red('FAIL')}`);
     if (report.lint !== null) {
       console.log(`  Lint:        ${report.lint.passed ? chalk.green('PASS') : chalk.red('FAIL')}`);
+    }
+    if (report.tdd && report.tdd.available && report.tdd.tasksWithPhaseEvidence > 0) {
+      console.log(`  TDD:         ${report.tdd.missingRed.length === 0 ? chalk.green('PASS') : chalk.red('FAIL')}  (RED evidence ${report.tdd.withRedEvidence}/${report.tdd.tasksWithPhaseEvidence})`);
     }
     if (deferred.total > 0) {
       console.log(`  Deferred:    ${deferred.open > 0 ? chalk.yellow(`${deferred.open} open / ${deferred.total} total`) : chalk.green(`0 open / ${deferred.total} total`)}`);

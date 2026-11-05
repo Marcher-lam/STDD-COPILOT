@@ -111,6 +111,34 @@ function writeEvidence(changeDir, name, data) {
   return filePath;
 }
 
+/**
+ * Count how many times the given task has failed in a row in apply.log
+ * (trailing consecutive failures, reset by any pass). Malformed lines are
+ * skipped. Used for the 3-strikes architecture escalation.
+ */
+function countConsecutiveTaskFailures(changeDir, taskDescription) {
+  const logPath = path.join(changeDir, 'apply.log');
+  if (!fs.existsSync(logPath)) return 0;
+  const entries = [];
+  for (const line of fs.readFileSync(logPath, 'utf8').split('\n')) {
+    const jsonPart = line.replace(/^\[[^\]]+\]\s*/, '');
+    if (!jsonPart) continue;
+    try {
+      entries.push(JSON.parse(jsonPart));
+    } catch {
+      // Skip malformed log lines.
+    }
+  }
+  let count = 0;
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i];
+    if (entry.task !== taskDescription) continue;
+    if (entry.status === 'failed') count++;
+    else break;
+  }
+  return count;
+}
+
 function delegationPlan(resultStatus, testResults, options = {}) {
   if (resultStatus !== 'failed') return null;
   const engines = ['claude_code', 'cursor', 'copilot', 'qwen_code'];
@@ -235,6 +263,34 @@ class ApplyCommand {
     if (phase === TDD_PHASES.REFACTOR) {
       return this._executeRefactorPhase(changeDir, changeNameActual, tasksPath, selectedTask, options, requestedWorkspace);
     }
+  }
+
+  /**
+   * 3-strikes escalation (superpowers systematic-debugging): three or more
+   * consecutive failures on the same task is an architecture problem, not a
+   * symptom to keep patching. Prints circuit-breaker guidance and records
+   * escalation evidence for the fix-packet / handoff flow.
+   */
+  escalateOnRepeatedFailure(changeDir, changeName, task) {
+    const consecutive = countConsecutiveTaskFailures(changeDir, task.description);
+    if (consecutive < 3) return null;
+    console.log(chalk.red(`\n🛑 ${consecutive} consecutive failures on "${task.description}"`));
+    console.log(chalk.yellow('  Three failed fixes in a row is an architecture problem, not a symptom.'));
+    console.log(chalk.yellow('  STOP patching. Re-examine the design (stdd plan), question the'));
+    console.log(chalk.yellow('  approach, or hand off to a fresh agent/engine with this evidence.'));
+    const evidencePath = writeEvidence(changeDir, 'escalation', {
+      status: 'escalated',
+      change: changeName,
+      task: task.description,
+      escalation: {
+        consecutiveFailures: consecutive,
+        rule: '3-strikes: consecutive failures indicate an architecture problem',
+        guidance: 'Re-plan (stdd plan) or delegate to a fresh engine with the fix packet instead of patching symptoms.',
+        task: task.description,
+      },
+    });
+    console.log(chalk.yellow(`  Escalation evidence: ${path.relative(process.cwd(), evidencePath)}`));
+    return evidencePath;
   }
 
   /**
@@ -389,6 +445,7 @@ class ApplyCommand {
     writeLog(changeDir, logEntry);
 
     if (resultStatus === 'failed') {
+      this.escalateOnRepeatedFailure(changeDir, changeName, task);
       process.exitCode = 1;
     }
   }
@@ -520,6 +577,7 @@ class ApplyCommand {
         workspaces: testResults,
         status: 'failed',
       });
+      this.escalateOnRepeatedFailure(changeDir, changeName, task);
       process.exitCode = 1;
       return;
     }
@@ -588,6 +646,7 @@ class ApplyCommand {
         workspaces: testResults,
         status: 'failed',
       });
+      this.escalateOnRepeatedFailure(changeDir, changeName, task);
       process.exitCode = 1;
       return;
     }

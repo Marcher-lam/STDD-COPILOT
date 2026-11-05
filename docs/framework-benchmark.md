@@ -78,6 +78,26 @@
 - 每次 verify 运行在报告中显示 `Deferred: N open / M total`（进入 evidence）
 - `stdd archive` 归档时对未决条目给出黄色警告（不阻断），台账随变更目录进入归档，供后续 sweep 对码验证
 
+### 9. 红灯证据门禁（P2 落地，superpowers "watch the test fail"）
+
+`stdd verify` 解析 `apply.log`：走 TDD 相位状态机的任务必须有**绿灯通过之前的一次红灯通过记录**（亲眼看到测试失败），否则 verify 判 FAIL——防止"测试从未红过"的假绿灯进入归档。legacy 模式任务（无相位日志）计数提示但不阻断。报告新增 `TDD: PASS/FAIL (RED evidence N/M)`。
+
+### 10. 3 次连续失败熔断升级（P2 落地，superpowers systematic-debugging）
+
+`stdd apply` 追踪每个任务在 `apply.log` 中的连续失败次数（任何一次通过即重置）。第 3 次起输出熔断指引：**"连续 3 次失败是架构问题而非症状"**——停止修补，回到 `stdd plan` 重新设计或携证据委托新引擎；同时写入 `escalation-*.json` 证据供 fix-packet/交接使用。legacy 与 GREEN/REFACTOR 失败路径均覆盖。
+
+### 11. 前置变更情报回灌（P2 落地，BMAD "PREVIOUS STORY INTELLIGENCE"）
+
+`stdd plan` 生成 tasks.md 时读取**最近归档变更**的 deferred-work 台账，把未决暂缓项以 `## Previous Change Intelligence` 段落（含 Source 指针）回灌进新任务清单——归档里的 deferred 事项循环回来，而不是烂在档案里。无归档/无未决项时不生成该段。
+
+### 12. 裁决制审查协议（P2 落地，BMAD triage review）
+
+`stdd roles review <target> --triage`：审查发现**不再自动按 pattern 严重度判死**（不自动 exit 1），而是标记 `verdict: untriaged` + `bucket: null`，并生成 Triage Worksheet（`stdd/reports/review-triage-*.md`）：
+
+- 裁决五值：`high / medium / low / false / maybe-false`（先对码验证再裁决）
+- 路由四桶：`intent-gap`（意图错，停下对齐）/ `plan-defect`（计划错，先重规划）/ `patch`（就地修）/ `defer`（经 `stdd verify <change> --defer` 入台账）
+- 不带 `--triage` 时保持原有自动判级行为（向后兼容）
+
 ---
 
 ## 对标确认：STDD 已具备的能力（无需改动）
@@ -98,16 +118,9 @@
 
 ## 未采纳 backlog（按优先级）
 
-### P1 — 已全部落地（见上文 6/7/8）
+### P1 / P2 — 已全部落地（见上文 6-12）
 
-### P2
-
-| 条目 | 来源 | 说明 |
-|------|------|------|
-| 前置变更情报回灌 | BMAD create-story | plan 生成时读取上一归档变更的实现日志/review 发现，回灌到新任务的 Sources |
-| triage 制审查 | BMAD step-04 | `roles review` 输出不带严重度，由主会话逐条验证后裁决（high/medium/low/false），四桶路由（intent-gap/plan-defect/patch/defer） |
-| 3 次修复失败→质疑架构 | superpowers systematic-debugging | fix-packet 增强：第 3 次失败时产出"架构问题假设"而非继续症状修补 |
-| 回归验证（revert-fix-must-fail） | superpowers verification | verify 增加"还原修复→测试必须转红→恢复"的反向验证选项 |
+> 说明：P2 中的"回归验证（revert-fix-must-fail）"最终以**红灯证据门禁**（第 9 条）的形式落地——用 apply.log 中已记录的 RED 相位证据实现"必须亲眼见过测试失败"，比 git 还原式验证更安全（无破坏性操作）且无需额外配置。
 
 ### P3（理念采纳、实现从长计议）
 
@@ -135,7 +148,11 @@
 - 新增 `__tests__/archive-delta-merge.test.js`（10 用例，端到端 CLI）：真实 MODIFIED/REMOVED/RENAMED 应用、冲突阻断归档、幂等重归档、legacy 创建路径、strict 门禁拦截与 `--skip-strict`；
 - 新增 `__tests__/validate-strict.test.js`（15 用例）：strict 全规则 + 非 strict 向后兼容；
 - 新增 `__tests__/apply-baseline.test.js`（3 用例，端到端 CLI）：baseline 捕获、幂等不覆盖、非 git 跳过；
+- 新增 `__tests__/apply-three-strikes.test.js`（4 用例，端到端 CLI）：1/2 次不升级、第 3 次熔断 + escalation 证据、持续失败继续升级、通过后重置；
+- 新增 `__tests__/verify-red-evidence.test.js`（4 用例，端到端 CLI）：RED→GREEN 通过、缺 RED 阻断、legacy 计数不阻断、无日志跳过；
+- 新增 `__tests__/plan-previous-intelligence.test.js`（3 用例，端到端 CLI）：最近归档未决项回灌、已解决项不回流、无归档省略；
+- 新增 `__tests__/roles-triage.test.js`（3 用例，端到端 CLI）：triage 不自动判死、worksheet 五值四桶、非 triage 行为不变；
 - 新增 `__tests__/deferred-work.test.js`（10 用例）：台账读写/编号/解决 + verify/archive CLI 集成；
-- 存量 archive/validate/apply 测试全部保持绿色（无行为破坏）。
+- 存量 archive/validate/apply/verify/roles 测试全部保持绿色（无行为破坏）。
 
 运行：`npm test`（见根目录 CONTRIBUTING.md 的基线说明）。

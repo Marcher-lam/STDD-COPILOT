@@ -189,6 +189,7 @@ const commandRegistry = [
     description: 'Run role utilities, party mode, or adversarial review',
     options: [
       { flags: '--roles <roles>', description: 'Comma-separated role ids for party mode' },
+      { flags: '--triage', description: 'Triage mode: findings stay untriaged with a verdict worksheet' },
       { flags: '--json', description: 'JSON output' },
     ],
     action: 'RolesCommand',

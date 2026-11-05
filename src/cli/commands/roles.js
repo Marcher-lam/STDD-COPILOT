@@ -108,10 +108,62 @@ class RolesCommand {
     const outputPath = this.saveReport('adversarial-review', report);
     report.output = outputPath;
 
+    if (options.triage) {
+      // BMAD triage review: lens output carries no final judgment. Findings
+      // stay untriaged; a verified triage pass assigns verdicts and routes.
+      report.status = 'untriaged';
+      for (const finding of report.findings) {
+        finding.verdict = 'untriaged';
+        finding.bucket = null;
+      }
+      report.triageSheet = this.writeTriageSheet(report);
+      if (options.json) console.log(JSON.stringify(report, null, 2));
+      else this.printAdversarial(report, true);
+      return report;
+    }
+
     if (options.json) console.log(JSON.stringify(report, null, 2));
     else this.printAdversarial(report);
     if (report.status === 'fail') process.exitCode = 1;
     return report;
+  }
+
+  /**
+   * Write the triage worksheet next to the report. Each finding gets a
+   * verdict slot (high / medium / low / false / maybe-false) and a routing
+   * bucket (intent-gap / plan-defect / patch / defer). Deferred items are
+   * recorded via the deferred-work ledger instead of being dropped.
+   */
+  writeTriageSheet(report) {
+    const lines = [
+      '# Review Triage Worksheet',
+      '',
+      `Target: ${report.target} | Findings: ${report.findings.length} | Generated: ${new Date().toISOString()}`,
+      '',
+      '## Protocol',
+      '',
+      '1. Verify each finding against the code before judging it (read the test/file first).',
+      '2. Assign a verdict: high | medium | low | false | maybe-false.',
+      '3. Route to a bucket:',
+      '   - intent-gap: the intent/spec itself is wrong — stop and realign.',
+      '   - plan-defect: the plan is wrong — re-plan before patching.',
+      '   - patch: fix in place.',
+      '   - defer: record via `stdd verify <change> --defer "<finding>"` (defer is not discard).',
+      '',
+      '## Findings',
+      '',
+      '| # | Location | Finding | verdict | bucket |',
+      '|---|----------|---------|---------|--------|',
+    ];
+    report.findings.forEach((finding, index) => {
+      lines.push(`| #${index + 1} | ${finding.file}:${finding.line} | ${finding.message} | verdict:___ | bucket:___ |`);
+    });
+    lines.push('');
+    const dir = path.join(this.cwd, 'stdd', 'reports');
+    fs.mkdirSync(dir, { recursive: true });
+    const filePath = path.join(dir, `review-triage-${Date.now()}.md`);
+    fs.writeFileSync(filePath, lines.join('\n') + '\n', 'utf8');
+    return path.relative(this.cwd, filePath).replace(/\\/g, '/');
   }
 
   party(topic, options = {}) {
@@ -149,7 +201,7 @@ class RolesCommand {
     return path.relative(this.cwd, filePath).replace(/\\/g, '/');
   }
 
-  printAdversarial(report) {
+  printAdversarial(report, triage = false) {
     console.log(chalk.bold('\nAdversarial Review\n'));
     console.log(`  Files reviewed: ${chalk.cyan(report.filesReviewed)}`);
     console.log(`  Findings:       ${report.findings.length ? chalk.yellow(report.findings.length) : chalk.green(0)}`);
@@ -159,6 +211,10 @@ class RolesCommand {
       console.log(`    ${finding.message}`);
     }
     if (report.findings.length > 30) console.log(`  ... ${report.findings.length - 30} more finding(s)`);
+    if (triage) {
+      console.log(`\n  ${chalk.yellow('Status: untriaged')} — verify each finding before assigning a verdict`);
+      console.log(`  Triage sheet: ${chalk.cyan(report.triageSheet)}`);
+    }
     console.log(`\n  Output: ${chalk.cyan(report.output)}\n`);
   }
 }
