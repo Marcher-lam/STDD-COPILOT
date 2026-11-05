@@ -371,8 +371,11 @@ Agent: [检测到前端项目，无 DESIGN.md]
 仅在以下节点暂停，等待用户确认（**仅自主编排模式**）：
 
 1. **`/stdd:confirm`** — 需求确认门。展示澄清结果，等待用户说 "确认" 或提出修改
+   - **风险触发模式**（`hitl.mode: risk-triggered`）：直接运行 `stdd confirm <change>`，由门禁自行判定——certainty 高且无不可逆信号时自动通过（决策落盘 `confirm-decision.json`），返回 `pending-human` 时才向用户提问
 2. **`/stdd:archive`** — 归档确认门。展示验证结果，等待用户说 "归档" 
 3. **连续失败 3 次** — 熔断。展示失败证据，请求用户决策
+
+> 模型强度适配：约束密度应是变更风险的函数，不是全局常量。见 `docs/model-strength-adaptation.md`。
 
 ---
 

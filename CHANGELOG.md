@@ -4,6 +4,14 @@ All notable changes to STDD Copilot will be documented in this file.
 
 ## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
 
+### Added (model-strength adaptation round 6)
+- Adaptive task budget in plan: the hardcoded 6-task cap (a weak-model compensation) is replaced by a scale function (base 4; +1/+2 by scope items; +1 for 600+ word proposals; +1 for multiple cross-cutting risk signals; clamped to [3,10]). `planning.max_tasks: auto|<n>` in stdd/config.yaml pins it; oversized proposals get an Epic-split hint instead of silent truncation. See docs/model-strength-adaptation.md.
+- Risk-triggered confirm gate: `hitl.mode: "risk-triggered"` lets the gate itself decide — auto-approve when the latest certainty assessment is at/above auto_threshold AND no irreversible/high-risk signal is present (decision + basis persisted to confirm-decision.json); otherwise the change is left unconfirmed with a pending-human decision recording the exact reasons. Other modes keep legacy behavior.
+- New strategy doc `docs/model-strength-adaptation.md`: constraint taxonomy (decays / survives / grows in value with model strength), the four design principles (evidence-based, risk-triggered, scale-proportional, freedom-by-default), and the P1/P2 backlog.
+
+### Fixed (model-strength adaptation round 6)
+- `stdd confirm` crashed on every project with "Invalid regular expression: /**title**/..." — the bold-heading pattern in extractSection never escaped `**`. The command is usable again.
+
 ### Added (DAG round 5)
 - Progressive rigor for graph run (OpenSpec): `--rigor light|standard|strict` with intent-based defaults (hotfix/research=light, feature/repair=standard). light loosens ceremony for routine changes (verify skips constitution, archive skips the strict gate); strict tightens it (verify also lints); explicit user node options always win.
 - Node retry + delegation evidence (superpowers fix-loop): `--retry <n>` bounded retries per node; final failure records a delegation suggestion (fresh engine + fix packet) and persists the full run result to stdd/changes/<n>/graph-run-result.json.

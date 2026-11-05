@@ -64,9 +64,13 @@ tdd:
   # 控制 Ralph Loop 中 AI 暂停等待用户确认的频率
   hitl:
     # 模式选择:
-    #   "every-phase"  — 每个 Red/Green/Refactor 阶段后暂停（最严格，适合高风险功能）
-    #   "end-of-cycle" — 每个完整 Red-Green-Refactor 循环后暂停（推荐默认值）
-    #   "off"          — 全自主运行，仅在熔断时暂停（适合 turbo 模式）
+    #   "every-phase"    — 每个 Red/Green/Refactor 阶段后暂停（最严格，适合高风险功能）
+    #   "end-of-cycle"   — 每个完整 Red-Green-Refactor 循环后暂停（推荐默认值）
+    #   "risk-triggered" — 确认门自行判定：certainty ≥ auto_threshold 且无不可逆/高危信号
+    #                      时自动通过（决策与依据落盘 confirm-decision.json）；否则暂停等待
+    #                      人工。适合强基模型的长自主运行（模型强度适配，见
+    #                      docs/model-strength-adaptation.md）
+    #   "off"            — 全自主运行，仅在熔断时暂停（适合 turbo 模式）
     mode: "end-of-cycle"
 
     # 哪些阶段需要确认（仅在 every-phase 模式下生效）
@@ -138,8 +142,18 @@ defense:
       - before_archive
 
   micro_task:
-    max_tasks: 6
+    # 任务预算已自适应（plan 按提案规模评估，见 planning.max_tasks）；
+    # 此处的 max_tasks 作为兜底上限保留，min_granularity 仍为指导值。
+    # 强基模型下微任务隔离的收益下降——规模由变更本身决定而非固定 6。
+    max_tasks: 10
     min_granularity: "30min"
+
+# 任务规划预算（模型强度适配：微任务上限从硬编码 6 改为规模函数）
+planning:
+  # "auto"      — 按提案规模评估（基础 4；scope 项 ≥3/+1、≥5/+2；
+  #               提案 ≥600 词 +1；跨切面风险信号 ≥2 再 +1；范围 [3, 10]）
+  # 数字        — 固定任务预算（如 3）
+  max_tasks: "auto"
 
   failure_rollback:
     threshold: 3

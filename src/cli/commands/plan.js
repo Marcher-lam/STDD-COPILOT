@@ -6,16 +6,104 @@
 const fs = require('fs').promises;
 const path = require('path');
 const chalk = require('chalk');
+const yaml = require('js-yaml');
 const { createLogger } = require('../../utils/logger');
 const { TechStackDetector } = require('../../utils/tech-stack-detector');
 const { readDeferred } = require('../../utils/deferred-work');
 const { readRulings } = require('../../utils/ruling-ledger');
 const logger = createLogger('plan');
 
+// Cross-cutting concern signals that justify a wider task budget.
+const SCALE_RISK_RE = /migration|database|schema|\bauth\b|\bsecurity\b|\bpayment\b|\bapi\b|deploy|infra|integrat/i;
+
 class PlanCommand {
   constructor() {
-    this.maxTasks = 6;
+    // Task budget is adaptive (see resolveTaskBudget): the old hardcoded
+    // 6-task cap was a weak-model compensation; scale-based budgets with a
+    // config override (planning.max_tasks) fit strong base models better.
     this.maxTaskTime = 30;
+    this.budgetFloor = 3;
+    this.budgetCeiling = 10;
+  }
+
+  /**
+   * Resolve the task budget for a change.
+   *
+   * `planning.max_tasks` in stdd/config.yaml pins an exact number; 'auto'
+   * (or absent) derives the budget from proposal scale: base 4, +1/+2 for
+   * scope items, +1 for long proposals, +1 for multiple cross-cutting risk
+   * signals — clamped to [3, 10].
+   */
+  async resolveTaskBudget(proposal, cwd) {
+    const pinned = await this.readConfiguredMaxTasks(cwd);
+    if (Number.isFinite(pinned)) {
+      return {
+        budget: pinned,
+        basis: 'config planning.max_tasks',
+        scale: null,
+      };
+    }
+    const scale = this.assessProposalScale(proposal);
+    return { budget: scale.budget, basis: scale.basis, scale };
+  }
+
+  async readConfiguredMaxTasks(cwd) {
+    try {
+      const configPath = path.join(cwd, 'stdd', 'config.yaml');
+      try {
+        await fs.access(configPath);
+      } catch {
+        return null;
+      }
+      const config = yaml.load(await fs.readFile(configPath, 'utf8')) || {};
+      const value = config && config.planning ? config.planning.max_tasks : undefined;
+      if (value === undefined || value === null || value === 'auto') return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    } catch (err) {
+      logger.warn(`Could not read planning config: ${err.message}`);
+      return null;
+    }
+  }
+
+  assessProposalScale(proposal) {
+    const words = String(proposal || '').split(/\s+/).filter(Boolean).length;
+    const scopeItems = this.countScopeItems(proposal);
+    const riskSignals = Array.from(new Set(
+      (proposal.match(new RegExp(SCALE_RISK_RE.source, 'gi')) || []).map(s => s.toLowerCase())
+    ));
+
+    let budget = 4;
+    if (scopeItems >= 3) budget += 1;
+    if (scopeItems >= 5) budget += 1;
+    if (words >= 600) budget += 1;
+    if (riskSignals.length >= 2) budget += 1;
+    budget = Math.max(this.budgetFloor, Math.min(this.budgetCeiling, budget));
+
+    const basis = [
+      `~${words} words`,
+      `${scopeItems} scope item(s)`,
+      `risk signal(s): ${riskSignals.length > 0 ? riskSignals.slice(0, 4).join(', ') : 'none'}`,
+      'override via planning.max_tasks',
+    ].join(', ');
+
+    return { words, scopeItems, riskSignals, budget, basis };
+  }
+
+  /** Count list items inside the (In) Scope section via a line scan. */
+  countScopeItems(proposal) {
+    const lines = String(proposal || '').split('\n');
+    let inScope = false;
+    let count = 0;
+    for (const line of lines) {
+      if (/^#{2,3}\s*(?:in[ _-]?)?scope\b/i.test(line)) {
+        inScope = true;
+        continue;
+      }
+      if (inScope && /^#{1,3}\s/.test(line)) break; // next heading ends the section
+      if (inScope && /^\s*-\s+\S/.test(line)) count++;
+    }
+    return count;
   }
 
   async execute(changeName, options = {}) {
@@ -46,7 +134,11 @@ class PlanCommand {
     console.log(chalk.dim('Analyzing requirements and tech stack...'));
     console.log('');
 
-    const tasks = await this.generateTasks(proposal, techStack);
+    const taskBudget = await this.resolveTaskBudget(proposal, process.cwd());
+    console.log(chalk.dim(`Task Budget: ${taskBudget.budget} (basis: ${taskBudget.basis})`));
+    console.log('');
+
+    const tasks = await this.generateTasks(proposal, techStack, taskBudget.budget);
     const tasksContent = this.formatTasks(tasks);
 
     if (options.dryRun) {
@@ -108,13 +200,20 @@ class PlanCommand {
     }
   }
 
-  async generateTasks(proposal, techStack) {
+  async generateTasks(proposal, techStack, budget) {
     const requirements = this.extractRequirements(proposal);
     const tasks = [];
 
     const taskTemplates = this.getTaskTemplates(requirements, techStack);
 
-    for (let i = 0; i < Math.min(taskTemplates.length, this.maxTasks); i++) {
+    const limit = Math.min(taskTemplates.length, budget);
+    if (taskTemplates.length > limit) {
+      console.log(chalk.yellow(`⚠ Proposal scale exceeds the task budget (${taskTemplates.length} candidate tasks > ${limit}).`));
+      console.log(chalk.yellow('  Consider splitting the change (a proposal this large is usually an Epic).'));
+      console.log('');
+    }
+
+    for (let i = 0; i < limit; i++) {
       tasks.push({
         id: `TASK-${String(i + 1).padStart(3, '0')}`,
         title: taskTemplates[i].title,
