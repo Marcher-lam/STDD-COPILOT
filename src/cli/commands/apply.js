@@ -13,6 +13,7 @@ const { injectReporter } = require('../../utils/reporter-injector');
 const { resolveTestCommands, getConfigTestCommand } = require('../../utils/test-command-resolver');
 const { commandToWorkspaceScope, resolveWorkspaceScope } = require('../../utils/workspace-scope');
 const { runCommand: runParsedCommand } = require('../../utils/command-runner');
+const { appendRuling, RULINGS_FILENAME } = require('../../utils/ruling-ledger');
 const { FixPacketCommand } = require('./fix-packet');
 
 // TDD Phase State Machine
@@ -171,6 +172,16 @@ class ApplyCommand {
     const changeNameActual = path.basename(changeDir);
     const tasksPath = path.join(changeDir, 'tasks.md');
     const requestedWorkspace = options.workspace ? resolveWorkspaceScope(cwd, options.workspace) : null;
+
+    // Ruling ledger action ("Rulings, not stalls"): record an execution-time
+    // decision (决定 — 理由 — 出错了的代价) as a durable artifact, then exit
+    // without running any task work.
+    if (options.ruling) {
+      const { n } = appendRuling(changeDir, options.ruling);
+      console.log(chalk.yellow(`\n⚖ Ruling #${n} recorded in stdd/changes/${changeNameActual}/${RULINGS_FILENAME}`));
+      console.log(chalk.dim('  Format: 决定 — 理由 — 出错了的代价. Feed back to later changes via stdd plan.'));
+      return;
+    }
 
     // Capture the pre-implementation git baseline once, so verification and
     // review can diff against the state before any code was written

@@ -449,6 +449,14 @@ stdd fix-packet <change>  # 生成修复上下文
 cat stdd/changes/<change>/evidence/fix-packet-*.md  # 分析失败原因
 ```
 
+### 审查与裁决协议（跨框架纪律）
+
+1. **引擎异构（BMAD）**：审查/裁决必须由与实现**不同的引擎或模型**执行（fresh eyes）。`stdd roles review <target> --triage` 生成的 worksheet 含 `Implemented-by / Triaged-by` 字段，两者不得相同。
+2. **裁决制而非自动判死（BMAD triage）**：审查发现先对码验证再赋值（high/medium/low/false/maybe-false），路由四桶：intent-gap（停下对齐意图）/ plan-defect（先重规划）/ patch（就地修）/ defer（`stdd verify <change> --defer` 入台账）。
+3. **红灯证据（superpowers）**：任何 GREEN 声明必须可追溯到一次亲眼观察到的 RED（`apply --phase red` 记录）。`stdd verify` 会自动检查。
+4. **3 次熔断（superpowers）**：同一任务连续 3 次失败 = 架构问题。停止症状修补，回到 `/stdd:plan` 或携 `escalation` 证据委托新引擎。
+5. **裁决留痕（superpowers ruling）**：执行中的临时决定以 `stdd apply <change> --ruling "决定 — 理由 — 出错了的代价"` 记录进 `rulings.md`，随归档持久化并回流到后续变更的 `stdd plan`。
+
 ---
 
 ## 辅助功能（按需自动调用）

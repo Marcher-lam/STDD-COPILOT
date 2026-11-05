@@ -4,6 +4,12 @@ All notable changes to STDD Copilot will be documented in this file.
 
 ## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
 
+### Added (P3 round 4)
+- Ruling ledger: `stdd apply <change> --ruling "决定 — 理由 — 出错了的代价"` records execution-time decisions in `rulings.md` (numbered, dated, persisted through archive); `stdd plan` feeds the latest archived change's 3 most recent rulings back into the new task list. Closes the memlog backlog item by mapping its role onto rulings.md / apply.log / progress.jsonl instead of adding a fourth log engine.
+- AD-n decision validation: `stdd validate <change> --strict` checks design.md for duplicate AD numbers (blocking), Supersedes references to missing decisions (blocking), and legacy `### Decision:` headings without stable IDs (warning). design.md is deliberately excluded from spec leakage rules.
+- Retrospective verdict: archive summaries now carry `Verdict: accepted | accepted-with-open-items | rejected` computed from evidence (failed verification => rejected; open deferred items => accepted-with-open-items; else accepted).
+- Engine-diverse review protocol: triage worksheets gain Implemented-by / Triaged-by fields with a "different engine than the implementation" rule; docs/agent-protocol.md gains a five-rule cross-framework review & adjudication section.
+
 ### Added (P2 round 3)
 - Stable decision IDs: the design template in schemas/spec-driven/schema.yaml now uses `### AD-n: [name]` with never-renumber/never-reuse rules (supersede via higher number + `Supersedes: AD-x`) and Binds/Prevents fields (BMAD stable ID family).
 - RED-phase evidence gate in verify: parses apply.log and fails verification for TDD-phase tasks that reached GREEN without a recorded RED pass ("watch the test fail"); legacy-mode tasks are counted but not blocked; report gains a `TDD: PASS/FAIL (RED evidence N/M)` line.

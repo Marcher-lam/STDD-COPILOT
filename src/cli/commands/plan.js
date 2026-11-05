@@ -9,6 +9,7 @@ const chalk = require('chalk');
 const { createLogger } = require('../../utils/logger');
 const { TechStackDetector } = require('../../utils/tech-stack-detector');
 const { readDeferred } = require('../../utils/deferred-work');
+const { readRulings } = require('../../utils/ruling-ledger');
 const logger = createLogger('plan');
 
 class PlanCommand {
@@ -215,7 +216,9 @@ class PlanCommand {
       const latest = names[names.length - 1];
       const state = readDeferred(path.join(archiveDir, latest));
       const openItems = state.entries.filter(e => !e.checked);
-      if (openItems.length === 0) return '';
+      const rulings = readRulings(path.join(archiveDir, latest));
+      const recentRulings = rulings.entries.slice(-3).reverse();
+      if (openItems.length === 0 && recentRulings.length === 0) return '';
 
       const lines = [
         '',
@@ -223,14 +226,27 @@ class PlanCommand {
         '',
         '## Previous Change Intelligence',
         '',
-        `> 来自最近归档变更 \`${latest}\` 的未决暂缓项（defer 不是丢弃）：`,
+        `> 来自最近归档变更 \`${latest}\`：`,
         '',
       ];
-      for (const item of openItems) {
-        lines.push(`- [ ] #${item.n} [${item.date}] ${item.text}`);
-        lines.push(`  - Source: stdd/changes/archive/${latest}/deferred-work.md`);
+      if (openItems.length > 0) {
+        lines.push('**未决暂缓项**（defer 不是丢弃）：');
+        lines.push('');
+        for (const item of openItems) {
+          lines.push(`- [ ] #${item.n} [${item.date}] ${item.text}`);
+          lines.push(`  - Source: stdd/changes/archive/${latest}/deferred-work.md`);
+        }
+        lines.push('');
       }
-      lines.push('');
+      if (recentRulings.length > 0) {
+        lines.push('**Recent Rulings**（上一变更的执行裁决，本变更需遵守或显式推翻）：');
+        lines.push('');
+        for (const ruling of recentRulings) {
+          lines.push(`- #${ruling.n} [${ruling.date}] ${ruling.text}`);
+          lines.push(`  - Source: stdd/changes/archive/${latest}/rulings.md`);
+        }
+        lines.push('');
+      }
       lines.push('在本次变更中评估是否处理以上事项；暂不处理则继续以 `stdd verify <change> --defer` 记录。');
       lines.push('');
       return lines.join('\n');

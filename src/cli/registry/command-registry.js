@@ -124,6 +124,7 @@ const commandRegistry = [
       { flags: '--phase <phase>', description: 'TDD phase: red, green, refactor' },
       { flags: '--delegate', description: 'Write cross-model delegation evidence on failure' },
       { flags: '--e2e-command <cmd>', description: 'Run E2E probe as part of apply evidence' },
+      { flags: '--ruling <text>', description: 'Record an execution ruling (决定 — 理由 — 出错了的代价) in rulings.md' },
       { flags: '--workspace <workspace>', description: 'Scope to workspace' },
     ],
     helpText: 'Examples:\n  stdd apply\n  stdd apply --dry-run\n  stdd apply --phase red\n  stdd apply --allow-no-tests',

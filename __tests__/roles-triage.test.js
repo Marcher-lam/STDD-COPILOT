@@ -78,6 +78,10 @@ describe('roles review --triage', () => {
     expect(sheet).toContain('defer');
     // Deferred-work ledger integration hint
     expect(sheet).toContain('stdd verify <change> --defer');
+    // Engine diversity fields (BMAD: review with a different LLM)
+    expect(sheet).toContain('Implemented-by:');
+    expect(sheet).toContain('Triaged-by:');
+    expect(sheet).toContain('different engine');
     // One row per finding, with an empty verdict slot
     expect(sheet).toMatch(/#1 \| .* \| verdict:___ \| bucket:___/);
   });

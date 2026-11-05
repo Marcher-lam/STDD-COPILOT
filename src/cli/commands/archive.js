@@ -511,6 +511,27 @@ class ArchiveCommand {
       lines.push('');
     }
 
+    // Retrospective verdict (BMAD retrospective: accepted /
+    // accepted-with-open-items / rejected), computed from the evidence:
+    // failed verification => rejected; open deferred items =>
+    // accepted-with-open-items; otherwise accepted.
+    const deferredState = readDeferred(changeDir);
+    let verdict = 'accepted';
+    let verdictReason = 'Verification passed with no open deferred items.';
+    if (verificationStatus === 'FAIL') {
+      verdict = 'rejected';
+      verdictReason = 'Latest verification evidence failed.';
+    } else if (deferredState.open > 0) {
+      verdict = 'accepted-with-open-items';
+      verdictReason = `${deferredState.open} deferred item(s) remain open in ${DEFERRED_FILENAME}; sweep them in a later change.`;
+    }
+    lines.push('## Retrospective Verdict');
+    lines.push('');
+    lines.push(`Verdict: ${verdict}`);
+    lines.push('');
+    lines.push(`Reason: ${verdictReason}`);
+    lines.push('');
+
     const summaryPath = path.join(changeDir, 'summary.md');
     fs.writeFileSync(summaryPath, lines.join('\n'), 'utf-8');
   }

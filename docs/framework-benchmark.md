@@ -98,9 +98,33 @@
 - 路由四桶：`intent-gap`（意图错，停下对齐）/ `plan-defect`（计划错，先重规划）/ `patch`（就地修）/ `defer`（经 `stdd verify <change> --defer` 入台账）
 - 不带 `--triage` 时保持原有自动判级行为（向后兼容）
 
-### 13. AD-n 稳定决策 ID（P3 部分落地，BMAD 稳定 ID 族）
+### 13. AD-n 稳定决策 ID（P3 落地，BMAD 稳定 ID 族）
 
 `schemas/spec-driven/schema.yaml` 的 design 模板决策格式升级为 `### AD-n: [决策名]`：ID 一经发布永不重排/复用，推翻旧决策用更高编号 + `Supersedes: AD-x` 标注；每条决策新增 **Binds**（约束什么）/ **Prevents**（禁止什么）两个字段——"Record decisions, not rationale"。
+
+### 14. AD-n 决策校验（P3 落地，BMAD 稳定 ID 族）
+
+`stdd validate <change> --strict` 现在检查 `design.md`（不跑泄漏规则——设计文档本就记录实现细节）：
+
+- `ad-duplicate`（阻塞）：AD 编号重复复用
+- `ad-supersedes-missing`（阻塞）：`Supersedes: AD-x` 引用了不存在的决策
+- `ad-legacy-format`（警告）：仍在使用旧 `### Decision:` 无编号格式（迁移提示）
+
+### 15. 执行裁决台账 ruling ledger（P3 落地，superpowers "Rulings, not stalls"）
+
+`stdd apply <change> --ruling "决定 — 理由 — 出错了的代价"` 把执行期的临时决策记录进 `stdd/changes/<n>/rulings.md`（编号 + 日期），随归档持久化、抗上下文压缩；`stdd plan` 的 Previous Change Intelligence 会把最近 3 条裁决回灌进新任务清单（**需遵守或显式推翻**）。同时关闭 memlog 的整合设计：**memlog 职责由三层日志映射承担**——`rulings.md`（人类可读决策）、`apply.log`（机器可读执行流水）、`progress.jsonl`（会话进度），不再引入第四个日志引擎。
+
+### 16. 复盘验收判定（P3 落地，BMAD retrospective verdict）
+
+归档生成的 `summary.md` 新增 `## Retrospective Verdict` 段，基于证据计算三值判定：
+
+- `rejected`：最新 verify 证据失败
+- `accepted-with-open-items`：存在未决 deferred 项
+- `accepted`：验证通过且无未决项
+
+### 17. 审查引擎异构协议（P3 落地，BMAD "review with a different LLM"）
+
+Triage worksheet 新增 `Implemented-by / Triaged-by` 字段与协议说明（裁决引擎应与实现引擎不同——fresh eyes）；`docs/agent-protocol.md` 新增"审查与裁决协议"五条跨框架纪律（引擎异构、裁决制、红灯证据、3 次熔断、裁决留痕）。
 
 ---
 
@@ -126,15 +150,15 @@
 
 > 说明：P2 中的"回归验证（revert-fix-must-fail）"最终以**红灯证据门禁**（第 9 条）的形式落地——用 apply.log 中已记录的 RED 相位证据实现"必须亲眼见过测试失败"，比 git 还原式验证更安全（无破坏性操作）且无需额外配置。
 
-### P3（理念采纳、从长计议；AD-n 稳定 ID 已部分落地见第 13 条）
+### P3 — 全部落地或显式关闭（见上文 13-17 条）
 
-| 条目 | 来源 | 说明 |
+| 条目 | 状态 | 处置 |
 |------|------|------|
-| memlog 决策日志 | BMAD | append-only 决策日志，工件从日志蒸馏，天然支持 resume（与 progress.jsonl 职责有重叠，需先做整合设计） |
-| ruling ledger | superpowers executing-plans | 执行中的裁决记录（`决定—理由—出错了的代价`），抗上下文压缩 |
-| AD-n 稳定 ID 的 CLI 强制校验 | BMAD architecture spine | 模板已落地（第 13 条）；后续可在 validate 中校验 AD 编号连续性与 Supersedes 引用有效性 |
-| review 用不同 LLM | BMAD | heterogeneous-adapter 已有 Tier 降级链，可扩展为审查强制异构引擎 |
-| retrospective 验收判定 | BMAD | 复盘产出带 `accepted / accepted-with-open-items / rejected` 判定 |
+| AD-n 稳定 ID + CLI 校验 | ✅ 已落地 | 第 13 条（模板）+ 第 14 条（validate 校验） |
+| ruling ledger | ✅ 已落地 | 第 15 条（apply --ruling + plan 回灌） |
+| memlog 决策日志 | ✅ 显式关闭 | 第 15 条：由 rulings.md / apply.log / progress.jsonl 三层映射承担，不引入第四个日志引擎 |
+| retrospective 验收判定 | ✅ 已落地 | 第 16 条（summary.md Verdict 三值） |
+| review 用不同 LLM | ✅ 协议级落地 | 第 17 条（worksheet 字段 + agent-protocol 纪律）；引擎调度本身仍属外部 AI 执行器职责（架构边界） |
 
 ### 明确不采纳
 

@@ -144,6 +144,79 @@ class ValidateCommand {
         diagnostics.push(...this.checkMainFile(file, relFile, content));
       }
     }
+    // Stable decision ID checks for the change's design.md (BMAD AD-n:
+    // never renumber, never reuse; Supersedes must reference an existing AD).
+    // design.md is deliberately NOT run through the spec leakage rules —
+    // design documents implementation detail by design.
+    if (changeDir) {
+      const designPath = path.join(changeDir, 'design.md');
+      if (fs.existsSync(designPath)) {
+        try {
+          diagnostics.push(...this.checkDecisionIds(designPath));
+        } catch (err) {
+          logger.warn(err.message);
+        }
+      }
+    }
+    return diagnostics;
+  }
+
+  checkDecisionIds(designPath) {
+    const relFile = path.relative(this.cwd, designPath).replace(/\\/g, '/');
+    const content = fs.readFileSync(designPath, 'utf8');
+    const diagnostics = [];
+    const numbers = [];
+    let legacyCount = 0;
+    for (const [index, line] of content.split('\n').entries()) {
+      const adMatch = line.match(/^###\s+AD-(\d+)\s*:/);
+      if (adMatch) {
+        numbers.push({ n: Number(adMatch[1]), line: index + 1 });
+        continue;
+      }
+      if (/^###\s+Decision:/.test(line)) legacyCount++;
+    }
+    if (legacyCount > 0) {
+      diagnostics.push({
+        file: relFile,
+        line: 1,
+        rule: 'ad-legacy-format',
+        severity: 'warning',
+        message: `${legacyCount} decision heading(s) use the legacy "### Decision:" format without stable IDs.`,
+        text: '',
+        suggestion: 'Use "### AD-n: [name]" so decision IDs are never renumbered or reused; supersede via a higher number plus "Supersedes: AD-x".',
+      });
+    }
+    const seen = new Set();
+    for (const { n, line } of numbers) {
+      if (seen.has(n)) {
+        diagnostics.push({
+          file: relFile,
+          line,
+          rule: 'ad-duplicate',
+          severity: 'blocking',
+          message: `Duplicate decision ID AD-${n}; decision IDs must never be reused.`,
+          text: `### AD-${n}:`,
+          suggestion: 'Give the newer decision its own higher number and mark it "Supersedes: AD-n" instead of reusing the ID.',
+        });
+      }
+      seen.add(n);
+    }
+    for (const [index, line] of content.split('\n').entries()) {
+      for (const match of line.matchAll(/Supersedes:\s*AD-(\d+)/g)) {
+        const target = Number(match[1]);
+        if (!seen.has(target)) {
+          diagnostics.push({
+            file: relFile,
+            line: index + 1,
+            rule: 'ad-supersedes-missing',
+            severity: 'blocking',
+            message: `"Supersedes: AD-${target}" references a decision that does not exist in this design.`,
+            text: line.trim(),
+            suggestion: 'Reference the exact AD number being superseded, or add the referenced decision.',
+          });
+        }
+      }
+    }
     return diagnostics;
   }
 
