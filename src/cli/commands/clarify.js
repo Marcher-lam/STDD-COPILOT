@@ -148,9 +148,13 @@ class ClarifyCommand {
 
   /** Conversational core + signal-selected questions; exhaustive = full set. */
   pickConversationalQuestions(area, proposal) {
+    // Signals must be evaluated against the proposal BODY only — the appended
+    // Clarification section's own question text re-triggers the signals and
+    // would also cross-contaminate confirm's risk-signal scan.
+    const body = String(proposal).replace(/\n## Clarification[\s\S]*$/, '\n');
     const questions = [...(this.coreQuestions[area] || [])];
     const rule = this.signalQuestions[area];
-    if (rule && rule.signal.test(proposal)) {
+    if (rule && rule.signal.test(body)) {
       questions.push(...rule.questions);
     }
     return questions;

@@ -123,7 +123,8 @@ class VerifyCommand {
       // Commander's negatable --no-constitution defaults to true when absent,
       // so `=== true` means "user did not explicitly disable it".
       if (options.constitution === true && rigorOptions.constitution === false) options.constitution = false;
-      if (options.lint === undefined && rigorOptions.lint) options.lint = true;
+      // --no-lint is the explicit escape from a strict change's lint default.
+      if (options.lint === undefined && !options.noLint && rigorOptions.lint) options.lint = true;
       console.log(chalk.dim(`  Rigor: ${changeRigor} (from change state) — override with explicit flags`));
     }
     let healthy = true;

@@ -152,6 +152,9 @@ describe('GraphRunCommand DAG enhancements', () => {
       VerifyCommand.mockImplementation(() => ({
         execute: jest.fn(async () => { throw new Error('tests exploded'); }),
       }));
+      // Simulate the real flow: the propose/ff node has already created the
+      // change directory (the mocked FFCommand does not).
+      fs.mkdirSync(path.join(tempRoot, 'stdd', 'changes', 'retry-fail'), { recursive: true });
 
       const cmd = new GraphRunCommand();
       process.exitCode = 0;

@@ -136,9 +136,12 @@ class ValidateCommand {
       if (changeDir) {
         const rel = path.relative(path.join(changeDir, 'specs'), file);
         const mainPath = path.join(this.cwd, 'stdd', 'specs', rel);
-        const mainContent = fs.existsSync(mainPath)
-          ? fs.readFileSync(mainPath, 'utf8')
-          : null;
+        let mainContent = null;
+        try {
+          mainContent = fs.existsSync(mainPath) ? fs.readFileSync(mainPath, 'utf8') : null;
+        } catch (err) {
+          logger.warn(err.message); // fall back to no cross-checks
+        }
         diagnostics.push(...this.checkDeltaFile(file, relFile, content, mainContent));
       } else {
         diagnostics.push(...this.checkMainFile(file, relFile, content));
@@ -306,10 +309,18 @@ class ValidateCommand {
       }
     }
 
+    // Mirror applyDelta: MODIFIED/REMOVED may reference either side of a
+    // rename declared in this same delta (the main spec still carries the
+    // old name until the merge applies it).
+    const renamedFrom = new Set(parsed.sections.renamed.entries.map(e => e.from));
+    const renamedTo = new Map(parsed.sections.renamed.entries.map(e => [e.to, e.from]));
+    const existsForMerge = name => mainNames.has(name)
+      || renamedFrom.has(name)
+      || (renamedTo.has(name) && mainNames.has(renamedTo.get(name)));
+
     for (const req of parsed.sections.modified.requirements) {
       checkRequirement(req, 'MODIFIED');
-      const effective = renameMap.get(req.name) || req.name;
-      if (main && !mainNames.has(effective)) {
+      if (main && !existsForMerge(req.name)) {
         diagnostics.push({
           file: relFile,
           line: this.findRequirementLine(content, req.name),
@@ -335,7 +346,7 @@ class ValidateCommand {
         });
       }
       seen.add(req.name);
-      if (main && !mainNames.has(req.name)) {
+      if (main && !existsForMerge(req.name)) {
         diagnostics.push({
           file: relFile,
           line: this.findRequirementLine(content, req.name),

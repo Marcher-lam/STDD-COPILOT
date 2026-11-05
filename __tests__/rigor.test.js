@@ -35,11 +35,15 @@ describe('rigor util', () => {
     it('escalates to strict on irreversible signals', () => {
       expect(assessTextRigor('migrate the database and drop legacy tables')).toBe('strict');
       expect(assessTextRigor('add payment webhook')).toBe('strict');
-      expect(assessTextRigor('refactor the auth middleware')).toBe('strict');
+      expect(assessTextRigor('breaking change to the public contract')).toBe('strict');
     });
 
-    it('returns null for routine text', () => {
+    it('returns null for routine text and common-but-reversible words', () => {
       expect(assessTextRigor('add a logout button to the header')).toBeNull();
+      // auth/security alone are NOT irreversible — names like add-user-auth
+      // must not force the human gate.
+      expect(assessTextRigor('refactor the auth middleware')).toBeNull();
+      expect(assessTextRigor('security hardening pass')).toBeNull();
     });
   });
 
@@ -72,7 +76,8 @@ describe('rigor util', () => {
       expect(rigorNodeOptions('stdd-verify', 'strict')).toEqual({ lint: true });
       expect(rigorNodeOptions('stdd-verify', 'standard')).toEqual({});
       expect(rigorNodeOptions('stdd-archive', 'light')).toEqual({ skipStrict: true });
-      expect(rigorNodeOptions('stdd-archive', 'strict')).toEqual({});
+      // strict explicitly forces the gate on so it wins over a light change state.
+      expect(rigorNodeOptions('stdd-archive', 'strict')).toEqual({ skipStrict: false });
     });
   });
 

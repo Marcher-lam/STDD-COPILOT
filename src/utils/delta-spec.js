@@ -261,6 +261,18 @@ function applyDelta(mainContent, deltaContent) {
     }
   }
 
+  // Legacy headerless sections: without `### Requirement:` headers nothing
+  // can be matched — never silently drop their raw content.
+  for (const keyword of ['modified', 'removed']) {
+    const sec = parsedDelta.sections[keyword];
+    if (sec.requirements.length === 0 && sec.rawBody) {
+      warnings.push({
+        type: 'legacy-section-ignored',
+        message: `${keyword.toUpperCase()} section has no "### Requirement:" headers; its raw content was not merged.`,
+      });
+    }
+  }
+
   // 2. REMOVED
   for (const req of parsedDelta.sections.removed.requirements) {
     if (renameMap.has(req.name)) {
@@ -310,6 +322,13 @@ function applyDelta(mainContent, deltaContent) {
 
   // 4. ADDED
   for (const req of parsedDelta.sections.added.requirements) {
+    if (indexByFold.has(foldHeader(req.name)) && !indexByName.has(req.name)) {
+      conflicts.push({
+        type: 'added-case-mismatch',
+        message: `ADDED "${req.name}" differs only in case/whitespace from an existing requirement.`,
+      });
+      continue;
+    }
     if (indexByName.has(req.name)) {
       const existing = spec.requirements[indexByName.get(req.name)];
       if (foldBody(existing.body) === foldBody(req.body)) {
@@ -335,6 +354,18 @@ function applyDelta(mainContent, deltaContent) {
   const legacyAdded = parsedDelta.sections.added;
   if (legacyAdded.requirements.length === 0 && legacyAdded.rawBody) {
     const markerBlock = `<!-- STDD:ADDED:start -->\n${legacyAdded.rawBody}\n<!-- STDD:ADDED:end -->`;
+    // Idempotency: a conflict-aborted earlier run may have appended this
+    // exact block already — re-appending would duplicate it in stdd/specs.
+    if (String(mainContent).includes(markerBlock)) {
+      warnings.push({
+        type: 'already-synced',
+        message: 'Legacy ADDED marker block already present in spec; skipping.',
+      });
+      if (conflicts.length > 0) {
+        return { content: String(mainContent), conflicts, warnings, operations };
+      }
+      return { content: composeSpec(spec), conflicts, warnings, operations };
+    }
     spec.preamble = spec.preamble
       ? spec.preamble
       : '';

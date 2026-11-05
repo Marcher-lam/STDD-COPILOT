@@ -28,8 +28,9 @@ function readInterruptions(changeDir) {
   try {
     const file = statePath(changeDir);
     if (!fs.existsSync(file)) return { used: 0, lastReason: null };
-    const match = fs.readFileSync(file, 'utf8').match(/^interruptions_used:\s*(\d+)$/m);
-    const reason = fs.readFileSync(file, 'utf8').match(/^interruption_last:\s*(.+)$/m);
+    const content = fs.readFileSync(file, 'utf8');
+    const match = content.match(/^interruptions_used:\s*(\d+)\s*$/m);
+    const reason = content.match(/^interruption_last:\s*(.+?)\s*$/m);
     if (!match) return { used: 0, lastReason: null };
     return { used: Number(match[1]), lastReason: reason ? reason[1].trim() : null };
   } catch {
@@ -43,24 +44,30 @@ function readInterruptions(changeDir) {
  * @returns {{used: number}}
  */
 function recordInterruption(changeDir, reason) {
-  const file = statePath(changeDir);
-  const current = readInterruptions(changeDir);
-  const next = current.used + 1;
-  const lines = [
-    `interruptions_used: ${next}`,
-    `interruption_last: ${String(reason).replace(/\n/g, ' ')}`,
-  ];
-  if (fs.existsSync(file)) {
-    let content = fs.readFileSync(file, 'utf8');
-    content = content
-      .replace(/^interruptions_used:\s*\d+.*$/m, '')
-      .replace(/^interruption_last:\s*.*$/m, '');
-    content = `${content.trimEnd()}\n${lines.join('\n')}\n`;
-    fs.writeFileSync(file, content, 'utf8');
-  } else {
-    fs.writeFileSync(file, `# STDD change state\n${lines.join('\n')}\n`, 'utf8');
+  try {
+    const file = statePath(changeDir);
+    const current = readInterruptions(changeDir);
+    const next = current.used + 1;
+    const lines = [
+      `interruptions_used: ${next}`,
+      `interruption_last: ${String(reason).replace(/\n/g, ' ')}`,
+    ];
+    if (fs.existsSync(file)) {
+      let content = fs.readFileSync(file, 'utf8');
+      content = content
+        .replace(/^interruptions_used:\s*\d+.*$/m, '')
+        .replace(/^interruption_last:\s*.*$/m, '');
+      content = `${content.trimEnd()}\n${lines.join('\n')}\n`;
+      fs.writeFileSync(file, content, 'utf8');
+    } else {
+      fs.writeFileSync(file, `# STDD change state\n${lines.join('\n')}\n`, 'utf8');
+    }
+    return { used: next };
+  } catch (err) {
+    // Accounting must never block the gate itself — degrade to read-only.
+    console.warn(`Failed to record interruption: ${err.message}`);
+    return { used: readInterruptions(changeDir).used };
   }
-  return { used: next };
 }
 
 /** Budget from stdd/config.yaml `interruption.budget` (default 3). */

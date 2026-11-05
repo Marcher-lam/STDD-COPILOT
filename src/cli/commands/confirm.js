@@ -13,8 +13,9 @@ const logger = createLogger('confirm');
 
 // Irreversible / high-risk signals that always require a human regardless
 // of confidence (risk-triggered gate): a strong model being confident about
-// a destructive change is exactly when the human must still look.
-const RISK_SIGNAL_RE = /migration|drop\s+table|data\s*loss|删除数据|破坏性|不可逆|\bauth\b|\bsecurity\b|\bpayment\b|公开\s*api|breaking\s*change|上线|灰度/i;
+// a destructive change is exactly when the human must still look. Shared
+// with the rigor escalation so the two gates can never drift apart.
+const RISK_SIGNAL_RE = require('../../utils/rigor').IRREVERSIBLE_RE;
 
 // Default certainty thresholds (mirrors stdd/config.yaml certainty section).
 const DEFAULT_THRESHOLDS = { confirm: 0.7, auto: 0.95 };
@@ -56,7 +57,7 @@ class ConfirmCommand {
     // instead of pausing every run at the same stage boundary.
     const hitlMode = await this.readHitlMode();
     if (hitlMode === 'risk-triggered') {
-      return this.executeRiskTriggered(changeDir, proposalPath, proposal, { summary, validation });
+      return this.executeRiskTriggered(changeDir, proposalPath, proposal, { summary, validation }, options);
     }
 
     const statusPath = path.join(process.cwd(), 'stdd', '.status.yaml');
@@ -96,10 +97,13 @@ class ConfirmCommand {
         // top-level certainty section too (both are honored).
         const certainty = (config && config.certainty) || (config && config.tdd && config.tdd.certainty);
         if (certainty) {
-          return {
-            confirm: Number(certainty.confirm_threshold ?? DEFAULT_THRESHOLDS.confirm),
-            auto: Number(certainty.auto_threshold ?? DEFAULT_THRESHOLDS.auto),
-          };
+          const confirm = Number(certainty.confirm_threshold ?? DEFAULT_THRESHOLDS.confirm);
+          const auto = Number(certainty.auto_threshold ?? DEFAULT_THRESHOLDS.auto);
+          if (Number.isFinite(confirm) && Number.isFinite(auto)) {
+            return { confirm, auto };
+          }
+          // Fail closed: a malformed value must not disable the gate.
+          logger.warn('Invalid certainty thresholds in stdd/config.yaml; using defaults');
         }
       }
     } catch (err) {
@@ -115,8 +119,13 @@ class ConfirmCommand {
       if (!(await this.fileExists(historyPath))) return null;
       const lines = (await fs.readFile(historyPath, 'utf8')).split('\n').filter(Boolean);
       for (let i = lines.length - 1; i >= 0; i--) {
-        const entry = JSON.parse(lines[i]);
-        if (entry && entry.context === changeName) return entry;
+        let entry;
+        try { entry = JSON.parse(lines[i]); } catch { continue; }
+        // Tolerate both 'demo' and 'stdd/changes/demo' style contexts.
+        if (entry && typeof entry.overall === 'number'
+          && path.basename(String(entry.context)) === changeName) {
+          return entry;
+        }
       }
       return null;
     } catch (err) {
@@ -134,7 +143,7 @@ class ConfirmCommand {
     return Array.from(signals);
   }
 
-  async executeRiskTriggered(changeDir, proposalPath, proposal, context) {
+  async executeRiskTriggered(changeDir, proposalPath, proposal, context, options = {}) {
     const changeName = path.basename(changeDir);
     const thresholds = await this.readThresholds();
     const certainty = await this.readCertaintyEvidence(changeName);
@@ -153,6 +162,25 @@ class ConfirmCommand {
       || riskSignals.length > 0;
 
     const decisionPath = path.join(changeDir, 'confirm-decision.json');
+
+    if (needsHuman && options.skip) {
+      // Explicit human override (--skip): the gate's job is to force a human
+      // decision — a human running with --skip IS that decision.
+      const decision = {
+        status: 'manual-override',
+        change: changeName,
+        basis: { ...basis, override: 'confirm --skip' },
+        reasons: ['Human override via --skip after gate requested confirmation.'],
+        timestamp: new Date().toISOString(),
+      };
+      await fs.writeFile(decisionPath, JSON.stringify(decision, null, 2), 'utf8');
+      const statusPath = path.join(process.cwd(), 'stdd', '.status.yaml');
+      await this.updateStatus(statusPath, changeName, 'confirmed');
+      await this.updateProposalStatus(proposalPath, 'confirmed');
+      console.log(chalk.yellow('\n⚠ Gate requested a human — overridden via --skip (recorded as manual-override)'));
+      console.log(chalk.cyan('\nNext step: stdd spec ' + changeName));
+      return { ...context, confirmed: true, manualOverride: true, decision };
+    }
 
     if (needsHuman) {
       const reasons = [];
@@ -197,7 +225,10 @@ class ConfirmCommand {
     const statusPath = path.join(process.cwd(), 'stdd', '.status.yaml');
     await this.updateStatus(statusPath, changeName, 'confirmed');
     await this.updateProposalStatus(proposalPath, 'confirmed');
-    console.log(chalk.green(`\n✓ Proposal auto-approved (certainty ${certainty.overall} ≥ ${thresholds.auto}, no risk signals)`));
+    const levelText = warned
+      ? `certainty ${certainty.overall} (confirm band, < auto ${thresholds.auto})`
+      : `certainty ${certainty.overall} ≥ ${thresholds.auto}`;
+    console.log(chalk.green(`\n✓ Proposal auto-approved (${levelText}, no risk signals)`));
     if (warned) console.log(chalk.yellow(`  ⚠ note: certainty below auto threshold ${thresholds.auto} — passed with warning`));
     console.log(chalk.dim(`   Decision recorded: ${path.relative(process.cwd(), decisionPath)}`));
     console.log(chalk.cyan('\nNext step: stdd spec ' + changeName));

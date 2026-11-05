@@ -186,8 +186,11 @@ class ApplyCommand {
 
     // Capture the pre-implementation git baseline once, so verification and
     // review can diff against the state before any code was written
-    // (BMAD baseline_revision practice).
-    this.captureBaselineCommit(cwd, changeDir);
+    // (BMAD baseline_revision practice). Skipped in dry-run: a preview must
+    // not mutate change state.
+    if (!options.dryRun) {
+      this.captureBaselineCommit(cwd, changeDir);
+    }
 
     if (!fs.existsSync(tasksPath)) {
       throw new Error(`tasks.md not found in ${changeNameActual}. Add tasks before running apply.`);
@@ -325,7 +328,11 @@ class ApplyCommand {
       if (!/^[0-9a-f]{7,40}$/i.test(sha)) return;
       const line = `baseline_commit: "${sha}"`;
       if (fs.existsSync(statePath)) {
-        fs.appendFileSync(statePath, `${line}\n`, 'utf8');
+        // Guard the append: a file without a trailing newline would merge
+        // the key into the last line and silently lose both.
+        const existing = fs.readFileSync(statePath, 'utf8');
+        const prefix = existing.endsWith('\n') ? '' : '\n';
+        fs.appendFileSync(statePath, `${prefix}${line}\n`, 'utf8');
       } else {
         fs.writeFileSync(statePath, `# STDD change state\n${line}\n`, 'utf8');
       }

@@ -25,8 +25,10 @@ const DEFAULT_RIGOR_BY_INTENT = {
 
 // Irreversible / high-risk signals: one hit is enough to escalate — a strong
 // model being confident about a destructive change is exactly when the
-// tighter gates must apply.
-const IRREVERSIBLE_RE = /migrat\w*|drop\s+table|data\s*loss|删除数据|破坏性|不可逆|breaking\s*change|\bauth\b|\bsecurity\b|\bpayment\w*|公开\s*api/i;
+// tighter gates must apply. Deliberately NARROW: common words (auth,
+// security, 上线, 灰度) are NOT here — they match ordinary change names like
+// "add-user-auth" and would make the human gate effectively unconditional.
+const IRREVERSIBLE_RE = /migrat\w*|drop\s+table|truncate\s+table|data\s*loss|删除数据|破坏性|不可逆|breaking\s*change|\bpayment\w*|公开\s*api/i;
 
 function validateRigor(level) {
   if (!RIGOR_LEVELS.includes(level)) {
@@ -53,9 +55,11 @@ function resolveRigor({ explicit, intent, text } = {}) {
     validateRigor(explicit);
     return { level: explicit, basis: 'explicit --rigor' };
   }
-  if (text && assessTextRigor(text) === 'strict') {
-    const hit = String(text).match(new RegExp(IRREVERSIBLE_RE.source, 'i'));
-    return { level: 'strict', basis: `risk signal: ${hit ? hit[0] : 'detected'}` };
+  if (text) {
+    const hit = String(text).match(IRREVERSIBLE_RE);
+    if (hit) {
+      return { level: 'strict', basis: `risk signal: ${hit[0]}` };
+    }
   }
   if (intent && DEFAULT_RIGOR_BY_INTENT[intent]) {
     return { level: DEFAULT_RIGOR_BY_INTENT[intent], basis: `intent default (${intent})` };
@@ -66,14 +70,17 @@ function resolveRigor({ explicit, intent, text } = {}) {
 /**
  * Per-node gate scaling shared by graph run and the main workflow.
  * Explicit user options always win — rigor only provides defaults.
+ * strict archive returns skipStrict:false explicitly so "strict requested"
+ * can be distinguished from undefined ("no opinion" → consult change state).
  */
 function rigorNodeOptions(nodeName, rigor) {
   if (nodeName === 'stdd-verify') {
     if (rigor === 'light') return { constitution: false };
     if (rigor === 'strict') return { lint: true };
   }
-  if (nodeName === 'stdd-archive' && rigor === 'light') {
-    return { skipStrict: true };
+  if (nodeName === 'stdd-archive') {
+    if (rigor === 'light') return { skipStrict: true };
+    if (rigor === 'strict') return { skipStrict: false };
   }
   return {};
 }
@@ -89,7 +96,10 @@ function writeChangeRigor(changeDir, level) {
   if (fs.existsSync(statePath)) {
     const existing = fs.readFileSync(statePath, 'utf8');
     if (/^rigor:\s*\w+$/m.test(existing)) return level;
-    fs.appendFileSync(statePath, `rigor: ${level}\n`, 'utf8');
+    // Guard the append: a file without a trailing newline would merge the
+    // key into the last line and silently lose both.
+    const prefix = existing.endsWith('\n') ? '' : '\n';
+    fs.appendFileSync(statePath, `${prefix}rigor: ${level}\n`, 'utf8');
     return level;
   }
   fs.writeFileSync(statePath, `# STDD change state\nrigor: ${level}\n`, 'utf8');

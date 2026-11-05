@@ -261,7 +261,7 @@ Currently implemented: visualize, analyze, parallel --detect, history, replay, r
     .option('--workspace <workspace>', 'Run with workspace context (path or package name)')
     .option('--skip-apply', 'Skip apply and verify steps (spec generation only)')
     .option('--rigor <level>', 'Progressive rigor: light, standard, strict (defaults by intent: hotfix/research=light, feature/repair=standard)')
-    .option('--retry <n>', 'Retry a failed node up to n extra times before aborting', 0)
+    .option('--retry <n>', 'Retry a failed node up to n extra times before aborting', (v) => Math.max(0, Number.parseInt(v, 10) || 0), 0)
     .option('--no-cache', 'Disable checkpoint cache (re-execute all nodes)')
     .addHelpText('after', `
 Examples:

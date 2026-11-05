@@ -139,6 +139,7 @@ const commandRegistry = [
     options: [
       { flags: '--no-constitution', description: 'Skip constitution check' },
       { flags: '--lint', description: 'Run lint check' },
+      { flags: '--no-lint', description: 'Skip lint even for strict-rigor changes (explicit override)' },
       { flags: '--lint-command <cmd>', description: 'Custom lint command' },
       { flags: '--test-command <cmd>', description: 'Custom test command' },
       { flags: '--workspace <workspace>', description: 'Scope to workspace' },

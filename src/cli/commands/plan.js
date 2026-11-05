@@ -310,9 +310,12 @@ class PlanCommand {
       const exists = await this.fileExists(archiveDir);
       if (!exists) return '';
       const entries = await fs.readdir(archiveDir, { withFileTypes: true });
-      const names = entries.filter(e => e.isDirectory()).map(e => e.name).sort();
+      const names = entries.filter(e => e.isDirectory()).map(e => e.name);
       if (names.length === 0) return '';
-      const latest = names[names.length - 1];
+      // Archive names are `<change>-<YYYYMMDDHHMMSS>`: sorting lexicographically
+      // is dominated by the change-name prefix — sort by the trailing timestamp.
+      const tsOf = name => (name.match(/-(\d{14})$/) || [])[1] || '';
+      const latest = names.reduce((a, b) => (tsOf(b) > tsOf(a) ? b : a));
       const state = readDeferred(path.join(archiveDir, latest));
       const openItems = state.entries.filter(e => !e.checked);
       const rulings = readRulings(path.join(archiveDir, latest));
@@ -332,7 +335,10 @@ class PlanCommand {
         lines.push('**未决暂缓项**（defer 不是丢弃）：');
         lines.push('');
         for (const item of openItems) {
-          lines.push(`- [ ] #${item.n} [${item.date}] ${item.text}`);
+          // NOT a checkbox: `- [ ]` matches TASK_PATTERN and would make every
+          // consumer treat these findings as real tasks (verify FAIL / archive
+          // blocked). Use a suspended-marker bullet instead.
+          lines.push(`- ⏸ #${item.n} [${item.date}] ${item.text}`);
           lines.push(`  - Source: stdd/changes/archive/${latest}/deferred-work.md`);
         }
         lines.push('');

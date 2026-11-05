@@ -233,6 +233,7 @@ function mergeDeltaSpecWithEngine(before, deltaContent) {
   const unappliable = [
     ...parsed.sections.modified.requirements.map(r => `MODIFIED "${r.name}"`),
     ...parsed.sections.removed.requirements.map(r => `REMOVED "${r.name}"`),
+    ...parsed.sections.renamed.entries.map(e => `RENAMED "${e.from}" -> "${e.to}"`),
   ];
   if (unappliable.length > 0) {
     warnings.push({
@@ -406,11 +407,25 @@ class ArchiveCommand {
   runStrictGate(changeDir, cwd) {
     const changeSpecsDir = path.join(changeDir, 'specs');
     if (!fs.existsSync(changeSpecsDir)) return { ok: true };
-    const files = walkSpecFiles(changeSpecsDir);
+    // Scope must match the merge loop: contracts/ and api-spec.* files are
+    // never merged, so they must not gate the archive either.
+    const files = walkSpecFiles(changeSpecsDir).filter(f => {
+      const rel = path.relative(changeSpecsDir, f);
+      return !/^contracts\//.test(rel) && !/^api-spec\./.test(path.basename(rel));
+    });
     if (files.length === 0) return { ok: true };
     const validator = new ValidateCommand(cwd);
     const diagnostics = validator.strictDiagnostics(changeDir, files);
-    const blocking = diagnostics.filter(d => d.severity === 'blocking');
+    // Structure rules only. Stateful delta-vs-main rules (target-missing,
+    // added-conflict, ...) reflect merge state: after a conflict-aborted
+    // partial merge they fire on already-applied entries and would block the
+    // idempotent re-run. The merge engine reports those states itself as
+    // conflicts/warnings.
+    const STATEFUL_RULES = new Set([
+      'removed-target-missing', 'renamed-source-missing', 'modified-target-missing',
+      'added-conflict', 'renamed-target-exists',
+    ]);
+    const blocking = diagnostics.filter(d => d.severity === 'blocking' && !STATEFUL_RULES.has(d.rule));
     return { ok: blocking.length === 0, blocking };
   }
 
@@ -525,7 +540,9 @@ class ArchiveCommand {
     // accepted-with-open-items; otherwise accepted.
     const deferredState = readDeferred(changeDir);
     let verdict = 'accepted';
-    let verdictReason = 'Verification passed with no open deferred items.';
+    let verdictReason = evidence
+      ? 'Verification passed with no open deferred items.'
+      : 'No verification evidence recorded; archived without verification.';
     if (verificationStatus === 'FAIL') {
       verdict = 'rejected';
       verdictReason = 'Latest verification evidence failed.';

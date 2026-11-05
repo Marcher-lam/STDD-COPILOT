@@ -14,6 +14,7 @@ const logger = createLogger('graph-run');
 const DynamicGraphRouter = require('../../utils/dynamic-router');
 const { getPackageRoot } = require('../../utils/path-resolver');
 const { walkFiles } = require('../../utils/file-walker');
+const { validateChangeName } = require('../../utils/change-utils');
 const GraphCacheManager = require('../../utils/graph-cache');
 const { resolveRigor, rigorNodeOptions } = require('../../utils/rigor');
 const { parseCommand, runCommand: runParsedCommand } = require('../../utils/command-runner');
@@ -303,7 +304,7 @@ class GraphRunCommand {
    * carries the attempt count for the delegation guidance.
    */
   async _executeNodeWithRetry(nodeName, changeName, options = {}) {
-    const maxAttempts = 1 + (Number(options.retry) || 0);
+    const maxAttempts = 1 + Math.max(0, Number.parseInt(options.retry, 10) || 0);
     let lastError;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -347,6 +348,7 @@ class GraphRunCommand {
     }
 
     const changeName = options.changeName || this._generateChangeName(intent);
+    validateChangeName(changeName); // rejects path separators / '..' before any fs write
     options.changeName = changeName;
     this.result.changeName = changeName;
 
@@ -355,7 +357,13 @@ class GraphRunCommand {
     const cache = options.noCache
       ? null
       : new GraphCacheManager(changeName, path.join(stddDir, 'graph', 'cache'));
-    const cacheInputs = { change: changeName, intent, rigor };
+    const cacheInputs = {
+      change: changeName,
+      intent,
+      rigor,
+      skipApply: Boolean(options.skipApply),
+      workspace: options.workspaceContext ? options.workspaceContext.name : null,
+    };
 
     if (options.workspace) {
       const workspace = resolveWorkspace(process.cwd(), options.workspace);
@@ -383,8 +391,8 @@ class GraphRunCommand {
 
       // D3: checkpoint resume — skip nodes that already succeeded for this
       // change+intent+rigor combination.
-      if (cache && cache.has(nodeName, cacheInputs)) {
-        const cached = cache.get(nodeName, cacheInputs);
+      const cached = cache ? cache.get(nodeName, cacheInputs) : null;
+      if (cached) {
         this.result.steps.push({ node: nodeName, command: label, status: 'cached', cachedAt: cached.timestamp });
         console.log(chalk.dim(`  [Cached: ${label}] ⊘ skipped (previous run succeeded)`));
         continue;
@@ -401,15 +409,22 @@ class GraphRunCommand {
       console.log(chalk.yellow(`  [Executing: ${label}]`));
 
       try {
+        const exitCodeBefore = process.exitCode;
         const result = await this._executeNodeWithRetry(nodeName, changeName, options);
+        // verify/archive report gate failures via process.exitCode = 1 without
+        // throwing — a node that set it must be treated as failed, never
+        // checkpointed.
+        if (process.exitCode === 1 && exitCodeBefore !== 1) {
+          throw new Error(`${label} reported failure (exit code 1)`);
+        }
         this.result.steps.push({ node: nodeName, command: label, ...result });
 
         if (result.status === 'success') {
           console.log(chalk.green(`    ✓ ${label} completed`));
           if (cache) cache.set(nodeName, cacheInputs, { status: result.status });
         } else if (result.status === 'skipped') {
+          // A skip (e.g. --skip-apply) is not a completed checkpoint.
           console.log(chalk.dim(`    ⊘ ${label} skipped`));
-          if (cache) cache.set(nodeName, cacheInputs, { status: result.status });
         } else {
           console.log(chalk.yellow(`    ? ${label} unknown`));
         }
@@ -433,7 +448,7 @@ class GraphRunCommand {
         console.log(chalk.red(`    ✗ ${label} failed (${attempts} attempt(s)): ${error.message}`));
         this._persistRunResult(stddDir, changeName);
         console.log(chalk.red(`\n  Graph run aborted at ${nodeName}.`));
-        console.log(chalk.yellow(`  Re-run the same command to resume from this node (cached checkpoints are skipped).`));
+        console.log(chalk.yellow(`  Re-run with --change-name ${changeName} to resume from this node (cached checkpoints are skipped).`));
         console.log(chalk.dim(`  Run result: ${path.relative(cwd, path.join(stddDir, 'changes', changeName, 'graph-run-result.json'))}`));
         process.exitCode = 1;
         return this.result;
@@ -447,7 +462,7 @@ class GraphRunCommand {
   _persistRunResult(stddDir, changeName) {
     try {
       const dir = path.join(stddDir, 'changes', changeName);
-      fs.mkdirSync(dir, { recursive: true });
+      if (!fs.existsSync(dir)) return; // failing node never created the change
       fs.writeFileSync(path.join(dir, 'graph-run-result.json'), JSON.stringify(this.result, null, 2), 'utf8');
     } catch (err) {
       logger.warn(`Failed to persist graph run result: ${err.message}`);

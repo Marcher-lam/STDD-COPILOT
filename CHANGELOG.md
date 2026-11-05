@@ -4,6 +4,19 @@ All notable changes to STDD Copilot will be documented in this file.
 
 ## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
 
+### Fixed (open-code-review round 9)
+
+Critical & high (from the open-code-review pass over this changeset):
+- plan: fed-back deferred items were written as `- [ ]` checkboxes matching TASK_PATTERN — verify/archive treated intelligence findings as real tasks and failed forever; now a suspended-marker bullet that no task parser matches. Archive "latest" is picked by the trailing timestamp, not lexicographic name order.
+- confirm: risk-triggered pending-human now has an exit — `--skip` records an explicit manual-override decision and confirms. Non-numeric certainty thresholds fail closed (defaults + warning) instead of NaN fail-open. Certainty history matching tolerates corrupt JSONL lines and path-style contexts. The risk-signal regex is narrowed and shared with rigor (common words like auth/security no longer force the human gate for names like add-user-auth). Warning-band output no longer claims certainty ≥ auto when it wasn't.
+- graph-run: nodes that report failure via exit code 1 (verify/archive) are treated as failed and never checkpointed (previously cached as success and skipped on every resume). --change-name is validated (path traversal rejected before any write). Negative --retry clamped. Cache key includes skipApply/workspace; skipped nodes are not checkpoints; corrupt cache entries fall through to re-execution. Resume hint names the concrete --change-name; a failing run no longer materializes a phantom active change.
+- validate/archive: strict checks resolve renames the same way the merge engine does (RENAMED + MODIFIED-by-new-name no longer refused). The pre-archive gate is structure-only — stateful delta-vs-main rules no longer block the idempotent re-run after a conflict-aborted partial merge; gate scope now matches merge scope (contracts/api-spec skipped).
+- delta-spec: headerless legacy MODIFIED/REMOVED sections emit a warning instead of being silently dropped; the legacy ADDED marker block is idempotent across re-archives; ADDED near-miss (case/whitespace) is flagged as a conflict.
+
+Medium hardening: verify gains --no-lint as the explicit escape from a strict change's lint default; clarify strips the appended Clarification section before signal tests (no self-perpetuation, no cross-contamination of confirm's risk scan); interruption accounting never throws into the gate; rigor/baseline appends are newline-safe; apply skips baseline capture in dry-run; graph --retry parses at the option level; runtime agent legacy notice suppressed under --json.
+
+Tests: +1 suite, +17 cases (review-fixes); rigor/dag assertions updated for the narrowed signals and archive-strict semantics; full suite 213/213, 4327/4327 passing; lint clean.
+
 ### Added (model-strength adaptation round 8 — P2)
 - Interruption budget (new src/utils/interruption.js): every real human pause — confirm pending-human, apply 3-strikes escalation — is counted on the change (.state.yaml interruptions_used) against interruption.budget (default 3). Exceeding the budget flags the decision file (budgetExceeded) and warns to split the change or tighten thresholds; it never blocks a genuinely human decision, it makes the cost observable. The unified pause policy lands in docs/agent-protocol.md: pause only on (a) gate pending-human, (b) circuit-breaker, (c) irreversible actions.
 - Legacy notices: single-model role simulation (roles list/party) and the multi-agent state machine (runtime agent) now carry a dim "legacy (optional)" line — weak-model-era compensation, optional analysis tool under strong base models; evidence-based review goes through roles review --triage.
