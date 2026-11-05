@@ -126,6 +126,14 @@
 
 Triage worksheet 新增 `Implemented-by / Triaged-by` 字段与协议说明（裁决引擎应与实现引擎不同——fresh eyes）；`docs/agent-protocol.md` 新增"审查与裁决协议"五条跨框架纪律（引擎异构、裁决制、红灯证据、3 次熔断、裁决留痕）。
 
+### 18. DAG 引擎增强（追加落地，OpenSpec + superpowers）
+
+审计发现：DAG 引擎（graph-run）此前**零接线** `graph-cache`（断点缓存仅存在于工具模块，graph run 从未使用，且缓存写入包根会跨项目污染）。三项增强：
+
+- **渐进严谨度**（OpenSpec "Progressive Rigor"）：`--rigor light|standard|strict`，缺省按 intent 映射（hotfix/research→light：verify 免 constitution、archive 免 strict 门禁；feature/repair→standard；strict→verify 附 lint）。例行变更最小仪式、高风险变更按比例加严；用户显式节点选项优先。
+- **节点重试 + 委托证据**（superpowers fix-loop）：`--retry <n>` 有界重试；最终失败记录 delegation 建议（换 fresh engine + fix packet）并落盘 `graph-run-result.json`。
+- **幂等断点续跑**（接线 graph-cache）：成功节点按 `change+intent+rigor` 指纹缓存于**项目内** `stdd/graph/cache/`；同一命令重跑自动跳过已成功节点——失败后重跑即从断点恢复；`--no-cache` 全量重执行。
+
 ---
 
 ## 对标确认：STDD 已具备的能力（无需改动）

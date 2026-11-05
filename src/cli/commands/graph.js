@@ -260,16 +260,21 @@ Currently implemented: visualize, analyze, parallel --detect, history, replay, r
     .option('--change-name <name>', 'Custom change name')
     .option('--workspace <workspace>', 'Run with workspace context (path or package name)')
     .option('--skip-apply', 'Skip apply and verify steps (spec generation only)')
+    .option('--rigor <level>', 'Progressive rigor: light, standard, strict (defaults by intent: hotfix/research=light, feature/repair=standard)')
+    .option('--retry <n>', 'Retry a failed node up to n extra times before aborting', 0)
+    .option('--no-cache', 'Disable checkpoint cache (re-execute all nodes)')
     .addHelpText('after', `
 Examples:
   stdd graph run
   stdd graph run --intent hotfix
   stdd graph run --intent repair --change-name existing-change
   stdd graph run --intent feature --skip-apply
+  stdd graph run --intent feature --rigor strict --retry 2
   stdd graph run --change-name my-change
   stdd graph run --workspace packages/api
 
 Executes nodes in topological order. Feature intent includes outside-in scaffolding; repair intent starts with fix-packet evidence.
+Successful nodes are checkpointed per change+intent+rigor; re-running the same command resumes from the last failed node.
 `)
     .action(async (options = {}) => {
       try {
@@ -278,6 +283,9 @@ Executes nodes in topological order. Feature intent includes outside-in scaffold
           changeName: options.changeName,
           skipApply: options.skipApply,
           workspace: options.workspace,
+          rigor: options.rigor,
+          retry: options.retry,
+          noCache: options.cache === false,
         });
       } catch (error) {
         logger.error(error.message);

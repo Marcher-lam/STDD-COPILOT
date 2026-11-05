@@ -67,7 +67,7 @@
 | `/stdd:graph` | `stdd graph <subcommand>` | DAG 技能编排引擎总入口，动态拓扑裁剪 |
 | — | `stdd graph visualize` | 输出编译后图谱 (Mermaid/JSON/HTML 格式) |
 | — | `stdd graph analyze` | 打印图谱节点、边、入口、终端、层级摘要 + 瓶颈分析 (`--bottlenecks`) |
-| — | `stdd graph run --intent <intent>` | 按意图 DAG 执行全工作流 (feature/hotfix/research/repair)，动态路由拓扑 |
+| — | `stdd graph run --intent <intent>` | 按意图 DAG 执行全工作流 (feature/hotfix/research/repair)，动态路由拓扑；`--rigor` 渐进严谨度（light/standard/strict，按 intent 默认）、`--retry` 节点重试 + 失败委托证据、断点缓存续跑（`--no-cache` 关闭） |
 | — | `stdd graph parallel --detect/--execute` | 检查图谱并行化机会和可并行层，支持 `--max-workers` |
 | — | `stdd graph history` | 查看执行历史 (从证据文件)，支持 `--failures` 过滤 |
 | — | `stdd graph replay <id>` | 查看详情或重新执行过去的运行 |

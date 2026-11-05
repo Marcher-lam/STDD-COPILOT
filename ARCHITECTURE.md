@@ -206,6 +206,12 @@ graph TB
 
 `stdd graph run` 是用户可用的 CLI 编排入口，位于 `src/cli/commands/graph-run.js`。它通过 `DynamicGraphRouter` 编译 `feature`、`hotfix`、`repair`、`research` 等意图 DAG，并把节点映射到已实现 CLI 能力：`ff`、`spec`、`outside-in`、`fix-packet`、`apply`、`verify`、`archive` 等。
 
+**渐进严谨度（Progressive Rigor）**：`--rigor light|standard|strict`（缺省按 intent 映射：hotfix/research→light，feature/repair→standard）。light 为例行变更减负（verify 跳过 constitution、archive 免 strict 门禁）；strict 加严（verify 附带 lint）；用户显式节点选项始终优先于 rigor 默认。
+
+**节点重试与委托（fix-loop）**：`--retry <n>` 让失败节点最多额外重试 n 次；最终失败记录 delegation 建议（fresh engine + fix packet）并把完整运行结果落盘到 `stdd/changes/<n>/graph-run-result.json`。
+
+**幂等断点缓存**：graph run 已接线 `graph-cache.js`——成功节点按 `change+intent+rigor` 指纹缓存于**项目内** `stdd/graph/cache/`（不再写入包根，避免跨项目污染）；同一命令重跑自动跳过已成功节点（断点续跑），`--no-cache` 全量重执行。
+
 底层运行时能力由 `graph-cache.js`、`evidence-capture.js`、`error-propagator.js`、`heterogeneous-adapter.js` 和 `parallel-executor.js` 组合提供：缓存、证据采集、失败传播、异构引擎适配和 DAG 分层并行执行。真实编码节点仍需要外部 AI 工具或 Skill 调用完成。
 
 ### 2. 核心 Skills (5 阶段工作流)

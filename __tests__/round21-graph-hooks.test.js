@@ -207,6 +207,9 @@ describe('round21 graph command branch coverage', () => {
       changeName: 'bugfix',
       skipApply: true,
       workspace: 'pkg',
+      rigor: undefined,
+      retry: undefined,
+      noCache: false,
     });
 
     execute.mockRejectedValueOnce(new Error('run failed'));

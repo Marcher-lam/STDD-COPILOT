@@ -14,6 +14,7 @@ const logger = createLogger('graph-run');
 const DynamicGraphRouter = require('../../utils/dynamic-router');
 const { getPackageRoot } = require('../../utils/path-resolver');
 const { walkFiles } = require('../../utils/file-walker');
+const GraphCacheManager = require('../../utils/graph-cache');
 const { parseCommand, runCommand: runParsedCommand } = require('../../utils/command-runner');
 const { FFCommand } = require('./ff');
 const { generateChangeName: _genChangeName } = require('../../utils/change-helpers');
@@ -86,6 +87,18 @@ function compareValues(actual, operator, expected) {
 }
 
 const ALLOWED_CONDITION_COMMANDS = new Set(['npm', 'git', 'node', 'npx', 'yarn', 'pnpm']);
+
+// D1 Progressive rigor (OpenSpec: "routine change → minimal ceremony;
+// high-risk change → increased validation proportionally"). Rigor scales the
+// per-node gates instead of applying identical ceremony to every intent.
+const RIGOR_LEVELS = ['light', 'standard', 'strict'];
+const RIGOR_BY_INTENT = {
+  feature: 'standard',
+  hotfix: 'light',
+  repair: 'standard',
+  research: 'light',
+  brownfield: 'standard',
+};
 
 const NODE_COMMAND_MAP = {
   'stdd-propose': 'propose',
@@ -279,8 +292,63 @@ class GraphRunCommand {
     }
   }
 
+  /**
+   * D1: resolve the rigor level for a run. Explicit --rigor wins over the
+   * intent default; invalid explicit values are rejected loudly.
+   */
+  _resolveRigor(intent, options = {}) {
+    if (options.rigor) {
+      if (!RIGOR_LEVELS.includes(options.rigor)) {
+        throw new Error(`Invalid rigor '${options.rigor}'. Valid levels: ${RIGOR_LEVELS.join(', ')}.`);
+      }
+      return options.rigor;
+    }
+    return RIGOR_BY_INTENT[intent] || 'standard';
+  }
+
+  /**
+   * D1: per-node gate scaling. light loosens ceremony for routine changes
+   * (hotfix skips the constitution pass and the strict archive gate);
+   * strict tightens it (verify also runs lint). Users can still override
+   * per-node via explicit options — rigor only provides defaults.
+   */
+  _rigorNodeOptions(nodeName, rigor) {
+    if (nodeName === 'stdd-verify') {
+      if (rigor === 'light') return { constitution: false };
+      if (rigor === 'strict') return { lint: true };
+    }
+    if (nodeName === 'stdd-archive' && rigor === 'light') {
+      return { skipStrict: true };
+    }
+    return {};
+  }
+
+  /**
+   * D2: execute a node with bounded retries (superpowers fix-loop).
+   * Returns the result annotated with the attempt count; the final error
+   * carries the attempt count for the delegation guidance.
+   */
+  async _executeNodeWithRetry(nodeName, changeName, options = {}) {
+    const maxAttempts = 1 + (Number(options.retry) || 0);
+    let lastError;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const result = await this._executeNode(nodeName, changeName, options);
+        return { ...result, attempts: attempt };
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxAttempts) {
+          console.log(chalk.yellow(`    ↻ retry ${attempt}/${maxAttempts - 1} after: ${error.message}`));
+        }
+      }
+    }
+    lastError.attempts = maxAttempts;
+    throw lastError;
+  }
+
   async execute(intent = 'feature', options = {}) {
-    const stddDir = path.join(process.cwd(), 'stdd');
+    const cwd = process.cwd();
+    const stddDir = path.join(cwd, 'stdd');
     if (!fs.existsSync(stddDir)) {
       throw new Error('STDD not initialized. Run `stdd init` first.');
     }
@@ -291,6 +359,10 @@ class GraphRunCommand {
     } catch (error) {
       throw new Error(`Failed to initialize graph router: ${error.message}`);
     }
+
+    const rigor = this._resolveRigor(intent, options);
+    options.rigor = rigor;
+    this.result.rigor = rigor;
 
     const graph = router.compile(intent);
     this._applyConditions(graph);
@@ -303,6 +375,13 @@ class GraphRunCommand {
     const changeName = options.changeName || this._generateChangeName(intent);
     options.changeName = changeName;
     this.result.changeName = changeName;
+
+    // D3: project-local checkpoint cache keyed by change+intent+rigor so a
+    // failed run can resume from the last successful node on re-run.
+    const cache = options.noCache
+      ? null
+      : new GraphCacheManager(changeName, path.join(stddDir, 'graph', 'cache'));
+    const cacheInputs = { change: changeName, intent, rigor };
 
     if (options.workspace) {
       const workspace = resolveWorkspace(process.cwd(), options.workspace);
@@ -319,7 +398,7 @@ class GraphRunCommand {
     }
 
     console.log(chalk.bold(`\n🚀 Graph Run: ${chalk.cyan(graph.name)}`));
-    console.log(chalk.dim(`  Intent: ${intent} | Change: ${changeName}`));
+    console.log(chalk.dim(`  Intent: ${intent} | Change: ${changeName} | Rigor: ${rigor}`));
     if (options.workspaceContext) {
       console.log(chalk.dim(`  Workspace: ${options.workspaceContext.name} (${options.workspaceContext.path})`));
     }
@@ -327,24 +406,61 @@ class GraphRunCommand {
 
     for (const nodeName of nodes) {
       const label = NODE_COMMAND_MAP[nodeName] || nodeName;
+
+      // D3: checkpoint resume — skip nodes that already succeeded for this
+      // change+intent+rigor combination.
+      if (cache && cache.has(nodeName, cacheInputs)) {
+        const cached = cache.get(nodeName, cacheInputs);
+        this.result.steps.push({ node: nodeName, command: label, status: 'cached', cachedAt: cached.timestamp });
+        console.log(chalk.dim(`  [Cached: ${label}] ⊘ skipped (previous run succeeded)`));
+        continue;
+      }
+
+      // D1: apply rigor defaults; explicit user options win.
+      const rigorOptions = this._rigorNodeOptions(nodeName, rigor);
+      if (nodeName === 'stdd-verify') {
+        options.verifyOptions = { ...rigorOptions, ...(options.verifyOptions || {}) };
+      } else if (nodeName === 'stdd-archive') {
+        options.archiveOptions = { ...rigorOptions, ...(options.archiveOptions || {}) };
+      }
+
       console.log(chalk.yellow(`  [Executing: ${label}]`));
 
       try {
-        const result = await this._executeNode(nodeName, changeName, options);
+        const result = await this._executeNodeWithRetry(nodeName, changeName, options);
         this.result.steps.push({ node: nodeName, command: label, ...result });
 
         if (result.status === 'success') {
           console.log(chalk.green(`    ✓ ${label} completed`));
+          if (cache) cache.set(nodeName, cacheInputs, { status: result.status });
         } else if (result.status === 'skipped') {
           console.log(chalk.dim(`    ⊘ ${label} skipped`));
+          if (cache) cache.set(nodeName, cacheInputs, { status: result.status });
         } else {
           console.log(chalk.yellow(`    ? ${label} unknown`));
         }
       } catch (error) {
-        this.result.steps.push({ node: nodeName, command: label, status: 'failed', error: error.message });
+        // D2: final failure — record delegation guidance and persist the run
+        // result so the next run resumes from here with full context.
+        const attempts = error.attempts || 1;
+        this.result.steps.push({
+          node: nodeName,
+          command: label,
+          status: 'failed',
+          error: error.message,
+          attempts,
+          delegation: {
+            trigger: 'graph-node-failure',
+            reason: `Node '${nodeName}' failed after ${attempts} attempt(s); request a fresh engine/role with the fix packet before retrying.`,
+            suggestedEngines: ['claude_code', 'cursor', 'copilot', 'qwen_code'],
+          },
+        });
         this.result.failedAt = nodeName;
-        console.log(chalk.red(`    ✗ ${label} failed: ${error.message}`));
+        console.log(chalk.red(`    ✗ ${label} failed (${attempts} attempt(s)): ${error.message}`));
+        this._persistRunResult(stddDir, changeName);
         console.log(chalk.red(`\n  Graph run aborted at ${nodeName}.`));
+        console.log(chalk.yellow(`  Re-run the same command to resume from this node (cached checkpoints are skipped).`));
+        console.log(chalk.dim(`  Run result: ${path.relative(cwd, path.join(stddDir, 'changes', changeName, 'graph-run-result.json'))}`));
         process.exitCode = 1;
         return this.result;
       }
@@ -352,6 +468,16 @@ class GraphRunCommand {
 
     console.log(chalk.green(`\n  Graph run completed for ${changeName}.`));
     return this.result;
+  }
+
+  _persistRunResult(stddDir, changeName) {
+    try {
+      const dir = path.join(stddDir, 'changes', changeName);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'graph-run-result.json'), JSON.stringify(this.result, null, 2), 'utf8');
+    } catch (err) {
+      logger.warn(`Failed to persist graph run result: ${err.message}`);
+    }
   }
 
   _generateChangeName(intent) {

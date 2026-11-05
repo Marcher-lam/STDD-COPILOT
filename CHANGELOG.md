@@ -4,6 +4,11 @@ All notable changes to STDD Copilot will be documented in this file.
 
 ## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
 
+### Added (DAG round 5)
+- Progressive rigor for graph run (OpenSpec): `--rigor light|standard|strict` with intent-based defaults (hotfix/research=light, feature/repair=standard). light loosens ceremony for routine changes (verify skips constitution, archive skips the strict gate); strict tightens it (verify also lints); explicit user node options always win.
+- Node retry + delegation evidence (superpowers fix-loop): `--retry <n>` bounded retries per node; final failure records a delegation suggestion (fresh engine + fix packet) and persists the full run result to stdd/changes/<n>/graph-run-result.json.
+- Checkpoint cache wired into graph run: successful nodes are fingerprinted per change+intent+rigor into the PROJECT-LOCAL stdd/graph/cache (fixing the package-root cross-project pollution); re-running the same command resumes from the last failed node; --no-cache re-executes everything. The GraphCacheManager constructor now accepts an optional cacheRoot.
+
 ### Added (P3 round 4)
 - Ruling ledger: `stdd apply <change> --ruling "决定 — 理由 — 出错了的代价"` records execution-time decisions in `rulings.md` (numbered, dated, persisted through archive); `stdd plan` feeds the latest archived change's 3 most recent rulings back into the new task list. Closes the memlog backlog item by mapping its role onto rulings.md / apply.log / progress.jsonl instead of adding a fourth log engine.
 - AD-n decision validation: `stdd validate <change> --strict` checks design.md for duplicate AD numbers (blocking), Supersedes references to missing decisions (blocking), and legacy `### Decision:` headings without stable IDs (warning). design.md is deliberately excluded from spec leakage rules.

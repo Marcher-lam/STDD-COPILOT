@@ -169,6 +169,9 @@ describe('round25 graph.js branch coverage', () => {
       changeName: undefined,
       skipApply: undefined,
       workspace: undefined,
+      rigor: undefined,
+      retry: undefined,
+      noCache: false,
     });
   });
 

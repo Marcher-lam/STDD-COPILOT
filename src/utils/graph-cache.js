@@ -6,9 +6,17 @@ const { createLogger } = require('./logger');
 const logger = createLogger('graph-cache');
 
 class GraphCacheManager {
-  constructor(projectId = 'default') {
+  /**
+   * @param {string} projectId - Cache namespace (e.g. the change name).
+   * @param {string} [cacheRoot] - Project-local cache root. When omitted the
+   *   package root is used (legacy behavior); graph run passes the project's
+   *   stdd/graph/cache so checkpoints never leak across projects.
+   */
+  constructor(projectId = 'default', cacheRoot) {
     this.projectId = projectId;
-    this.cacheDir = path.join(getPackageRoot(), 'stdd', 'graph', 'cache', this.projectId);
+    this.cacheDir = cacheRoot
+      ? path.join(cacheRoot, this.projectId)
+      : path.join(getPackageRoot(), 'stdd', 'graph', 'cache', this.projectId);
     this._ensureCacheDir();
   }
 
