@@ -77,10 +77,13 @@ artifacts:
 
       ## Architecture Decisions
 
-      ### Decision: [决策名]
+      ### AD-1: [决策名]
+      > 稳定 ID 规则（BMAD）：AD-n 一经发布永不重排、永不复用；推翻旧决策时新增更高编号并标注 `Supersedes: AD-x`，不修改原条目。
+
       **Context:** [背景]
       **Decision:** [决策]
-      **Rationale:** [理由]
+      **Binds:** [该决策约束什么——后续设计必须遵守]
+      **Prevents:** [该决策禁止什么——防止出现的路径]
       **Consequences:** [影响]
 
       ## File Changes

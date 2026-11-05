@@ -98,6 +98,10 @@
 - 路由四桶：`intent-gap`（意图错，停下对齐）/ `plan-defect`（计划错，先重规划）/ `patch`（就地修）/ `defer`（经 `stdd verify <change> --defer` 入台账）
 - 不带 `--triage` 时保持原有自动判级行为（向后兼容）
 
+### 13. AD-n 稳定决策 ID（P3 部分落地，BMAD 稳定 ID 族）
+
+`schemas/spec-driven/schema.yaml` 的 design 模板决策格式升级为 `### AD-n: [决策名]`：ID 一经发布永不重排/复用，推翻旧决策用更高编号 + `Supersedes: AD-x` 标注；每条决策新增 **Binds**（约束什么）/ **Prevents**（禁止什么）两个字段——"Record decisions, not rationale"。
+
 ---
 
 ## 对标确认：STDD 已具备的能力（无需改动）
@@ -122,13 +126,13 @@
 
 > 说明：P2 中的"回归验证（revert-fix-must-fail）"最终以**红灯证据门禁**（第 9 条）的形式落地——用 apply.log 中已记录的 RED 相位证据实现"必须亲眼见过测试失败"，比 git 还原式验证更安全（无破坏性操作）且无需额外配置。
 
-### P3（理念采纳、实现从长计议）
+### P3（理念采纳、从长计议；AD-n 稳定 ID 已部分落地见第 13 条）
 
 | 条目 | 来源 | 说明 |
 |------|------|------|
 | memlog 决策日志 | BMAD | append-only 决策日志，工件从日志蒸馏，天然支持 resume（与 progress.jsonl 职责有重叠，需先做整合设计） |
-| ruling ledger | superpowers executing-plans | 执行中的裁决记录（`决定—理由—出错的代价`），抗上下文压缩 |
-| AD-n 稳定 ID | BMAD architecture spine | arch-decisions.md 改为稳定编号决策（Binds/Prevents/Rule），永不重排 |
+| ruling ledger | superpowers executing-plans | 执行中的裁决记录（`决定—理由—出错了的代价`），抗上下文压缩 |
+| AD-n 稳定 ID 的 CLI 强制校验 | BMAD architecture spine | 模板已落地（第 13 条）；后续可在 validate 中校验 AD 编号连续性与 Supersedes 引用有效性 |
 | review 用不同 LLM | BMAD | heterogeneous-adapter 已有 Tier 降级链，可扩展为审查强制异构引擎 |
 | retrospective 验收判定 | BMAD | 复盘产出带 `accepted / accepted-with-open-items / rejected` 判定 |
 

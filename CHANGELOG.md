@@ -5,6 +5,7 @@ All notable changes to STDD Copilot will be documented in this file.
 ## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
 
 ### Added (P2 round 3)
+- Stable decision IDs: the design template in schemas/spec-driven/schema.yaml now uses `### AD-n: [name]` with never-renumber/never-reuse rules (supersede via higher number + `Supersedes: AD-x`) and Binds/Prevents fields (BMAD stable ID family).
 - RED-phase evidence gate in verify: parses apply.log and fails verification for TDD-phase tasks that reached GREEN without a recorded RED pass ("watch the test fail"); legacy-mode tasks are counted but not blocked; report gains a `TDD: PASS/FAIL (RED evidence N/M)` line.
 - 3-strikes escalation in apply: tracks consecutive per-task failures in apply.log (reset by any pass); from the third failure on, prints a circuit-breaker ("three failed fixes is an architecture problem, stop patching — re-plan or delegate with the evidence") and writes `escalation-*.json` evidence. Covers legacy, GREEN, and REFACTOR failure paths.
 - Previous Change Intelligence in plan: tasks.md generation feeds still-open deferred-work items from the most recently archived change back into the new task list (with Source pointers), so deferred findings loop instead of rotting in the archive.
