@@ -366,16 +366,19 @@ Agent: [检测到前端项目，无 DESIGN.md]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-### 暂停确认规则（Human-in-the-Loop）
+### 暂停确认规则（Human-in-the-Loop — 统一中断预算模型）
 
-仅在以下节点暂停，等待用户确认（**仅自主编排模式**）：
+**暂停点只有三类**（强基模型适配：阶段触发已废弃，一切暂停都是风险触发）：
 
-1. **`/stdd:confirm`** — 需求确认门。展示澄清结果，等待用户说 "确认" 或提出修改
-   - **风险触发模式**（`hitl.mode: risk-triggered`）：直接运行 `stdd confirm <change>`，由门禁自行判定——certainty 高且无不可逆信号时自动通过（决策落盘 `confirm-decision.json`），返回 `pending-human` 时才向用户提问
-2. **`/stdd:archive`** — 归档确认门。展示验证结果，等待用户说 "归档" 
-3. **连续失败 3 次** — 熔断。展示失败证据，请求用户决策
+1. **门禁 pending-human** — `stdd confirm` 返回 `pending-human`（certainty 不足 / 不可逆信号）时向用户提问
+2. **熔断升级** — 同任务连续 3 次失败（`escalation` 证据）时携证据链请求决策
+3. **不可逆动作** — 删除数据、破坏性迁移等，无论置信度多高
 
-> 模型强度适配：约束密度应是变更风险的函数，不是全局常量。见 `docs/model-strength-adaptation.md`。
+其余一切（阶段边界、循环结束、constitution 警告）**不暂停**。
+
+**中断预算**：每次真实的人类暂停计入 `.state.yaml` 的 `interruptions_used`（预算 `interruption.budget`，默认 3）。超预算时门禁会告警"该变更不断请求人工——建议重拆变更或收紧阈值"。Agent 看到此告警时应建议用户拆分变更而非继续消耗。
+
+> 历史说明：config 中 `phases_requiring_confirm`/`auto_skip_when`/`check_points` 等为从未接线的声明性配置（deprecated）。见 `docs/model-strength-adaptation.md`。
 
 ---
 

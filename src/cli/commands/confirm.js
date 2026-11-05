@@ -8,6 +8,7 @@ const path = require('path');
 const chalk = require('chalk');
 const yaml = require('js-yaml');
 const { createLogger } = require('../../utils/logger');
+const { recordInterruption, readInterruptions, readBudget } = require('../../utils/interruption');
 const logger = createLogger('confirm');
 
 // Irreversible / high-risk signals that always require a human regardless
@@ -91,10 +92,13 @@ class ConfirmCommand {
       const configPath = path.join(process.cwd(), 'stdd', 'config.yaml');
       if (await this.fileExists(configPath)) {
         const config = yaml.load(await fs.readFile(configPath, 'utf8')) || {};
-        if (config && config.certainty) {
+        // Thresholds live at tdd.certainty in the shipped template; accept a
+        // top-level certainty section too (both are honored).
+        const certainty = (config && config.certainty) || (config && config.tdd && config.tdd.certainty);
+        if (certainty) {
           return {
-            confirm: Number(config.certainty.confirm_threshold ?? DEFAULT_THRESHOLDS.confirm),
-            auto: Number(config.certainty.auto_threshold ?? DEFAULT_THRESHOLDS.auto),
+            confirm: Number(certainty.confirm_threshold ?? DEFAULT_THRESHOLDS.confirm),
+            auto: Number(certainty.auto_threshold ?? DEFAULT_THRESHOLDS.auto),
           };
         }
       }
@@ -155,10 +159,31 @@ class ConfirmCommand {
       if (!certainty) reasons.push('no certainty assessment on record (run: stdd certainty assess)');
       else if (certainty.overall < thresholds.confirm) reasons.push(`certainty ${certainty.overall} < confirm threshold ${thresholds.confirm}`);
       if (riskSignals.length > 0) reasons.push(`irreversible/high-risk signal(s): ${riskSignals.slice(0, 5).join(', ')}`);
-      const decision = { status: 'pending-human', change: changeName, basis, reasons, timestamp: new Date().toISOString() };
+
+      // Interruption budget: a human pause is real work against a budget.
+      recordInterruption(changeDir, `confirm-needs-human: ${reasons[0] || 'unspecified'}`);
+      const used = readInterruptions(changeDir).used;
+      const budget = readBudget(process.cwd());
+      const budgetExceeded = used > budget;
+
+      const decision = {
+        status: 'pending-human',
+        change: changeName,
+        basis,
+        reasons,
+        interruptionsUsed: used,
+        interruptionBudget: budget,
+        ...(budgetExceeded ? { budgetExceeded: true } : {}),
+        timestamp: new Date().toISOString(),
+      };
       await fs.writeFile(decisionPath, JSON.stringify(decision, null, 2), 'utf8');
       console.log(chalk.yellow('\n⚠ This confirmation needs human confirmation (not auto-approved):'));
       for (const reason of reasons) console.log(chalk.yellow(`   • ${reason}`));
+      console.log(chalk.dim(`   Interruption budget: ${used}/${budget} used`));
+      if (budgetExceeded) {
+        console.log(chalk.yellow('   ⚠ interruption budget exceeded — the change keeps asking for humans.'));
+        console.log(chalk.yellow('     Consider splitting the change or tightening certainty/risk thresholds.'));
+      }
       console.log(chalk.dim(`   Decision recorded: ${path.relative(process.cwd(), decisionPath)}`));
       console.log(chalk.cyan('\nNext step: review the proposal, then re-run with a human decision'));
       return { ...context, confirmed: false, needsHuman: true, decision };

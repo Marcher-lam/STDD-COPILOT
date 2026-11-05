@@ -57,12 +57,37 @@
 
 旧默认 = 每个提案倾倒 20 个固定问题（吞吐量/合规/可用性——对一个加按钮的提案全是噪音）。新默认 = **对话式**：核心三问（输入边界/空值/失败场景）+ 按提案信号精选的相关问题（提及 API→集成问、提及性能→响应时间…），简单提案 ≤6 问；`--exhaustive` 恢复全量清单。顺带修复：`clarify [action] [change]` 双位置参数导致 commander options 整体被丢弃的潜伏 bug（所有旗标从未生效过）。
 
-## 待办（P2 backlog）
+### 7. legacy 标记（P2 落地）
 
-| 优先级 | 条目 | 说明 |
-|---|---|---|
-| P2 | legacy 标记 | 12 角色模拟、SudoLang、Party Mode 标注"弱模型时代补偿层，默认不推荐"，评估移入 extensions |
-| P2 | 中断预算 | 四层暂停机制（confirm + certainty 检查点 + hitl 分阶段 + constitution）合并为单一"每变更 N 次暂停配额，风险消耗配额" |
+单模型角色模拟（`roles list/party`）、多 Agent 状态机（`runtime agent`）在输出中标注 "legacy (optional)"——弱模型时代补偿层，强基模型下为可选分析工具（实证审查走 `roles review --triage`）。是否移入 extensions 留待后续评估（先标注、后迁移）。
+
+### 8. 中断预算（P2 落地）
+
+**审计发现**：config 的四层暂停机制大部分是剧场——`certainty.check_points`、`auto_skip_when`、`phases_requiring_confirm` **零消费者**（`hitl.mode` 在 P0 前也无人读取）。因此本轮不是"合并四层"，而是**建立真实的统一记账**（`src/utils/interruption.js`）：
+
+- 每次真实人类暂停（confirm pending-human、3 次熔断）计入 `.state.yaml` 的 `interruptions_used`
+- 预算 `interruption.budget`（默认 3）；超额时决策文件标 `budgetExceeded` 并告警"建议重拆变更/收紧阈值"——**不阻断决策本身**（人需要的决策不能被预算否决，但成本必须可见）
+- 统一暂停策略写入 agent-protocol：暂停点仅三类（门禁 pending-human / 熔断 / 不可逆动作），其余一律不暂停
+- 死配置就地标注 deprecated
+
+顺带修复（第五个潜伏 bug）：certainty 阈值一直挂在 `tdd.certainty` 而 confirm 读顶层 `certainty`——从未读到过（默认值恰好相同所以无感知）；现两种层级都兼容。
+
+## 本系列累计修复的潜伏 bug（约束层腐蚀实证）
+
+| # | bug | 发现轮次 |
+|---|-----|---------|
+| 1 | `stdd confirm` 正则 `**` 未转义——命令在任何项目崩溃 | P0 |
+| 2 | `clarify [action] [change]` 丢弃全部 commander 选项 | P1 |
+| 3 | graph-cache 从未接线 + 缓存写入包根（跨项目污染） | DAG 轮 |
+| 4 | certainty/hitl 检查点配置零消费者（声明性剧场） | P2 |
+| 5 | certainty 阈值层级错位（tdd.certainty vs 顶层 certainty）从未被读到 | P2 |
+| 6 | `planning:` 段误插 defense 中间劫持子键（P0 引入，本轮修复） | P2 |
+
+**教训**：约束层一旦不被真实使用，就会无声腐化。每条约束都需要（a）端到端测试（b）真实冒烟（c）消费者审计。
+
+## Backlog 状态：全部清零
+
+P0 ✅ P1 ✅ P2 ✅。后续方向（新议题，非本轮 backlog）：模拟类能力是否移入 extensions 的评估、verify --strict 与 rigor 的矩阵细化。
 
 ## 判据
 

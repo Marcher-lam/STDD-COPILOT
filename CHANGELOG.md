@@ -4,6 +4,11 @@ All notable changes to STDD Copilot will be documented in this file.
 
 ## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
 
+### Added (model-strength adaptation round 8 — P2)
+- Interruption budget (new src/utils/interruption.js): every real human pause — confirm pending-human, apply 3-strikes escalation — is counted on the change (.state.yaml interruptions_used) against interruption.budget (default 3). Exceeding the budget flags the decision file (budgetExceeded) and warns to split the change or tighten thresholds; it never blocks a genuinely human decision, it makes the cost observable. The unified pause policy lands in docs/agent-protocol.md: pause only on (a) gate pending-human, (b) circuit-breaker, (c) irreversible actions.
+- Legacy notices: single-model role simulation (roles list/party) and the multi-agent state machine (runtime agent) now carry a dim "legacy (optional)" line — weak-model-era compensation, optional analysis tool under strong base models; evidence-based review goes through roles review --triage.
+- Config honesty: audit found certainty check_points / auto_skip_when / phases_requiring_confirm had ZERO consumers (declarative theater) and certainty thresholds lived at tdd.certainty while confirm read top-level certainty (never found; defaults coincided) — both now marked deprecated in-template, and confirm accepts either nesting. Also fixed the planning section that had been inserted mid-defense (kidnapping failure_rollback/static_quality/mutation_review keys).
+
 ### Added (model-strength adaptation round 7 — P1)
 - Change-level rigor across the main workflow: ff/issue/turbo record a rigor level into .state.yaml at change creation (auto-escalating to strict on irreversible signals — migration/auth/payment/breaking — or high issue severity; --rigor overrides). verify (light: constitution skipped, strict: lint added) and archive (light: strict gate relaxed) honor the recorded level unless explicitly overridden per invocation. graph run now shares the same semantics via the new src/utils/rigor.js.
 - Conversational clarify: the default is no longer a 20-question boilerplate dump — a core set (input boundaries, empty/null, failure scenarios) plus questions selected by proposal signals (API/performance/security/data); irrelevant areas are omitted entirely. --exhaustive restores the full checklist.

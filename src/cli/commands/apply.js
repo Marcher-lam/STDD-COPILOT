@@ -14,6 +14,7 @@ const { resolveTestCommands, getConfigTestCommand } = require('../../utils/test-
 const { commandToWorkspaceScope, resolveWorkspaceScope } = require('../../utils/workspace-scope');
 const { runCommand: runParsedCommand } = require('../../utils/command-runner');
 const { appendRuling, RULINGS_FILENAME } = require('../../utils/ruling-ledger');
+const { recordInterruption } = require('../../utils/interruption');
 const { FixPacketCommand } = require('./fix-packet');
 
 // TDD Phase State Machine
@@ -285,6 +286,8 @@ class ApplyCommand {
   escalateOnRepeatedFailure(changeDir, changeName, task) {
     const consecutive = countConsecutiveTaskFailures(changeDir, task.description);
     if (consecutive < 3) return null;
+    // A circuit-break is a human interruption — count it against the budget.
+    recordInterruption(changeDir, `3-strikes: ${task.description}`);
     console.log(chalk.red(`\n🛑 ${consecutive} consecutive failures on "${task.description}"`));
     console.log(chalk.yellow('  Three failed fixes in a row is an architecture problem, not a symptom.'));
     console.log(chalk.yellow('  STOP patching. Re-examine the design (stdd plan), question the'));

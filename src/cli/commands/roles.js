@@ -63,6 +63,7 @@ class RolesCommand {
     for (const role of ROLES) {
       console.log(`  ${chalk.cyan(role.id.padEnd(12))} ${role.name} - ${role.lens}`);
     }
+    console.log(chalk.dim('\n  legacy (optional): 单模型角色模拟属弱模型时代补偿层 — 强基模型下为可选分析工具，默认推荐 roles review --triage 实证审查'));
     console.log('');
     return ROLES;
   }
@@ -194,6 +195,7 @@ class RolesCommand {
         console.log(`\n  ${chalk.yellow(item.name)} (${item.role})`);
         console.log(`  ${item.prompt}`);
       }
+      console.log(chalk.dim('\n  legacy: 单模型多角色辩论属弱模型时代补偿层 — 可选分析工具，非默认推荐（见 docs/model-strength-adaptation.md）'));
       console.log(`\n  Output: ${chalk.cyan(outputPath)}\n`);
     }
     return report;

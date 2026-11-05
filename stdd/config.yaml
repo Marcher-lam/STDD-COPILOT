@@ -34,6 +34,12 @@ graph:
   retry_count: 3
   on_failure: "rollback"
 
+# 中断预算（模型强度适配 P2：统一暂停记账）
+# 每次真实的人类暂停（confirm pending-human、3 次熔断）计入 .state.yaml 的
+# interruptions_used；超出预算时门禁输出"重拆变更/收紧阈值"告警（不阻断决策本身）。
+interruption:
+  budget: 3
+
 # 变更管理
 changes:
   dir: "stdd/changes"
@@ -73,15 +79,8 @@ tdd:
     #   "off"            — 全自主运行，仅在熔断时暂停（适合 turbo 模式）
     mode: "end-of-cycle"
 
-    # 哪些阶段需要确认（仅在 every-phase 模式下生效）
-    phases_requiring_confirm:
-      - green   # 绿灯后确认实现是否正确
-      - refactor # 重构后确认变更范围
-
-    # 自动跳过确认的条件
-    auto_skip_when:
-      test_passes: true      # 测试通过时自动继续
-      no_code_changes: true  # 仅文档/注释变更时自动继续
+    # deprecated（从未接线的声明性配置，保留仅为兼容；实际暂停记账见顶层 interruption 段）:
+    #   phases_requiring_confirm / auto_skip_when — 无消费者
 
   static_check:
     enabled: true
@@ -91,11 +90,12 @@ tdd:
       java: "mvn compile"
 
   # Certainty Protocol（参考 Claude Pilot）
-  # 在关键决策点评估置信度，低于阈值自动暂停请求确认
+  # confirm 的 risk-triggered 模式读取 confirm_threshold / auto_threshold。
+  # deprecated（从未接线的声明性配置）: warning_threshold / check_points / consecutive_low_max
   certainty:
     enabled: true
     confirm_threshold: 0.7     # 低于此值暂停
-    warning_threshold: 0.85    # 低于此值警告
+    warning_threshold: 0.85    # 低于此值警告（deprecated，无消费者）
     auto_threshold: 0.95       # 高于此值自动推进
     check_points:
       - cp1_spec               # BDD 规格生成后
@@ -148,13 +148,6 @@ defense:
     max_tasks: 10
     min_granularity: "30min"
 
-# 任务规划预算（模型强度适配：微任务上限从硬编码 6 改为规模函数）
-planning:
-  # "auto"      — 按提案规模评估（基础 4；scope 项 ≥3/+1、≥5/+2；
-  #               提案 ≥600 词 +1；跨切面风险信号 ≥2 再 +1；范围 [3, 10]）
-  # 数字        — 固定任务预算（如 3）
-  max_tasks: "auto"
-
   failure_rollback:
     threshold: 3
     auto_stash: true
@@ -166,6 +159,13 @@ planning:
   mutation_review:
     enabled: true
     detect_fake_green: true
+
+# 任务规划预算（模型强度适配：微任务上限从硬编码 6 改为规模函数）
+planning:
+  # "auto"      — 按提案规模评估（基础 4；scope 项 ≥3/+1、≥5/+2；
+  #               提案 ≥600 词 +1；跨切面风险信号 ≥2 再 +1；范围 [3, 10]）
+  # 数字        — 固定任务预算（如 3）
+  max_tasks: "auto"
 
 # 外部 AI 引擎（完整注册表见 stdd/config/engines.yaml）
 # 支持 24 种 AI 代码助手，按兼容性分 4 个 Tier
