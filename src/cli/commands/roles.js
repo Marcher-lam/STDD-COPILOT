@@ -106,8 +106,6 @@ class RolesCommand {
       findings,
       status: findings.some(f => f.severity === 'high') ? 'fail' : 'pass',
     };
-    const outputPath = this.saveReport('adversarial-review', report);
-    report.output = outputPath;
 
     if (options.triage) {
       // BMAD triage review: lens output carries no final judgment. Findings
@@ -118,11 +116,15 @@ class RolesCommand {
         finding.bucket = null;
       }
       report.triageSheet = this.writeTriageSheet(report);
+      // Persist the TRIAGED state — the on-disk artifact must match what the
+      // console/JSON output shows (status untriaged, verdicts on findings).
+      report.output = this.saveReport('adversarial-review', report);
       if (options.json) console.log(JSON.stringify(report, null, 2));
       else this.printAdversarial(report, true);
       return report;
     }
 
+    report.output = this.saveReport('adversarial-review', report);
     if (options.json) console.log(JSON.stringify(report, null, 2));
     else this.printAdversarial(report);
     if (report.status === 'fail') process.exitCode = 1;

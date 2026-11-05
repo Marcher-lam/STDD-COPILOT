@@ -8,7 +8,7 @@ const path = require('path');
 const chalk = require('chalk');
 const yaml = require('js-yaml');
 const { createLogger } = require('../../utils/logger');
-const { recordInterruption, readInterruptions, readBudget } = require('../../utils/interruption');
+const { recordInterruption, budgetState } = require('../../utils/interruption');
 const logger = createLogger('confirm');
 
 // Irreversible / high-risk signals that always require a human regardless
@@ -17,7 +17,7 @@ const logger = createLogger('confirm');
 // with the rigor escalation so the two gates can never drift apart.
 const RISK_SIGNAL_RE = require('../../utils/rigor').IRREVERSIBLE_RE;
 
-// Default certainty thresholds (mirrors stdd/config.yaml certainty section).
+// Fallback thresholds; canonical values live in stdd/config.yaml tdd.certainty.
 const DEFAULT_THRESHOLDS = { confirm: 0.7, auto: 0.95 };
 
 class ConfirmCommand {
@@ -190,9 +190,7 @@ class ConfirmCommand {
 
       // Interruption budget: a human pause is real work against a budget.
       recordInterruption(changeDir, `confirm-needs-human: ${reasons[0] || 'unspecified'}`);
-      const used = readInterruptions(changeDir).used;
-      const budget = readBudget(process.cwd());
-      const budgetExceeded = used > budget;
+      const { used, budget, exceeded: budgetExceeded } = budgetState(changeDir, process.cwd());
 
       const decision = {
         status: 'pending-human',

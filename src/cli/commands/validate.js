@@ -115,7 +115,7 @@ class ValidateCommand {
     this.cwd = cwd;
   }
 
-  /** Find the 1-based line number of a requirement header, 0 when absent. */
+  /** Find the 1-based line number of a requirement header, 1 when absent. */
   findRequirementLine(content, name) {
     const target = `### Requirement: ${name}`;
     const index = content.split('\n').findIndex(line => line.trim() === target);
@@ -142,9 +142,9 @@ class ValidateCommand {
         } catch (err) {
           logger.warn(err.message); // fall back to no cross-checks
         }
-        diagnostics.push(...this.checkDeltaFile(file, relFile, content, mainContent));
+        diagnostics.push(...this.checkDeltaFile(relFile, content, mainContent));
       } else {
-        diagnostics.push(...this.checkMainFile(file, relFile, content));
+        diagnostics.push(...this.checkMainFile(relFile, content));
       }
     }
     // Stable decision ID checks for the change's design.md (BMAD AD-n:
@@ -223,7 +223,7 @@ class ValidateCommand {
     return diagnostics;
   }
 
-  checkDeltaFile(file, relFile, content, mainContent) {
+  checkDeltaFile(relFile, content, mainContent) {
     const diagnostics = [];
     const parsed = parseDeltaSections(content);
     const main = mainContent !== null ? parseSpecRequirements(mainContent) : null;
@@ -244,42 +244,11 @@ class ValidateCommand {
       });
     }
 
+    // Shared per-requirement checks (also used by checkMainFile so the two
+    // rule sets cannot drift apart).
     const checkRequirement = (req, section) => {
-      if (seen.has(req.name)) {
-        diagnostics.push({
-          file: relFile,
-          line: this.findRequirementLine(content, req.name),
-          rule: 'duplicate-header',
-          severity: 'blocking',
-          message: `Duplicate "### Requirement: ${req.name}" in this delta.`,
-          text: req.header,
-          suggestion: 'Requirement headers must be unique within a spec file.',
-        });
-      }
-      seen.add(req.name);
-
-      if (!SCENARIO_STEP_RE.test(req.body)) {
-        diagnostics.push({
-          file: relFile,
-          line: this.findRequirementLine(content, req.name),
-          rule: 'requirement-scenario',
-          severity: 'blocking',
-          message: `Requirement "${req.name}" (${section}) has no "#### Scenario:" section.`,
-          text: req.header,
-          suggestion: 'Add at least one scenario so the requirement stays verifiable.',
-        });
-      }
-      if (!SHALL_RE.test(req.body)) {
-        diagnostics.push({
-          file: relFile,
-          line: this.findRequirementLine(content, req.name),
-          rule: 'shall-statement',
-          severity: 'warning',
-          message: `Requirement "${req.name}" (${section}) has no SHALL/MUST statement.`,
-          text: req.header,
-          suggestion: 'Describe core behavior with a SHALL/MUST statement.',
-        });
-      }
+      this.checkRequirementShape(req, relFile, content, section).forEach(d => diagnostics.push(d));
+      this.checkRequirementDuplicate(req.name, relFile, content, seen).forEach(d => diagnostics.push(d));
     };
 
     for (const req of parsed.sections.added.requirements) {
@@ -334,18 +303,7 @@ class ValidateCommand {
     }
 
     for (const req of parsed.sections.removed.requirements) {
-      if (seen.has(req.name)) {
-        diagnostics.push({
-          file: relFile,
-          line: this.findRequirementLine(content, req.name),
-          rule: 'duplicate-header',
-          severity: 'blocking',
-          message: `Duplicate "### Requirement: ${req.name}" in this delta.`,
-          text: req.header,
-          suggestion: 'Requirement headers must be unique within a spec file.',
-        });
-      }
-      seen.add(req.name);
+      this.checkRequirementDuplicate(req.name, relFile, content, seen).forEach(d => diagnostics.push(d));
       if (main && !existsForMerge(req.name)) {
         diagnostics.push({
           file: relFile,
@@ -398,48 +356,61 @@ class ValidateCommand {
     return diagnostics;
   }
 
-  checkMainFile(file, relFile, content) {
+  checkMainFile(relFile, content) {
     const parsed = parseSpecRequirements(content);
     const diagnostics = [];
     const seen = new Set();
     for (const req of parsed.requirements) {
-      const line = this.findRequirementLine(content, req.name);
-      if (seen.has(req.name)) {
-        diagnostics.push({
-          file: relFile,
-          line,
-          rule: 'duplicate-header',
-          severity: 'blocking',
-          message: `Duplicate "### Requirement: ${req.name}" in this spec.`,
-          text: req.header,
-          suggestion: 'Requirement headers must be unique within a spec file.',
-        });
-      }
-      seen.add(req.name);
-      if (!SCENARIO_STEP_RE.test(req.body)) {
-        diagnostics.push({
-          file: relFile,
-          line,
-          rule: 'requirement-scenario',
-          severity: 'blocking',
-          message: `Requirement "${req.name}" has no "#### Scenario:" section.`,
-          text: req.header,
-          suggestion: 'Add at least one scenario so the requirement stays verifiable.',
-        });
-      }
-      if (!SHALL_RE.test(req.body)) {
-        diagnostics.push({
-          file: relFile,
-          line,
-          rule: 'shall-statement',
-          severity: 'warning',
-          message: `Requirement "${req.name}" has no SHALL/MUST statement.`,
-          text: req.header,
-          suggestion: 'Describe core behavior with a SHALL/MUST statement.',
-        });
-      }
+      this.checkRequirementShape(req, relFile, content).forEach(d => diagnostics.push(d));
+      this.checkRequirementDuplicate(req.name, relFile, content, seen).forEach(d => diagnostics.push(d));
     }
     return diagnostics;
+  }
+
+  /** Scenario/SHALL shape checks shared by delta and main specs. */
+  checkRequirementShape(req, relFile, content, section) {
+    const line = this.findRequirementLine(content, req.name);
+    const diagnostics = [];
+    if (!SCENARIO_STEP_RE.test(req.body)) {
+      diagnostics.push({
+        file: relFile,
+        line,
+        rule: 'requirement-scenario',
+        severity: 'blocking',
+        message: `Requirement "${req.name}"${section ? ` (${section})` : ''} has no "#### Scenario:" section.`,
+        text: req.header,
+        suggestion: 'Add at least one scenario so the requirement stays verifiable.',
+      });
+    }
+    if (!SHALL_RE.test(req.body)) {
+      diagnostics.push({
+        file: relFile,
+        line,
+        rule: 'shall-statement',
+        severity: 'warning',
+        message: `Requirement "${req.name}"${section ? ` (${section})` : ''} has no SHALL/MUST statement.`,
+        text: req.header,
+        suggestion: 'Describe core behavior with a SHALL/MUST statement.',
+      });
+    }
+    return diagnostics;
+  }
+
+  /** Duplicate-header check shared by delta and main specs (mutates `seen`). */
+  checkRequirementDuplicate(name, relFile, content, seen) {
+    if (seen.has(name)) {
+      return [{
+        file: relFile,
+        line: this.findRequirementLine(content, name),
+        rule: 'duplicate-header',
+        severity: 'blocking',
+        message: `Duplicate "### Requirement: ${name}" in this spec.`,
+        text: `### Requirement: ${name}`,
+        suggestion: 'Requirement headers must be unique within a spec file.',
+      }];
+    }
+    seen.add(name);
+    return [];
   }
 
   execute(changeName, options = {}) {
@@ -466,11 +437,15 @@ class ValidateCommand {
     const blocking = diagnostics.filter(d => d.severity === 'blocking');
     const warning = diagnostics.filter(d => d.severity !== 'blocking');
 
+    let mode = 'validate';
+    if (options.specGuardian) {
+      mode = options.strict ? 'strict+spec-guardian' : 'spec-guardian';
+    } else if (options.strict) {
+      mode = 'strict';
+    }
     const report = {
       status: blocking.length > 0 ? 'fail' : 'pass',
-      mode: options.specGuardian && options.strict
-        ? 'strict+spec-guardian'
-        : options.specGuardian ? 'spec-guardian' : options.strict ? 'strict' : 'validate',
+      mode,
       change: changeDir ? path.basename(changeDir) : null,
       specFiles: specFiles.map(file => path.relative(this.cwd, file).replace(/\\/g, '/')),
       diagnostics,

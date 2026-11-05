@@ -102,6 +102,8 @@ ${workspaceHeader}
       throw new Error('Description is required.');
     }
 
+    // Fail fast on an invalid --rigor before any files are created.
+    const rigor = resolveRigor({ explicit: options.rigor, intent: 'feature', text: description });
     const changesDir = await this.ensureChangesDir();
     const workspace = options.workspace ? resolveWorkspace(process.cwd(), options.workspace) : null;
     if (options.workspace && !workspace) {
@@ -129,7 +131,6 @@ ${workspaceHeader}
 
     // Rigor is a property of the change: recorded once at creation, honored
     // by verify/archive unless explicitly overridden there.
-    const rigor = resolveRigor({ explicit: options.rigor, intent: 'feature', text: description });
     writeChangeRigor(changeDir, rigor.level);
 
     console.log(chalk.green(`\n✅ Fast-forward change '${changeName}' created at stdd/changes/${changeName}/\n`));

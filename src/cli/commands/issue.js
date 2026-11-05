@@ -124,6 +124,18 @@ ${workspaceHint}
       throw new Error('Description is required.');
     }
 
+    // Fail fast on an invalid --rigor before any files are created.
+    const highSeverity = /critical|high|严重/i.test(String(options.severity || ''));
+    const riskyText = assessTextRigor(description) === 'strict';
+    const rigor = resolveRigor({
+      explicit: options.rigor || (highSeverity || riskyText ? 'strict' : undefined),
+      intent: 'issue',
+      text: description,
+    });
+    if (!options.rigor && (highSeverity || riskyText)) {
+      rigor.basis = highSeverity ? `severity ${options.severity}` : 'risk signal in description';
+    }
+
     const changesDir = await this.ensureChangesDir();
     const workspace = options.workspace ? resolveWorkspace(process.cwd(), options.workspace) : null;
     if (options.workspace && !workspace) {
@@ -152,18 +164,8 @@ ${workspaceHint}
     );
     await fs.writeFile(path.join(changeDir, 'tasks.md'), this.generateTasks(changeName, workspaceMeta));
 
-    // Bug fixes default to light rigor, but high-severity or irreversible
-    // text escalates to strict — the gate density follows the risk.
-    const highSeverity = /critical|high|严重/i.test(String(options.severity || ''));
-    const riskyText = assessTextRigor(description) === 'strict';
-    const rigor = resolveRigor({
-      explicit: options.rigor || (highSeverity || riskyText ? 'strict' : undefined),
-      intent: 'issue',
-      text: description,
-    });
-    if (!options.rigor && (highSeverity || riskyText)) {
-      rigor.basis = highSeverity ? `severity ${options.severity}` : 'risk signal in description';
-    }
+    // Rigor is a property of the change: recorded once at creation, honored
+    // by verify/archive unless explicitly overridden there.
     writeChangeRigor(changeDir, rigor.level);
 
     console.log(chalk.green(`\n✅ Bug fix change '${changeName}' created at stdd/changes/${changeName}/\n`));

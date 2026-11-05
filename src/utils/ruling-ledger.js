@@ -59,7 +59,7 @@ function appendRuling(changeDir, text) {
   const state = readRulings(changeDir);
   const next = state.total > 0 ? Math.max(...state.entries.map(e => e.n)) + 1 : 1;
   const date = new Date().toISOString().slice(0, 10);
-  const entry = `- #${next} [${date}] ${String(text).trim()}`;
+  const entry = `- #${next} [${date}] ${String(text).replace(/\n/g, ' ').trim()}`;
   if (fs.existsSync(file)) {
     let content = fs.readFileSync(file, 'utf8');
     if (!content.endsWith('\n')) content += '\n';

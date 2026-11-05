@@ -15,6 +15,8 @@ const { commandToWorkspaceScope, resolveWorkspaceScope } = require('../../utils/
 const { runCommand: runParsedCommand } = require('../../utils/command-runner');
 const { appendRuling, RULINGS_FILENAME } = require('../../utils/ruling-ledger');
 const { recordInterruption } = require('../../utils/interruption');
+const { readApplyLog } = require('../../utils/apply-log');
+const { DELEGATION_ENGINES } = require('../../utils/delegation');
 const { FixPacketCommand } = require('./fix-packet');
 
 // TDD Phase State Machine
@@ -113,24 +115,8 @@ function writeEvidence(changeDir, name, data) {
   return filePath;
 }
 
-/**
- * Count how many times the given task has failed in a row in apply.log
- * (trailing consecutive failures, reset by any pass). Malformed lines are
- * skipped. Used for the 3-strikes architecture escalation.
- */
 function countConsecutiveTaskFailures(changeDir, taskDescription) {
-  const logPath = path.join(changeDir, 'apply.log');
-  if (!fs.existsSync(logPath)) return 0;
-  const entries = [];
-  for (const line of fs.readFileSync(logPath, 'utf8').split('\n')) {
-    const jsonPart = line.replace(/^\[[^\]]+\]\s*/, '');
-    if (!jsonPart) continue;
-    try {
-      entries.push(JSON.parse(jsonPart));
-    } catch {
-      // Skip malformed log lines.
-    }
-  }
+  const entries = readApplyLog(changeDir);
   let count = 0;
   for (let i = entries.length - 1; i >= 0; i--) {
     const entry = entries[i];
@@ -143,7 +129,7 @@ function countConsecutiveTaskFailures(changeDir, taskDescription) {
 
 function delegationPlan(resultStatus, testResults, options = {}) {
   if (resultStatus !== 'failed') return null;
-  const engines = ['claude_code', 'cursor', 'copilot', 'qwen_code'];
+  const engines = DELEGATION_ENGINES;
   return {
     trigger: 'apply-test-failure',
     strategy: options.delegate ? 'delegate-requested' : 'recommend-delegation',

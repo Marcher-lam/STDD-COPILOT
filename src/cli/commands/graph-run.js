@@ -22,6 +22,7 @@ const { FFCommand } = require('./ff');
 const { generateChangeName: _genChangeName } = require('../../utils/change-helpers');
 const { SpecGenerator } = require('./spec-generator');
 const { ApplyCommand } = require('./apply');
+const { DELEGATION_ENGINES } = require('../../utils/delegation');
 const { VerifyCommand } = require('./verify');
 const { ArchiveCommand } = require('./archive');
 const { FixPacketCommand } = require('./fix-packet');
@@ -441,7 +442,7 @@ class GraphRunCommand {
           delegation: {
             trigger: 'graph-node-failure',
             reason: `Node '${nodeName}' failed after ${attempts} attempt(s); request a fresh engine/role with the fix packet before retrying.`,
-            suggestedEngines: ['claude_code', 'cursor', 'copilot', 'qwen_code'],
+            suggestedEngines: [...DELEGATION_ENGINES],
           },
         });
         this.result.failedAt = nodeName;

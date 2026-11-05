@@ -206,7 +206,8 @@ validation:
         each_decision_has:
           - context
           - decision
-          - rationale
+          - binds
+          - prevents
 
     - field: Risks
       required: true

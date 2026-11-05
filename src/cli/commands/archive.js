@@ -312,7 +312,7 @@ class ArchiveCommand {
     // Abort the archive when delta conflicts require manual resolution.
     const conflictEntries = mergeReport.filter(e => e.status === 'conflict');
     if (conflictEntries.length > 0) {
-      fs.writeFileSync(path.join(changeDir, 'spec-merge-report.json'), JSON.stringify(mergeReport, null, 2), 'utf8');
+      this.writeMergeReport(changeDir, mergeReport);
       console.log(chalk.red(`\n✗ Spec merge conflicts detected (${conflictEntries.length} file(s)) — change NOT archived:`));
       for (const entry of conflictEntries) {
         console.log(chalk.yellow(`\n  ${path.relative(process.cwd(), entry.target)}`));
@@ -329,9 +329,7 @@ class ArchiveCommand {
 
     // Generate summary.md before moving
     this.generateSummary(changeDir);
-    if (mergeReport.length > 0) {
-      fs.writeFileSync(path.join(changeDir, 'spec-merge-report.json'), JSON.stringify(mergeReport, null, 2), 'utf8');
-    }
+    this.writeMergeReport(changeDir, mergeReport);
 
     // Create archive directory
     const changesDir = path.join(stddDir, 'changes');
@@ -363,6 +361,11 @@ class ArchiveCommand {
     }
 
     console.log(chalk.green(`\n✅ Archived ${chalk.cyan(changeNameActual)} as ${chalk.cyan(archiveName)}`));
+  }
+
+  writeMergeReport(changeDir, mergeReport) {
+    if (mergeReport.length === 0) return;
+    fs.writeFileSync(path.join(changeDir, 'spec-merge-report.json'), JSON.stringify(mergeReport, null, 2), 'utf8');
   }
 
   mergeDeltaSpecs(changeDir, stddDir) {

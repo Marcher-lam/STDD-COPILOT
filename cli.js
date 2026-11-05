@@ -283,16 +283,16 @@ agentCmd.command('agent <action> [topic]')
   .option('--role <role>', 'Agent role for run action')
   .option('--json')
   .action(safeAction(async (action, topic, options) => {
-      const engine = new AgentEngine();
-      if (action === 'start') {
-        if (!topic) throw new Error('Topic is required to start.');
-        const state = engine.start(topic, { rounds: options.rounds });
-        console.log(chalk.green(`Simulation started: ${topic}`));
-        if (!options.json) {
-          console.log(chalk.dim('  legacy: 多 Agent 状态机模拟属弱模型时代补偿层 — 可选分析工具，非默认推荐（见 docs/model-strength-adaptation.md）'));
-        }
-        if (options.json) console.log(JSON.stringify(state, null, 2));
-      } else if (action === 'next') {
+    const engine = new AgentEngine();
+    if (action === 'start') {
+      if (!topic) throw new Error('Topic is required to start.');
+      const state = engine.start(topic, { rounds: options.rounds });
+      console.log(chalk.green(`Simulation started: ${topic}`));
+      if (!options.json) {
+        console.log(chalk.dim('  legacy: 多 Agent 状态机模拟属弱模型时代补偿层 — 可选分析工具，非默认推荐（见 docs/model-strength-adaptation.md）'));
+      }
+      if (options.json) console.log(JSON.stringify(state, null, 2));
+    } else if (action === 'next') {
       const turn = engine.nextTurn();
       if (turn.error) return console.error(chalk.red(turn.error));
       console.log(chalk.bold(`\nTurn ${turn.turn}: ${turn.speaker.name}`));

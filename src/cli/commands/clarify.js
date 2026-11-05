@@ -9,6 +9,45 @@ const chalk = require('chalk');
 const { createLogger } = require('../../utils/logger');
 const logger = createLogger('clarify');
 
+// Single source of truth for the question catalog: conversational core and
+// signal selections reference entries here by index, --exhaustive lists all.
+const FULL_QUESTIONS = {
+  boundary_conditions: [
+    'What are the input boundaries (min/max values, formats)?',
+    'What are the output boundaries?',
+    'What are the system constraints (memory, time, resources)?',
+    'What are the access control boundaries?'
+  ],
+  edge_cases: [
+    'What happens with empty/null inputs?',
+    'What happens with malformed data?',
+    'What are the concurrent access scenarios?',
+    'What are the failure scenarios?'
+  ],
+  implicit_constraints: [
+    'Are there performance requirements?',
+    'Are there security requirements?',
+    'Are there compliance requirements?',
+    'Are there backward compatibility requirements?',
+    // [4] gentle probe: surfaced in conversational mode when no signal fires
+    'What implicit constraints are assumed (compatibility, permissions, environment)?'
+  ],
+  non_functional_requirements: [
+    'What is the expected response time?',
+    'What is the expected throughput?',
+    'What is the availability target?',
+    'What is the maintainability target?',
+    'Any performance or capacity expectation worth noting (if any)?'
+  ],
+  integration_points: [
+    'What external systems need to be integrated?',
+    'What are the APIs/protocols involved?',
+    'What are the data formats?',
+    'What are the error handling strategies?',
+    'What does this change depend on outside the codebase (if anything)?'
+  ]
+};
+
 class ClarifyCommand {
   constructor() {
     this.clarificationAreas = [
@@ -21,42 +60,34 @@ class ClarifyCommand {
     // Conversational mode (model-strength adaptation): a small core set plus
     // signal-selected questions instead of the same 20-question dump for
     // every proposal. --exhaustive restores the full checklist.
+    // FULL_QUESTIONS is the single source of truth: core/signal reference
+    // entries so conversational output can never drift from --exhaustive.
     this.coreQuestions = {
-      boundary_conditions: ['What are the input boundaries (min/max values, formats)?'],
-      edge_cases: [
-        'What happens with empty/null inputs?',
-        'What are the failure scenarios?'
-      ]
+      boundary_conditions: [FULL_QUESTIONS.boundary_conditions[0]],
+      edge_cases: [FULL_QUESTIONS.edge_cases[0], FULL_QUESTIONS.edge_cases[3]],
+      // One gentle probe per remaining area: signal-less areas are exactly
+      // the unknown-unknowns clarification should surface (never dropped).
+      implicit_constraints: [FULL_QUESTIONS.implicit_constraints[4]],
+      non_functional_requirements: [FULL_QUESTIONS.non_functional_requirements[4]],
+      integration_points: [FULL_QUESTIONS.integration_points[4]],
     };
     this.signalQuestions = {
       non_functional_requirements: {
         signal: /\bperf(ormance)?\b|性能|latency|延迟|throughput|吞吐/i,
-        questions: [
-          'What is the expected response time?',
-          'What is the expected throughput?'
-        ]
+        questions: [FULL_QUESTIONS.non_functional_requirements[0], FULL_QUESTIONS.non_functional_requirements[1]],
       },
       integration_points: {
         signal: /\bapi\b|integration|http|webhook|集成|external/i,
-        questions: [
-          'What external systems need to be integrated?',
-          'What are the error handling strategies for integration failures?'
-        ]
+        questions: [FULL_QUESTIONS.integration_points[0], FULL_QUESTIONS.integration_points[3]],
       },
       edge_cases: {
         signal: /\bdata\b|database|schema|数据|concurrent|并发/i,
-        questions: [
-          'What happens with malformed data?',
-          'What are the concurrent access scenarios?'
-        ]
+        questions: [FULL_QUESTIONS.edge_cases[1], FULL_QUESTIONS.edge_cases[2]],
       },
       implicit_constraints: {
         signal: /\bauth\b|permission|security|权限|安全|compliance|合规/i,
-        questions: [
-          'Are there security or compliance requirements?',
-          'Are there backward compatibility requirements?'
-        ]
-      }
+        questions: [FULL_QUESTIONS.implicit_constraints[1], FULL_QUESTIONS.implicit_constraints[3]],
+      },
     };
   }
 
@@ -152,50 +183,18 @@ class ClarifyCommand {
     // Clarification section's own question text re-triggers the signals and
     // would also cross-contaminate confirm's risk-signal scan.
     const body = String(proposal).replace(/\n## Clarification[\s\S]*$/, '\n');
-    const questions = [...(this.coreQuestions[area] || [])];
     const rule = this.signalQuestions[area];
     if (rule && rule.signal.test(body)) {
-      questions.push(...rule.questions);
+      // The area is explicitly signalled: the targeted questions replace the
+      // gentle probe (the probe exists so signal-less areas are not missed).
+      return [...rule.questions];
     }
-    return questions;
+    return [...(this.coreQuestions[area] || [])];
   }
 
   generateAreaQuestions(area, proposal, { exhaustive } = {}) {
-    const fullQuestions = {
-      boundary_conditions: [
-        'What are the input boundaries (min/max values, formats)?',
-        'What are the output boundaries?',
-        'What are the system constraints (memory, time, resources)?',
-        'What are the access control boundaries?'
-      ],
-      edge_cases: [
-        'What happens with empty/null inputs?',
-        'What happens with malformed data?',
-        'What are the concurrent access scenarios?',
-        'What are the failure scenarios?'
-      ],
-      implicit_constraints: [
-        'Are there performance requirements?',
-        'Are there security requirements?',
-        'Are there compliance requirements?',
-        'Are there backward compatibility requirements?'
-      ],
-      non_functional_requirements: [
-        'What is the expected response time?',
-        'What is the expected throughput?',
-        'What is the availability target?',
-        'What is the maintainability target?'
-      ],
-      integration_points: [
-        'What external systems need to be integrated?',
-        'What are the APIs/protocols involved?',
-        'What are the data formats?',
-        'What are the error handling strategies?'
-      ]
-    };
-
     const questions = exhaustive
-      ? (fullQuestions[area] || [])
+      ? (FULL_QUESTIONS[area] || [])
       : this.pickConversationalQuestions(area, proposal);
 
     return {

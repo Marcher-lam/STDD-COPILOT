@@ -4,6 +4,18 @@ All notable changes to STDD Copilot will be documented in this file.
 
 ## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
 
+### Fixed (open-code-review round 10 — low/maintainability sweep)
+- Fail-fast ordering: ff/issue validate --rigor BEFORE any filesystem writes (no more orphan half-created changes on a typo'd flag).
+- roles --triage persists the report AFTER the triage mutations — the on-disk artifact now matches the console/JSON state (status 'untriaged', verdicts on findings).
+- Ruling ledger sanitizes newlines (a multi-line --ruling can no longer inject a forged ledger entry).
+- verify's TDD gate prints an honest NOTE ("ran phases but recorded no RED pass (--allow-no-tests?)") instead of a green "✓ RED evidence present for 0/N".
+- The design schema's validation block now requires the AD-n template's binds/prevents fields instead of the removed rationale.
+- clarify: every area keeps one gentle probe question in conversational mode (signal-less constraint areas are the unknown-unknowns — never dropped entirely; signal hits replace the probe to stay bounded); the question catalog is single-sourced (FULL_QUESTIONS) so conversational output is always a subset of --exhaustive.
+- cli.js: runtime-agent start block restored to its original indentation; the legacy notice is suppressed under --json.
+- Deduplication/maintainability: shared readApplyLog util (apply + verify), DELEGATION_ENGINES in its own module (apply + graph-run), confirm uses one config reader and budgetState() instead of reimplementing, archive extracts writeMergeReport, validate drops dead `file` params, extracts shared checkRequirementShape/checkRequirementDuplicate, replaces the nested mode ternary, and fixes the misleading JSDoc.
+
+Tests: +1 suite, +8 cases (review-low-fixes); clarify exhaustive count updated 20→23; full suite green; lint clean.
+
 ### Fixed (open-code-review round 9)
 
 Critical & high (from the open-code-review pass over this changeset):

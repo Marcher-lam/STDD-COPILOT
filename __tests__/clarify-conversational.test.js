@@ -105,7 +105,7 @@ describe('clarify conversational mode', () => {
 
     expect(result.status).toBe(0);
     const proposal = fs.readFileSync(path.join(changeDir, 'proposal.md'), 'utf8');
-    expect(questionCount(proposal)).toBe(20);
+    expect(questionCount(proposal)).toBe(23); // 20 classic + 3 gentle probes
     expect(proposal).toContain('throughput');
     expect(proposal).toContain('compliance');
     expect(proposal).toMatch(/Mode:\s*exhaustive/);
