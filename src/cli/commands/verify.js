@@ -17,6 +17,7 @@ const { resolveTestCommands, getConfigTestCommand } = require('../../utils/test-
 const { commandToWorkspaceScope, resolveWorkspaceScope } = require('../../utils/workspace-scope');
 const { findLatestMutationEvidence } = require('./mutation');
 const { runCommand: runParsedCommand } = require('../../utils/command-runner');
+const { readDeferred, appendDeferred, resolveDeferred, DEFERRED_FILENAME } = require('../../utils/deferred-work');
 
 // getConfigTestCommand is now imported from test-command-resolver
 
@@ -41,6 +42,25 @@ class VerifyCommand {
         ? `Change '${resolvedName}' not found.`
         : 'No active changes found. Create one with `stdd new change <name>`.'
       );
+    }
+
+    // Deferred-work ledger management actions: record or resolve a deferred
+    // finding, then exit without running the full verification.
+    if (options.defer) {
+      const { n } = appendDeferred(changeDir, options.defer, 'verify');
+      console.log(chalk.yellow(`\n📝 Deferred #${n} recorded in stdd/changes/${path.basename(changeDir)}/${DEFERRED_FILENAME}`));
+      console.log(chalk.dim('  Resolve later with: stdd verify <change> --resolve ' + n));
+      return;
+    }
+    if (options.resolve !== undefined && options.resolve !== null) {
+      const result = resolveDeferred(changeDir, options.resolve);
+      if (result.resolved) {
+        console.log(chalk.green(`\n✅ Deferred #${result.n} resolved`));
+      } else {
+        console.log(chalk.red(`\n✗ Could not resolve deferred item: ${result.reason}`));
+        process.exitCode = 1;
+      }
+      return;
     }
 
     const changeNameActual = path.basename(changeDir);
@@ -216,6 +236,10 @@ class VerifyCommand {
       report.lint = null;
     }
 
+    // 5) Deferred-work ledger status
+    const deferred = readDeferred(changeDir);
+    report.deferred = { open: deferred.open, total: deferred.total };
+
     // Summary
     console.log(chalk.bold('\n📊 Verification Report'));
     console.log(`  Tasks:       ${report.tasks.allDone ? chalk.green('PASS') : chalk.red('FAIL')}  (${report.tasks.done}/${report.tasks.total})`);
@@ -233,6 +257,9 @@ class VerifyCommand {
     console.log(`  Constitution: ${report.constitution.status === 'pass' ? chalk.green('PASS') : chalk.red('FAIL')}`);
     if (report.lint !== null) {
       console.log(`  Lint:        ${report.lint.passed ? chalk.green('PASS') : chalk.red('FAIL')}`);
+    }
+    if (deferred.total > 0) {
+      console.log(`  Deferred:    ${deferred.open > 0 ? chalk.yellow(`${deferred.open} open / ${deferred.total} total`) : chalk.green(`0 open / ${deferred.total} total`)}`);
     }
 
     console.log('');

@@ -13,8 +13,8 @@
 | `/stdd:plan` | — | 评估架构变更，生成 5-6 个细粒度微任务清单 (每任务约 30 分钟) + ADR 记录 |
 | `/stdd:apply` | `stdd apply [change]` | 执行 Ralph Loop TDD 循环：红灯→检查→绿灯→变异→重构，支持 `--task`/`--fix`/`--phase` |
 | `/stdd:execute` | — | 严格 Ralph Loop TDD 闭环执行 (apply 的别名) |
-| `/stdd:verify` | `stdd verify [change]` | 5 维验证：API 签名/BDD 覆盖/类型/边界异常/文档一致性 + Constitution 合规 + Evidence |
-| `/stdd:archive` | `stdd archive [change]` | 完成变更：合并 Delta Spec 到主规格，移至归档，生成 spec-merge-report.json |
+| `/stdd:verify` | `stdd verify [change]` | 5 维验证：API 签名/BDD 覆盖/类型/边界异常/文档一致性 + Constitution 合规 + Evidence；`--defer/--resolve` 管理 deferred-work 台账 |
+| `/stdd:archive` | `stdd archive [change]` | 完成变更：strict 前置门禁（`--skip-strict` 跳过）→ 真实合并 Delta Spec（OpenSpec 语义，冲突阻断）→ 移至归档，生成 spec-merge-report.json |
 
 ## 2. 工作流增强 (6 个)
 

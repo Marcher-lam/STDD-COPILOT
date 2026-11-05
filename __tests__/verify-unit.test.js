@@ -78,6 +78,15 @@ jest.mock('../src/utils/command-runner', () => ({
   runCommand: mockRunParsedCommand,
 }));
 
+// The deferred-work ledger has its own dedicated suite; mock it here so the
+// mocked fs (existsSync only) stays sufficient for VerifyCommand unit tests.
+jest.mock('../src/utils/deferred-work', () => ({
+  readDeferred: jest.fn(() => ({ entries: [], open: 0, total: 0 })),
+  appendDeferred: jest.fn(() => ({ n: 1 })),
+  resolveDeferred: jest.fn(() => ({ resolved: true, n: 1 })),
+  DEFERRED_FILENAME: 'deferred-work.md',
+}));
+
 // ---------- Import after mocks ----------
 
 const { VerifyCommand } = require('../src/cli/commands/verify');

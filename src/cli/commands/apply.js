@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
+const { spawnSync } = require('child_process');
 const { findActiveChange, parseTasks } = require('../../utils/change-utils');
 const { injectReporter } = require('../../utils/reporter-injector');
 const { resolveTestCommands, getConfigTestCommand } = require('../../utils/test-command-resolver');
@@ -143,6 +144,11 @@ class ApplyCommand {
     const tasksPath = path.join(changeDir, 'tasks.md');
     const requestedWorkspace = options.workspace ? resolveWorkspaceScope(cwd, options.workspace) : null;
 
+    // Capture the pre-implementation git baseline once, so verification and
+    // review can diff against the state before any code was written
+    // (BMAD baseline_revision practice).
+    this.captureBaselineCommit(cwd, changeDir);
+
     if (!fs.existsSync(tasksPath)) {
       throw new Error(`tasks.md not found in ${changeNameActual}. Add tasks before running apply.`);
     }
@@ -228,6 +234,38 @@ class ApplyCommand {
     // REFACTOR Phase: Improve code structure while keeping tests green
     if (phase === TDD_PHASES.REFACTOR) {
       return this._executeRefactorPhase(changeDir, changeNameActual, tasksPath, selectedTask, options, requestedWorkspace);
+    }
+  }
+
+  /**
+   * Record `baseline_commit: "<sha>"` in stdd/changes/<name>/.state.yaml on
+   * the first apply. Idempotent: an existing baseline is never overwritten.
+   * Silently skipped outside a git repository.
+   */
+  captureBaselineCommit(cwd, changeDir) {
+    try {
+      const statePath = path.join(changeDir, '.state.yaml');
+      if (fs.existsSync(statePath)) {
+        const existing = fs.readFileSync(statePath, 'utf8');
+        if (/^baseline_commit:/m.test(existing)) return;
+      }
+      const result = spawnSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8' });
+      if (result.status !== 0 || !result.stdout) return;
+      const sha = result.stdout.trim();
+      if (!/^[0-9a-f]{7,40}$/i.test(sha)) return;
+      const line = `baseline_commit: "${sha}"`;
+      if (fs.existsSync(statePath)) {
+        fs.appendFileSync(statePath, `${line}\n`, 'utf8');
+      } else {
+        fs.writeFileSync(statePath, `# STDD change state\n${line}\n`, 'utf8');
+      }
+    } catch (err) {
+      // Baseline capture is best-effort evidence; never block apply on it.
+      writeLog(changeDir, {
+        change: path.basename(changeDir),
+        event: 'baseline-capture-skipped',
+        reason: err.message,
+      });
     }
   }
 

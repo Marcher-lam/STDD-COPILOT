@@ -138,13 +138,18 @@ const commandRegistry = [
       { flags: '--lint-command <cmd>', description: 'Custom lint command' },
       { flags: '--test-command <cmd>', description: 'Custom test command' },
       { flags: '--workspace <workspace>', description: 'Scope to workspace' },
+      { flags: '--defer <text>', description: 'Record a deferred finding in deferred-work.md' },
+      { flags: '--resolve <n>', description: 'Mark deferred entry #n as resolved' },
     ],
-    helpText: `\nExamples:\n  stdd verify\n  stdd verify --lint\n  stdd verify --workspace packages/api`,
+    helpText: `\nExamples:\n  stdd verify\n  stdd verify --lint\n  stdd verify --workspace packages/api\n  stdd verify my-change --defer "Refactor error handling"\n  stdd verify my-change --resolve 1`,
     action: 'VerifyCommand',
   },
   {
     name: 'archive [change]',
     description: 'Archive completed change',
+    options: [
+      { flags: '--skip-strict', description: 'Skip the pre-archive strict spec validation gate' },
+    ],
     action: 'ArchiveCommand',
   },
   {

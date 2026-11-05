@@ -74,6 +74,10 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
       '',
       '### Requirement: User login',
       'The system SHALL authenticate users with email, password, and MFA.',
+      '',
+      '#### Scenario: Valid credentials with MFA',
+      '- **WHEN** the user submits valid credentials and an MFA code',
+      '- **THEN** the system grants a session',
     ].join('\n'));
 
     const result = runCli(['archive', 'login-mfa'], projectPath);
@@ -136,9 +140,15 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
       '',
       '### Requirement: Requirement that does not exist',
       'The system SHALL do something else.',
+      '',
+      '#### Scenario: Ghost',
+      '- **WHEN** x',
+      '- **THEN** y',
     ].join('\n'));
 
-    const result = runCli(['archive', 'bad-delta'], projectPath);
+    // --skip-strict keeps this test focused on the merge engine's conflict
+    // path (the strict gate would also flag the missing target first).
+    const result = runCli(['archive', 'bad-delta', '--skip-strict'], projectPath);
 
     expect(result.status).not.toBe(0);
     expect(result.stdout).toContain('conflict');
@@ -164,6 +174,10 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
       '',
       '### Requirement: Invoice issuance',
       'The system SHALL issue invoices.',
+      '',
+      '#### Scenario: Invoice generated after purchase',
+      '- **WHEN** a purchase completes',
+      '- **THEN** the system issues an invoice',
     ].join('\n'));
 
     const result = runCli(['archive', 'fresh-capability'], projectPath);
@@ -184,6 +198,10 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
       '',
       '### Requirement: OAuth login',
       'The system SHALL support OAuth.',
+      '',
+      '#### Scenario: Provider redirect',
+      '- **WHEN** the user picks an OAuth provider',
+      '- **THEN** the system redirects to the provider',
     ].join('\n');
     writeDeltaSpec(changeDir, 'auth/auth.md', delta);
 
@@ -202,5 +220,46 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
     expect(result.status).toBe(0);
     const afterSecond = fs.readFileSync(mainSpec, 'utf8');
     expect(afterSecond).toBe(afterFirst);
+  });
+
+  it('blocks archive when delta specs fail the strict pre-archive gate', () => {
+    const { projectPath, changeDir } = createTempProject('merge-strict-block', 'spec-no-scenario');
+    // New capability spec (no main spec): the merge engine would not complain,
+    // but the strict gate must reject requirements without scenarios.
+    writeDeltaSpec(changeDir, 'billing/billing.md', [
+      '## ADDED Requirements',
+      '',
+      '### Requirement: Invoice issuance',
+      'The system SHALL issue invoices.',
+    ].join('\n'));
+
+    const result = runCli(['archive', 'spec-no-scenario'], projectPath);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stdout).toContain('strict');
+    expect(result.stdout).toContain('requirement-scenario');
+
+    // Change must stay active.
+    expect(fs.existsSync(changeDir)).toBe(true);
+    const archiveDir = path.join(projectPath, 'stdd', 'changes', 'archive');
+    expect(fs.existsSync(archiveDir)).toBe(false);
+    // No spec must have been written.
+    expect(fs.existsSync(path.join(projectPath, 'stdd', 'specs', 'billing'))).toBe(false);
+  });
+
+  it('allows archiving past strict issues with --skip-strict', () => {
+    const { projectPath, changeDir } = createTempProject('merge-strict-skip', 'spec-skip-strict');
+    writeDeltaSpec(changeDir, 'billing/billing.md', [
+      '## ADDED Requirements',
+      '',
+      '### Requirement: Invoice issuance',
+      'The system SHALL issue invoices.',
+    ].join('\n'));
+
+    const result = runCli(['archive', 'spec-skip-strict', '--skip-strict'], projectPath);
+
+    expect(result.status).toBe(0);
+    const created = path.join(projectPath, 'stdd', 'specs', 'billing', 'billing.md');
+    expect(fs.existsSync(created)).toBe(true);
   });
 });

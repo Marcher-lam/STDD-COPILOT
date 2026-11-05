@@ -10,6 +10,8 @@ const { findActiveChange, checkTasksCompletion } = require('../../utils/change-u
 const { detectWorkspaces } = require('../../utils/workspace-detector');
 const { createLogger } = require('../../utils/logger');
 const { applyDelta, parseDeltaSections } = require('../../utils/delta-spec');
+const { readDeferred, DEFERRED_FILENAME } = require('../../utils/deferred-work');
+const { ValidateCommand } = require('./validate');
 const logger = createLogger('archive');
 
 function extractProposalTitle(content) {
@@ -277,6 +279,24 @@ class ArchiveCommand {
       return;
     }
 
+    // Pre-archive strict validation gate (OpenSpec-style): blocking delta
+    // structure issues refuse the archive before any spec file is touched.
+    if (!options.skipStrict) {
+      const gate = this.runStrictGate(changeDir, cwd);
+      if (!gate.ok) {
+        console.log(chalk.red(`\n✗ Strict spec validation failed (${gate.blocking.length} blocking) — change NOT archived:`));
+        for (const item of gate.blocking) {
+          console.log(`    ${chalk.red('•')} ${item.file}:${item.line} ${chalk.bold(item.rule)}`);
+          console.log(`      ${item.message}`);
+        }
+        console.log(chalk.yellow(`\n  Run ${chalk.cyan(`stdd validate ${changeNameActual} --strict`)} for the full report (including warnings),`));
+        console.log(chalk.yellow('  fix the issues above, then re-run stdd archive.'));
+        console.log(chalk.dim('  Escape hatch: stdd archive --skip-strict'));
+        process.exitCode = 1;
+        return;
+      }
+    }
+
     // Merge delta specs into the main specs directory before moving
     const mergeReport = this.mergeDeltaSpecs(changeDir, stddDir);
 
@@ -316,6 +336,13 @@ class ArchiveCommand {
     const ts = this.formatTimestamp(now);
     const archiveName = `${changeNameActual}-${ts}`;
     const destDir = path.join(archiveDir, archiveName);
+
+    // Deferred-work ledger: open items are carried into the archive, not
+    // silently dropped (BMAD deferred-work practice).
+    const deferredState = readDeferred(changeDir);
+    if (deferredState.open > 0) {
+      console.log(chalk.yellow(`\n⚠ ${deferredState.open} deferred item(s) open in ${DEFERRED_FILENAME} — carried into the archive for a later sweep`));
+    }
 
     // Move change directory
     fs.renameSync(changeDir, destDir);
@@ -361,6 +388,22 @@ class ArchiveCommand {
       report.push(entry);
     }
     return report;
+  }
+
+  /**
+   * Run the strict delta-spec validation gate for a change.
+   * Returns { ok: true } when there is nothing to validate or no blocking
+   * finding; otherwise returns the blocking diagnostics.
+   */
+  runStrictGate(changeDir, cwd) {
+    const changeSpecsDir = path.join(changeDir, 'specs');
+    if (!fs.existsSync(changeSpecsDir)) return { ok: true };
+    const files = walkSpecFiles(changeSpecsDir);
+    if (files.length === 0) return { ok: true };
+    const validator = new ValidateCommand(cwd);
+    const diagnostics = validator.strictDiagnostics(changeDir, files);
+    const blocking = diagnostics.filter(d => d.severity === 'blocking');
+    return { ok: blocking.length === 0, blocking };
   }
 
   formatTimestamp(date) {

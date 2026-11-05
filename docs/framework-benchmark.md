@@ -61,6 +61,23 @@
 
 `schemas/spec-driven/schema.yaml` 与引擎对齐，模板示例补 `## RENAMED Requirements`（FROM/TO）格式。
 
+### 6. 归档前 strict 门禁（P1 落地）
+
+`stdd archive` 在合并任何规格文件**之前**自动运行 strict delta 校验：阻塞级问题（无 Scenario、重复头部、目标缺失、ADDED 冲突）→ 拒绝归档（exit 1）、给出逐条定位（`file:line rule`）与修复指引，保证主规格零污染。逃生口：`--skip-strict`。
+
+### 7. baseline_commit 捕获（P1 落地，BMAD baseline_revision）
+
+`stdd apply` 首次执行时把当前 `git rev-parse HEAD` 记录到 `stdd/changes/<name>/.state.yaml` 的 `baseline_commit` 字段（幂等：已存在则永不覆盖，非 git 仓库静默跳过）。验证与审查从此可以对照"实现前"的 diff 取证，而非依赖自述。
+
+### 8. deferred-work 台账（P1 落地，BMAD deferred-work / loop-sweep）
+
+"暂缓"不再是丢弃：
+
+- `stdd verify <change> --defer "<发现>"` → 追加到 `stdd/changes/<name>/deferred-work.md`（自动编号 + 日期 + 来源）
+- `stdd verify <change> --resolve <n>` → 勾选关闭第 n 条
+- 每次 verify 运行在报告中显示 `Deferred: N open / M total`（进入 evidence）
+- `stdd archive` 归档时对未决条目给出黄色警告（不阻断），台账随变更目录进入归档，供后续 sweep 对码验证
+
 ---
 
 ## 对标确认：STDD 已具备的能力（无需改动）
@@ -81,13 +98,7 @@
 
 ## 未采纳 backlog（按优先级）
 
-### P1（下一轮候选）
-
-| 条目 | 来源 | 说明 | 预估 |
-|------|------|------|------|
-| 归档前自动 `validate --strict` | OpenSpec | archive 前置门禁：strict 不过则拒绝归档（当前需手动跑） | 小 |
-| deferred-work 台账 | BMAD loop-sweep | verify/审查中"暂缓"的发现写入 `stdd/changes/<n>/deferred-work.md`，形成闭环而非丢弃 | 中 |
-| baseline_commit 捕获 | BMAD | apply 开始时把 `git rev-parse HEAD` 写入变更状态，审查对照 diff 而非自述 | 小 |
+### P1 — 已全部落地（见上文 6/7/8）
 
 ### P2
 
@@ -121,8 +132,10 @@
 ## 测试证据
 
 - 新增 `__tests__/delta-spec.test.js`（25 用例）：解析、真实合并、冲突、幂等、遗留兼容；
-- 新增 `__tests__/archive-delta-merge.test.js`（6 用例，端到端 CLI）：真实 MODIFIED/REMOVED/RENAMED 应用、冲突阻断归档、幂等重归档、legacy 创建路径；
+- 新增 `__tests__/archive-delta-merge.test.js`（10 用例，端到端 CLI）：真实 MODIFIED/REMOVED/RENAMED 应用、冲突阻断归档、幂等重归档、legacy 创建路径、strict 门禁拦截与 `--skip-strict`；
 - 新增 `__tests__/validate-strict.test.js`（15 用例）：strict 全规则 + 非 strict 向后兼容；
-- 存量 archive/validate 测试全部保持绿色（无行为破坏）。
+- 新增 `__tests__/apply-baseline.test.js`（3 用例，端到端 CLI）：baseline 捕获、幂等不覆盖、非 git 跳过；
+- 新增 `__tests__/deferred-work.test.js`（10 用例）：台账读写/编号/解决 + verify/archive CLI 集成；
+- 存量 archive/validate/apply 测试全部保持绿色（无行为破坏）。
 
 运行：`npm test`（见根目录 CONTRIBUTING.md 的基线说明）。

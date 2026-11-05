@@ -4,6 +4,11 @@ All notable changes to STDD Copilot will be documented in this file.
 
 ## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
 
+### Added (P1 round 2)
+- Pre-archive strict gate: `stdd archive` now runs strict delta validation before touching any spec file; blocking issues refuse the archive with per-item `file:line rule` output and guidance. Escape hatch: `--skip-strict`.
+- Baseline commit capture: the first `stdd apply` on a change records `git rev-parse HEAD` into `stdd/changes/<name>/.state.yaml` as `baseline_commit` (idempotent, never overwritten; silently skipped outside git repos) so reviews can diff against the pre-implementation state (BMAD baseline_revision).
+- Deferred-work ledger: `stdd verify <change> --defer "<finding>"` records numbered, dated entries in `deferred-work.md`; `--resolve <n>` closes them; verify reports `Deferred: N open / M total` (captured in evidence); archive warns about open items and carries the ledger into the archive (BMAD deferred-work / loop-sweep).
+
 ### Added
 - New delta spec engine (`src/utils/delta-spec.js`) implementing OpenSpec archive semantics: header-based requirement matching (`### Requirement:`), apply order RENAMED → REMOVED → MODIFIED → ADDED, conflict detection (target missing, added-conflict, case/whitespace near-miss, renamed+removed conflicts, duplicate headers), and idempotent re-archive (already-synced / already-removed detection).
 - `stdd validate --strict`: OpenSpec-style delta structure validation — requirement/scenario completeness, duplicate headers, MODIFIED/REMOVED/RENAMED target checks against the main spec, SHALL/MUST statement warnings; composable with `--spec-guardian`; repo mode checks main specs too.
