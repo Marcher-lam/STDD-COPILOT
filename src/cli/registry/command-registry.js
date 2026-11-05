@@ -85,6 +85,7 @@ const commandRegistry = [
     options: [
       { flags: '--change-name <name>', description: 'Custom change name' },
       { flags: '--workspace <workspace>', description: 'Scope to workspace' },
+      { flags: '--rigor <level>', description: 'Rigor level: light, standard, strict (default: auto — risky text escalates to strict)' },
     ],
     action: 'FFCommand',
     spinner: 'Fast-forwarding',
@@ -97,6 +98,7 @@ const commandRegistry = [
       { flags: '--title <title>', description: 'Issue title' },
       { flags: '--severity <severity>', description: 'Issue severity' },
       { flags: '--workspace <workspace>', description: 'Scope to workspace' },
+      { flags: '--rigor <level>', description: 'Rigor level: light, standard, strict (default: light; high severity or risky text escalates to strict)' },
     ],
     action: 'IssueCommand',
     spinner: 'Creating bug',
@@ -108,6 +110,7 @@ const commandRegistry = [
     options: [
       { flags: '--change-name <name>', description: 'Custom change name' },
       { flags: '--no-spec', description: 'Skip spec generation' },
+      { flags: '--rigor <level>', description: 'Rigor level recorded on the created change (light, standard, strict)' },
     ],
     action: 'TurboCommand',
     spinner: 'Running Turbo',
@@ -655,8 +658,13 @@ const commandRegistry = [
     options: [
       { flags: '--rounds <n>', description: 'Number of clarification rounds', default: '3' },
       { flags: '--focus <area>', description: 'Focus on specific area' },
+      { flags: '--exhaustive', description: 'Full 20-question checklist (default: conversational — core + signal-selected questions)' },
       { flags: '--json', description: 'JSON output' },
     ],
+    // Commander passes (action, change, options); ClarifyCommand.execute
+    // takes (changeName, options). Without the mapper the options object
+    // lands in an unused third parameter and every flag is silently dropped.
+    mapper: (action, change, options) => [change || action, options || {}],
     action: 'ClarifyCommand',
     helpText: `Actions: clarify, questions, edge-cases, constraints\n\nExamples:\n  stdd clarify add-user-auth\n  stdd clarify questions`,
   },

@@ -15,6 +15,7 @@ const DynamicGraphRouter = require('../../utils/dynamic-router');
 const { getPackageRoot } = require('../../utils/path-resolver');
 const { walkFiles } = require('../../utils/file-walker');
 const GraphCacheManager = require('../../utils/graph-cache');
+const { resolveRigor, rigorNodeOptions } = require('../../utils/rigor');
 const { parseCommand, runCommand: runParsedCommand } = require('../../utils/command-runner');
 const { FFCommand } = require('./ff');
 const { generateChangeName: _genChangeName } = require('../../utils/change-helpers');
@@ -87,18 +88,6 @@ function compareValues(actual, operator, expected) {
 }
 
 const ALLOWED_CONDITION_COMMANDS = new Set(['npm', 'git', 'node', 'npx', 'yarn', 'pnpm']);
-
-// D1 Progressive rigor (OpenSpec: "routine change → minimal ceremony;
-// high-risk change → increased validation proportionally"). Rigor scales the
-// per-node gates instead of applying identical ceremony to every intent.
-const RIGOR_LEVELS = ['light', 'standard', 'strict'];
-const RIGOR_BY_INTENT = {
-  feature: 'standard',
-  hotfix: 'light',
-  repair: 'standard',
-  research: 'light',
-  brownfield: 'standard',
-};
 
 const NODE_COMMAND_MAP = {
   'stdd-propose': 'propose',
@@ -297,30 +286,15 @@ class GraphRunCommand {
    * intent default; invalid explicit values are rejected loudly.
    */
   _resolveRigor(intent, options = {}) {
-    if (options.rigor) {
-      if (!RIGOR_LEVELS.includes(options.rigor)) {
-        throw new Error(`Invalid rigor '${options.rigor}'. Valid levels: ${RIGOR_LEVELS.join(', ')}.`);
-      }
-      return options.rigor;
-    }
-    return RIGOR_BY_INTENT[intent] || 'standard';
+    return resolveRigor({ explicit: options.rigor, intent }).level;
   }
 
   /**
-   * D1: per-node gate scaling. light loosens ceremony for routine changes
-   * (hotfix skips the constitution pass and the strict archive gate);
-   * strict tightens it (verify also runs lint). Users can still override
-   * per-node via explicit options — rigor only provides defaults.
+   * D1: per-node gate scaling (delegates to the shared rigor util — the
+   * same semantics apply to the plain CLI workflow via change state).
    */
   _rigorNodeOptions(nodeName, rigor) {
-    if (nodeName === 'stdd-verify') {
-      if (rigor === 'light') return { constitution: false };
-      if (rigor === 'strict') return { lint: true };
-    }
-    if (nodeName === 'stdd-archive' && rigor === 'light') {
-      return { skipStrict: true };
-    }
-    return {};
+    return rigorNodeOptions(nodeName, rigor);
   }
 
   /**

@@ -4,6 +4,11 @@ All notable changes to STDD Copilot will be documented in this file.
 
 ## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
 
+### Added (model-strength adaptation round 7 — P1)
+- Change-level rigor across the main workflow: ff/issue/turbo record a rigor level into .state.yaml at change creation (auto-escalating to strict on irreversible signals — migration/auth/payment/breaking — or high issue severity; --rigor overrides). verify (light: constitution skipped, strict: lint added) and archive (light: strict gate relaxed) honor the recorded level unless explicitly overridden per invocation. graph run now shares the same semantics via the new src/utils/rigor.js.
+- Conversational clarify: the default is no longer a 20-question boilerplate dump — a core set (input boundaries, empty/null, failure scenarios) plus questions selected by proposal signals (API/performance/security/data); irrelevant areas are omitted entirely. --exhaustive restores the full checklist.
+- Fixed: clarify's "[action] [change]" positional signature silently dropped the entire commander options object into an unused third parameter — every flag (--exhaustive, --focus, --rounds) had never reached the command. A registry mapper now aligns the arguments.
+
 ### Added (model-strength adaptation round 6)
 - Adaptive task budget in plan: the hardcoded 6-task cap (a weak-model compensation) is replaced by a scale function (base 4; +1/+2 by scope items; +1 for 600+ word proposals; +1 for multiple cross-cutting risk signals; clamped to [3,10]). `planning.max_tasks: auto|<n>` in stdd/config.yaml pins it; oversized proposals get an Epic-split hint instead of silent truncation. See docs/model-strength-adaptation.md.
 - Risk-triggered confirm gate: `hitl.mode: "risk-triggered"` lets the gate itself decide — auto-approve when the latest certainty assessment is at/above auto_threshold AND no irreversible/high-risk signal is present (decision + basis persisted to confirm-decision.json); otherwise the change is left unconfirmed with a pending-human decision recording the exact reasons. Other modes keep legacy behavior.

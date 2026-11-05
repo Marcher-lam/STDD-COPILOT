@@ -11,6 +11,7 @@ const { detectWorkspaces } = require('../../utils/workspace-detector');
 const { createLogger } = require('../../utils/logger');
 const { applyDelta, parseDeltaSections } = require('../../utils/delta-spec');
 const { readDeferred, DEFERRED_FILENAME } = require('../../utils/deferred-work');
+const { readChangeRigor, rigorNodeOptions } = require('../../utils/rigor');
 const { ValidateCommand } = require('./validate');
 const logger = createLogger('archive');
 
@@ -281,6 +282,13 @@ class ArchiveCommand {
 
     // Pre-archive strict validation gate (OpenSpec-style): blocking delta
     // structure issues refuse the archive before any spec file is touched.
+    // Change-level rigor (from ff/issue) can relax it for routine work;
+    // an explicit --skip-strict / --rigor flag always wins.
+    const changeRigor = readChangeRigor(changeDir);
+    if (changeRigor && options.skipStrict === undefined && rigorNodeOptions('stdd-archive', changeRigor).skipStrict) {
+      options.skipStrict = true;
+      console.log(chalk.dim(`  Rigor: ${changeRigor} (from change state) — strict gate relaxed for this routine change`));
+    }
     if (!options.skipStrict) {
       const gate = this.runStrictGate(changeDir, cwd);
       if (!gate.ok) {

@@ -7,7 +7,7 @@
 | `/stdd:init` | `stdd init [path]` | 初始化 STDD 项目目录结构 (specs/changes/memory/graph/config.yaml) + `.claude/commands/` + `.claude/skills/` |
 | `/stdd:new` | `stdd new change <name>` | 创建新变更提案，生成 proposal.md + .status.yaml，引导需求收集与澄清 |
 | `/stdd:propose` | — | 提出新功能需求草案，边界澄清，自动检测过大 Epic 并建议拆分 |
-| `/stdd:clarify` | — | 多轮需求澄清对话 (78 种结构化推理方法)，解决歧义与边界情况 |
+| `/stdd:clarify` | — | 多轮需求澄清：默认对话式（核心问题 + 按提案信号精选），`--exhaustive` 全量清单；78 种结构化推理方法经 elicitation 可选调用 |
 | `/stdd:confirm` | — | 人机确认门，展示提案摘要并请求用户审批，回复确认后推进到 spec 阶段 |
 | `/stdd:spec` | `stdd spec <change>` | 将需求提案转化为 BDD (Given/When/Then) Delta Specs，含 ADDED/MODIFIED/REMOVED 标记 |
 | `/stdd:plan` | — | 评估架构变更，生成 5-6 个细粒度微任务清单 (每任务约 30 分钟) + ADR 记录 + 前置变更情报回灌（归档 deferred 未决项回流） |
@@ -20,12 +20,12 @@
 
 | 斜杠命令 | CLI 命令 | 功能 |
 |---------|---------|------|
-| `/stdd:ff` | `stdd ff <desc>` | Fast-Forward 快速生成：一次性生成全部四项核心产物 (提案/规格/设计/任务)，支持 `--dry-run` |
+| `/stdd:ff` | `stdd ff <desc>` | Fast-Forward 快速生成：一次性生成全部四项核心产物 (提案/规格/设计/任务)，支持 `--dry-run`；变更级 rigor 自动评估（不可逆信号升 strict，`--rigor` 覆盖） |
 | `/stdd:continue` | `stdd continue [change]` | 自动检测 `.status.yaml` 工作流状态机，推进到下一个缺失产物并生成，支持 `--specs` 强制跳转 |
 | `/stdd:explore` | `stdd explore [scope]` | 只读探索模式：分析现有代码架构、模式、约束，写入 `stdd/explorations/`，支持 `--deep` |
 | `/stdd:turbo` | `stdd turbo <desc>` | One-Shot 一键执行所有实现前阶段 (propose→clarify→confirm→spec→plan)，在确认门暂停 |
 | `/stdd:brainstorm` | `stdd brainstorm <topic>` | 只读头脑风暴，多维度分析 (架构洞察/代码质量/技术评估/重构建议)，零文件修改，支持 `--method` |
-| `/stdd:issue` | `stdd issue <desc>` | Bug TDD 修复：分类缺陷，先写失败测试 (RED)，最小修复 (GREEN)，验证无回归 |
+| `/stdd:issue` | `stdd issue <desc>` | Bug TDD 修复：分类缺陷，先写失败测试 (RED)，最小修复 (GREEN)，验证无回归；默认 light rigor，高严重度/不可逆信号自动升 strict |
 
 ## 3. SDD 增强 — 规格驱动 (4 个)
 

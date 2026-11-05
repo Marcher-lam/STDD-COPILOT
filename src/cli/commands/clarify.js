@@ -18,6 +18,46 @@ class ClarifyCommand {
       'non_functional_requirements',
       'integration_points'
     ];
+    // Conversational mode (model-strength adaptation): a small core set plus
+    // signal-selected questions instead of the same 20-question dump for
+    // every proposal. --exhaustive restores the full checklist.
+    this.coreQuestions = {
+      boundary_conditions: ['What are the input boundaries (min/max values, formats)?'],
+      edge_cases: [
+        'What happens with empty/null inputs?',
+        'What are the failure scenarios?'
+      ]
+    };
+    this.signalQuestions = {
+      non_functional_requirements: {
+        signal: /\bperf(ormance)?\b|性能|latency|延迟|throughput|吞吐/i,
+        questions: [
+          'What is the expected response time?',
+          'What is the expected throughput?'
+        ]
+      },
+      integration_points: {
+        signal: /\bapi\b|integration|http|webhook|集成|external/i,
+        questions: [
+          'What external systems need to be integrated?',
+          'What are the error handling strategies for integration failures?'
+        ]
+      },
+      edge_cases: {
+        signal: /\bdata\b|database|schema|数据|concurrent|并发/i,
+        questions: [
+          'What happens with malformed data?',
+          'What are the concurrent access scenarios?'
+        ]
+      },
+      implicit_constraints: {
+        signal: /\bauth\b|permission|security|权限|安全|compliance|合规/i,
+        questions: [
+          'Are there security or compliance requirements?',
+          'Are there backward compatibility requirements?'
+        ]
+      }
+    };
   }
 
   async execute(changeName, options = {}) {
@@ -38,7 +78,7 @@ class ClarifyCommand {
     }
 
     const proposal = await fs.readFile(proposalPath, 'utf-8');
-    const clarification = await this.generateClarification(proposal);
+    const clarification = await this.generateClarification(proposal, options);
 
     if (options.dryRun) {
       console.log(chalk.yellow('Dry run - clarification not saved'));
@@ -91,21 +131,33 @@ class ClarifyCommand {
     }
   }
 
-  async generateClarification(proposal) {
+  async generateClarification(proposal, options = {}) {
+    const exhaustive = options.exhaustive === true;
     const clarification = {
       timestamp: new Date().toISOString(),
+      mode: exhaustive ? 'exhaustive' : 'conversational',
       areas: {}
     };
 
     for (const area of this.clarificationAreas) {
-      clarification.areas[area] = this.generateAreaQuestions(area, proposal);
+      clarification.areas[area] = this.generateAreaQuestions(area, proposal, { exhaustive });
     }
 
     return clarification;
   }
 
-  generateAreaQuestions(area, proposal) {
-    const questions = {
+  /** Conversational core + signal-selected questions; exhaustive = full set. */
+  pickConversationalQuestions(area, proposal) {
+    const questions = [...(this.coreQuestions[area] || [])];
+    const rule = this.signalQuestions[area];
+    if (rule && rule.signal.test(proposal)) {
+      questions.push(...rule.questions);
+    }
+    return questions;
+  }
+
+  generateAreaQuestions(area, proposal, { exhaustive } = {}) {
+    const fullQuestions = {
       boundary_conditions: [
         'What are the input boundaries (min/max values, formats)?',
         'What are the output boundaries?',
@@ -138,20 +190,28 @@ class ClarifyCommand {
       ]
     };
 
+    const questions = exhaustive
+      ? (fullQuestions[area] || [])
+      : this.pickConversationalQuestions(area, proposal);
+
     return {
       area: area.replace(/_/g, ' '),
-      questions: questions[area] || [],
+      questions,
       status: 'pending'
     };
   }
 
   async updateProposal(proposalPath, existingProposal, clarification) {
+    const areasWithQuestions = Object.entries(clarification.areas)
+      .filter(([, value]) => value.questions.length > 0);
+
     const clarificationSection = `
 ## Clarification
 
 Generated: ${clarification.timestamp}
+Mode: ${clarification.mode}${clarification.mode === 'conversational' ? '（默认；--exhaustive 查看全量问题清单）' : ''}
 
-${Object.entries(clarification.areas).map(([key, value]) => `
+${areasWithQuestions.map(([, value]) => `
 ### ${value.area}
 
 ${value.questions.map(q => `- [ ] ${q}`).join('\n')}
@@ -172,6 +232,7 @@ ${value.questions.map(q => `- [ ] ${q}`).join('\n')}
     console.log('');
 
     for (const [key, value] of Object.entries(clarification.areas)) {
+      if (value.questions.length === 0) continue;
       console.log(chalk.bold(`📋 ${value.area}`));
       console.log(chalk.dim('─'.repeat(40)));
 

@@ -9,6 +9,7 @@ const chalk = require('chalk');
 const { resolveWorkspace } = require('../../utils/workspace-detector');
 const { validateChangeName } = require('../../utils/change-utils');
 const { generateChangeName: _genChangeName, toSafeFilename: _toSafe, workspaceContext: _wsCtx } = require('../../utils/change-helpers');
+const { resolveRigor, writeChangeRigor, assessTextRigor } = require('../../utils/rigor');
 
 class IssueCommand {
   constructor(spinner) {
@@ -151,7 +152,22 @@ ${workspaceHint}
     );
     await fs.writeFile(path.join(changeDir, 'tasks.md'), this.generateTasks(changeName, workspaceMeta));
 
+    // Bug fixes default to light rigor, but high-severity or irreversible
+    // text escalates to strict — the gate density follows the risk.
+    const highSeverity = /critical|high|严重/i.test(String(options.severity || ''));
+    const riskyText = assessTextRigor(description) === 'strict';
+    const rigor = resolveRigor({
+      explicit: options.rigor || (highSeverity || riskyText ? 'strict' : undefined),
+      intent: 'issue',
+      text: description,
+    });
+    if (!options.rigor && (highSeverity || riskyText)) {
+      rigor.basis = highSeverity ? `severity ${options.severity}` : 'risk signal in description';
+    }
+    writeChangeRigor(changeDir, rigor.level);
+
     console.log(chalk.green(`\n✅ Bug fix change '${changeName}' created at stdd/changes/${changeName}/\n`));
+    console.log(chalk.dim(`  Rigor: ${rigor.level} (${rigor.basis}) — verify/archive will follow it`));
     if (workspaceMeta) {
       console.log(chalk.cyan(`Workspace: ${workspaceMeta.path}`));
     }
@@ -160,7 +176,7 @@ ${workspaceHint}
     const workspaceArg = workspaceMeta ? ` --workspace ${workspaceMeta.path}` : '';
     console.log(chalk.cyan(`  2. stdd apply ${changeName}${workspaceArg}  # TDD: Red → Green → Blue`));
 
-    return { changeName, workspace: workspaceMeta };
+    return { changeName, workspace: workspaceMeta, rigor: rigor.level };
   }
 }
 

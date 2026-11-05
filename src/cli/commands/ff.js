@@ -9,6 +9,7 @@ const chalk = require('chalk');
 const { resolveWorkspace } = require('../../utils/workspace-detector');
 const { validateChangeName } = require('../../utils/change-utils');
 const { generateChangeName: _genChangeName, toSafeFilename: _toSafe, workspaceContext: _wsCtx } = require('../../utils/change-helpers');
+const { resolveRigor, writeChangeRigor } = require('../../utils/rigor');
 
 class FFCommand {
   constructor(spinner) {
@@ -126,7 +127,13 @@ ${workspaceHeader}
     await fs.writeFile(path.join(changeDir, 'proposal.md'), this.generateProposal(description, workspaceMeta));
     await fs.writeFile(path.join(changeDir, 'tasks.md'), this.generateTasks(description, workspaceMeta));
 
+    // Rigor is a property of the change: recorded once at creation, honored
+    // by verify/archive unless explicitly overridden there.
+    const rigor = resolveRigor({ explicit: options.rigor, intent: 'feature', text: description });
+    writeChangeRigor(changeDir, rigor.level);
+
     console.log(chalk.green(`\n✅ Fast-forward change '${changeName}' created at stdd/changes/${changeName}/\n`));
+    console.log(chalk.dim(`  Rigor: ${rigor.level} (${rigor.basis}) — verify/archive will follow it`));
     if (workspaceMeta) {
       console.log(chalk.cyan(`Workspace: ${workspaceMeta.path}`));
     }
@@ -134,7 +141,7 @@ ${workspaceHeader}
     const workspaceArg = workspaceMeta ? ` --workspace ${workspaceMeta.path}` : '';
     console.log(chalk.cyan(`  stdd apply ${changeName}${workspaceArg}`));
 
-    return { changeName, workspace: workspaceMeta };
+    return { changeName, workspace: workspaceMeta, rigor: rigor.level };
   }
 }
 

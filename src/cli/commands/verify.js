@@ -18,6 +18,7 @@ const { commandToWorkspaceScope, resolveWorkspaceScope } = require('../../utils/
 const { findLatestMutationEvidence } = require('./mutation');
 const { runCommand: runParsedCommand } = require('../../utils/command-runner');
 const { readDeferred, appendDeferred, resolveDeferred, DEFERRED_FILENAME } = require('../../utils/deferred-work');
+const { readChangeRigor, rigorNodeOptions } = require('../../utils/rigor');
 
 // getConfigTestCommand is now imported from test-command-resolver
 
@@ -113,6 +114,18 @@ class VerifyCommand {
 
     const changeNameActual = path.basename(changeDir);
     const report = { tasks: null, tests: null, lint: null, constitution: null, mutation: null };
+
+    // Change-level rigor (recorded by ff/issue at creation): scale the gates
+    // unless the user explicitly overrode them on this invocation.
+    const changeRigor = readChangeRigor(changeDir);
+    if (changeRigor) {
+      const rigorOptions = rigorNodeOptions('stdd-verify', changeRigor);
+      // Commander's negatable --no-constitution defaults to true when absent,
+      // so `=== true` means "user did not explicitly disable it".
+      if (options.constitution === true && rigorOptions.constitution === false) options.constitution = false;
+      if (options.lint === undefined && rigorOptions.lint) options.lint = true;
+      console.log(chalk.dim(`  Rigor: ${changeRigor} (from change state) — override with explicit flags`));
+    }
     let healthy = true;
     const requestedWorkspace = options.workspace ? resolveWorkspaceScope(cwd, options.workspace) : null;
 

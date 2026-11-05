@@ -49,12 +49,18 @@
 
 `graph run --rigor light|standard|strict` 按 intent 默认映射——"例行变更最小仪式、高风险按比例加严"已进入编排层。
 
-## 待办（P1/P2 backlog）
+### 5. 变更级 rigor 贯穿主工作流（P1 落地）
+
+**rigor 成为变更属性而非命令参数**：`ff`/`issue`/`turbo` 创建变更时把 rigor 写入 `.state.yaml`（自动评估：描述含不可逆信号（migration/删数据/auth/payment/breaking…）或 issue 高严重度 → **自动升 strict**，否则 feature→standard、bug→light；`--rigor` 显式覆盖），下游 `verify`（light 免 constitution、strict 附 lint）与 `archive`（light 免 strict 门禁）自动遵循——除非用户在当次调用显式给旗标。graph run 与主工作流共用同一套语义（`src/utils/rigor.js`）。
+
+### 6. clarify 对话式（P1 落地）
+
+旧默认 = 每个提案倾倒 20 个固定问题（吞吐量/合规/可用性——对一个加按钮的提案全是噪音）。新默认 = **对话式**：核心三问（输入边界/空值/失败场景）+ 按提案信号精选的相关问题（提及 API→集成问、提及性能→响应时间…），简单提案 ≤6 问；`--exhaustive` 恢复全量清单。顺带修复：`clarify [action] [change]` 双位置参数导致 commander options 整体被丢弃的潜伏 bug（所有旗标从未生效过）。
+
+## 待办（P2 backlog）
 
 | 优先级 | 条目 | 说明 |
 |---|---|---|
-| P1 | 主工作流接入 `--rigor` | ff/issue/turbo 与 graph run 一致的风险分级；自动评级（安全/迁移/公共 API → 自动升 strict） |
-| P1 | clarify 默认对话式 | 78 方法降级为 `--method` 可选工具箱 |
 | P2 | legacy 标记 | 12 角色模拟、SudoLang、Party Mode 标注"弱模型时代补偿层，默认不推荐"，评估移入 extensions |
 | P2 | 中断预算 | 四层暂停机制（confirm + certainty 检查点 + hitl 分阶段 + constitution）合并为单一"每变更 N 次暂停配额，风险消耗配额" |
 
