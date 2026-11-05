@@ -34,7 +34,7 @@
 | `/stdd:api-spec` | `stdd api-spec [change]` | 生成 OpenAPI 格式 API 规格 + TypeScript 类型定义，支持多端点批量生成 |
 | `/stdd:schema` | `stdd schema validate/create/fork` | 生成 JSON Schema 和 Zod 类型校验，支持 create/fork 自定义 artifact DAG workflow |
 | `/stdd:contract` | `stdd contract <action>` | 生成和管理消费者驱动契约测试 (5 种消息模式)，支持 generate/verify 子命令 |
-| `/stdd:validate` | `stdd validate [change]` | 验证规格一致性 + Spec Guardian 泄漏检测 + RFC 2119 关键词检查，支持 `--fix` 自动修复 |
+| `/stdd:validate` | `stdd validate [change]` | 验证规格一致性 + Spec Guardian 泄漏检测 + RFC 2119 关键词检查，支持 `--strict` OpenSpec 式 delta 结构校验与 `--fix` 自动修复 |
 
 ## 4. TDD 增强 — 测试驱动 (6 个)
 

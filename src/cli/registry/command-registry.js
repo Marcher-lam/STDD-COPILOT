@@ -152,6 +152,7 @@ const commandRegistry = [
     description: 'Validate specs and run Spec Guardian checks',
     options: [
       { flags: '--spec-guardian', description: 'Run implementation leakage checks' },
+      { flags: '--strict', description: 'Strict OpenSpec-style delta structure validation' },
       { flags: '--fix', description: 'Write rewrite suggestions for diagnostics' },
       { flags: '--json', description: 'JSON output' },
     ],

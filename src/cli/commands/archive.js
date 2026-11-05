@@ -9,6 +9,7 @@ const chalk = require('chalk');
 const { findActiveChange, checkTasksCompletion } = require('../../utils/change-utils');
 const { detectWorkspaces } = require('../../utils/workspace-detector');
 const { createLogger } = require('../../utils/logger');
+const { applyDelta, parseDeltaSections } = require('../../utils/delta-spec');
 const logger = createLogger('archive');
 
 function extractProposalTitle(content) {
@@ -211,6 +212,39 @@ function mergeDeltaSpec(mainContent, deltaContent) {
   return chunks.filter(part => part !== undefined).join('\n') + '\n';
 }
 
+/**
+ * Merge a change's delta specs into the main specs directory.
+ *
+ * When the target main spec already exists, the OpenSpec-aligned engine in
+ * `src/utils/delta-spec.js` applies the delta for real (header-based match:
+ * RENAMED -> REMOVED -> MODIFIED -> ADDED) and reports conflicts so the
+ * archive can be aborted for manual resolution. When no main spec exists
+ * yet, the legacy marker-based "created" path is kept for compatibility.
+ */
+function mergeDeltaSpecWithEngine(before, deltaContent) {
+  if (before.trim()) {
+    return applyDelta(before, deltaContent);
+  }
+  const parsed = parseDeltaSections(deltaContent);
+  const warnings = [];
+  const unappliable = [
+    ...parsed.sections.modified.requirements.map(r => `MODIFIED "${r.name}"`),
+    ...parsed.sections.removed.requirements.map(r => `REMOVED "${r.name}"`),
+  ];
+  if (unappliable.length > 0) {
+    warnings.push({
+      type: 'no-current-spec',
+      message: `Delta contains ${unappliable.join(', ')} but no current spec exists to apply them against; stored as marker blocks.`,
+    });
+  }
+  return {
+    content: mergeDeltaSpec(before, deltaContent),
+    conflicts: [],
+    warnings,
+    operations: ['created spec via legacy markers'],
+  };
+}
+
 class ArchiveCommand {
   async execute(changeName, options = {}) {
     const cwd = process.cwd();
@@ -243,8 +277,28 @@ class ArchiveCommand {
       return;
     }
 
-    // Generate summary.md before moving
+    // Merge delta specs into the main specs directory before moving
     const mergeReport = this.mergeDeltaSpecs(changeDir, stddDir);
+
+    // Abort the archive when delta conflicts require manual resolution.
+    const conflictEntries = mergeReport.filter(e => e.status === 'conflict');
+    if (conflictEntries.length > 0) {
+      fs.writeFileSync(path.join(changeDir, 'spec-merge-report.json'), JSON.stringify(mergeReport, null, 2), 'utf8');
+      console.log(chalk.red(`\n✗ Spec merge conflicts detected (${conflictEntries.length} file(s)) — change NOT archived:`));
+      for (const entry of conflictEntries) {
+        console.log(chalk.yellow(`\n  ${path.relative(process.cwd(), entry.target)}`));
+        for (const conflict of entry.conflicts) {
+          console.log(`    ${chalk.red('•')} ${conflict.message}`);
+        }
+      }
+      console.log(chalk.yellow('\n  Resolve manually: fix the delta requirement headers to match stdd/specs,'));
+      console.log(chalk.yellow('  or update the main spec first, then re-run stdd archive.'));
+      console.log(chalk.dim(`\n  Details: ${path.relative(process.cwd(), path.join(changeDir, 'spec-merge-report.json'))}`));
+      process.exitCode = 1;
+      return;
+    }
+
+    // Generate summary.md before moving
     this.generateSummary(changeDir);
     if (mergeReport.length > 0) {
       fs.writeFileSync(path.join(changeDir, 'spec-merge-report.json'), JSON.stringify(mergeReport, null, 2), 'utf8');
@@ -289,9 +343,22 @@ class ArchiveCommand {
       fs.mkdirSync(path.dirname(target), { recursive: true });
       const deltaContent = fs.readFileSync(file, 'utf8');
       const before = fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : '';
-      const merged = mergeDeltaSpec(before, deltaContent);
-      fs.writeFileSync(target, merged, 'utf8');
-      report.push({ source: path.relative(process.cwd(), file), target: path.relative(process.cwd(), target), action: before ? 'merged' : 'created' });
+      const result = mergeDeltaSpecWithEngine(before, deltaContent);
+      const entry = {
+        source: path.relative(process.cwd(), file),
+        target: path.relative(process.cwd(), target),
+        action: before ? 'merged' : 'created',
+        status: result.conflicts.length > 0 ? 'conflict' : before ? 'merged' : 'created',
+        operations: result.operations,
+      };
+      if (result.warnings.length > 0) entry.warnings = result.warnings;
+      if (result.conflicts.length > 0) {
+        entry.conflicts = result.conflicts;
+        // Conflicted targets stay untouched so they can be resolved manually.
+      } else {
+        fs.writeFileSync(target, result.content, 'utf8');
+      }
+      report.push(entry);
     }
     return report;
   }

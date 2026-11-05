@@ -58,6 +58,10 @@ artifacts:
       ### Requirement: [需求名]
       (Deprecated because [原因])
 
+      ## RENAMED Requirements
+      - FROM: `### Requirement: [旧需求名]`
+      - TO: `### Requirement: [新需求名]`
+
   - id: design
     name: 设计文档
     generates: design.md

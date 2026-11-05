@@ -2,6 +2,24 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [Unreleased] — 框架对标优化（参考 superpowers + BMAD + OpenSpec）
+
+### Added
+- New delta spec engine (`src/utils/delta-spec.js`) implementing OpenSpec archive semantics: header-based requirement matching (`### Requirement:`), apply order RENAMED → REMOVED → MODIFIED → ADDED, conflict detection (target missing, added-conflict, case/whitespace near-miss, renamed+removed conflicts, duplicate headers), and idempotent re-archive (already-synced / already-removed detection).
+- `stdd validate --strict`: OpenSpec-style delta structure validation — requirement/scenario completeness, duplicate headers, MODIFIED/REMOVED/RENAMED target checks against the main spec, SHALL/MUST statement warnings; composable with `--spec-guardian`; repo mode checks main specs too.
+- `docs/framework-benchmark.md`: gap analysis against superpowers / BMAD / OpenSpec with adoption decisions and a prioritized backlog.
+- Tasks template (`schemas/spec-driven/templates/tasks.md`) now includes per-task Verification (Run + Expected), Sources traceability (`[Source: file#section]`), and Interfaces (Produces/Consumes) blocks.
+
+### Changed
+- `stdd archive` now performs a real delta merge when the target spec exists: MODIFIED replaces the requirement block in place, REMOVED deletes it, RENAMED renames it. Delta conflicts abort the archive (exit code 1), write a detailed `spec-merge-report.json`, leave the change active and the main spec untouched. The legacy marker-based path remains for brand-new specs.
+- Delta spec template in `schemas/spec-driven/schema.yaml` now documents the `## RENAMED Requirements` section.
+
+### Fixed
+- `GWT_PATTERN` in `validate.js` now recognizes OpenSpec-style bold steps (`- **WHEN** ...`) in addition to Gherkin steps, so valid scenarios are no longer flagged as `missing-gwt`.
+
+### Tests
+- +3 suites, +46 tests: `delta-spec.test.js` (25), `archive-delta-merge.test.js` (6, end-to-end CLI), `validate-strict.test.js` (15). All existing archive/validate suites stay green (backward compatible).
+
 ## [1.0.7] - 2026-05-24
 
 ### Added

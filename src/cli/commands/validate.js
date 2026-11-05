@@ -10,9 +10,13 @@ const { findActiveChange, parseTasks } = require('../../utils/change-utils');
 const EvidenceCapture = require('../../utils/evidence-capture');
 const { walkFiles } = require('../../utils/file-walker');
 const { createLogger } = require('../../utils/logger');
+const { parseDeltaSections, parseSpecRequirements, foldBody } = require('../../utils/delta-spec');
 const logger = createLogger('validate');
 
-const GWT_PATTERN = /^\s*(?:[-*]\s*)?(Given|When|Then|And|But)\b/i;
+// Accepts both Gherkin ("When ...") and OpenSpec-style ("- **WHEN** ...") steps.
+const GWT_PATTERN = /^\s*(?:[-*]\s*)?(?:\*\*)?\s*(Given|When|Then|And|But)\b/i;
+const SCENARIO_STEP_RE = /^#{4}\s+Scenario\b/im;
+const SHALL_RE = /\b(SHALL|MUST)\b/;
 
 const LEAKAGE_RULES = [
   {
@@ -111,6 +115,249 @@ class ValidateCommand {
     this.cwd = cwd;
   }
 
+  /** Find the 1-based line number of a requirement header, 0 when absent. */
+  findRequirementLine(content, name) {
+    const target = `### Requirement: ${name}`;
+    const index = content.split('\n').findIndex(line => line.trim() === target);
+    return index >= 0 ? index + 1 : 1;
+  }
+
+  strictDiagnostics(changeDir, specFiles) {
+    const diagnostics = [];
+    for (const file of specFiles) {
+      const relFile = path.relative(this.cwd, file).replace(/\\/g, '/');
+      let content;
+      try {
+        content = fs.readFileSync(file, 'utf8');
+      } catch (err) {
+        logger.warn(err.message);
+        continue;
+      }
+      if (changeDir) {
+        const rel = path.relative(path.join(changeDir, 'specs'), file);
+        const mainPath = path.join(this.cwd, 'stdd', 'specs', rel);
+        const mainContent = fs.existsSync(mainPath)
+          ? fs.readFileSync(mainPath, 'utf8')
+          : null;
+        diagnostics.push(...this.checkDeltaFile(file, relFile, content, mainContent));
+      } else {
+        diagnostics.push(...this.checkMainFile(file, relFile, content));
+      }
+    }
+    return diagnostics;
+  }
+
+  checkDeltaFile(file, relFile, content, mainContent) {
+    const diagnostics = [];
+    const parsed = parseDeltaSections(content);
+    const main = mainContent !== null ? parseSpecRequirements(mainContent) : null;
+    const mainNames = new Set(main ? main.requirements.map(r => r.name) : []);
+    const mainBodies = new Map(main ? main.requirements.map(r => [r.name, r.body]) : []);
+    const renameMap = new Map(parsed.sections.renamed.entries.map(e => [e.from, e.to]));
+    const seen = new Set();
+
+    if (!parsed.hasSections) {
+      diagnostics.push({
+        file: relFile,
+        line: 1,
+        rule: 'delta-structure',
+        severity: 'warning',
+        message: 'Delta spec has no ADDED/MODIFIED/REMOVED/RENAMED section.',
+        text: '',
+        suggestion: 'Group requirements under "## ADDED Requirements" style sections so archive can merge them.',
+      });
+    }
+
+    const checkRequirement = (req, section) => {
+      if (seen.has(req.name)) {
+        diagnostics.push({
+          file: relFile,
+          line: this.findRequirementLine(content, req.name),
+          rule: 'duplicate-header',
+          severity: 'blocking',
+          message: `Duplicate "### Requirement: ${req.name}" in this delta.`,
+          text: req.header,
+          suggestion: 'Requirement headers must be unique within a spec file.',
+        });
+      }
+      seen.add(req.name);
+
+      if (!SCENARIO_STEP_RE.test(req.body)) {
+        diagnostics.push({
+          file: relFile,
+          line: this.findRequirementLine(content, req.name),
+          rule: 'requirement-scenario',
+          severity: 'blocking',
+          message: `Requirement "${req.name}" (${section}) has no "#### Scenario:" section.`,
+          text: req.header,
+          suggestion: 'Add at least one scenario so the requirement stays verifiable.',
+        });
+      }
+      if (!SHALL_RE.test(req.body)) {
+        diagnostics.push({
+          file: relFile,
+          line: this.findRequirementLine(content, req.name),
+          rule: 'shall-statement',
+          severity: 'warning',
+          message: `Requirement "${req.name}" (${section}) has no SHALL/MUST statement.`,
+          text: req.header,
+          suggestion: 'Describe core behavior with a SHALL/MUST statement.',
+        });
+      }
+    };
+
+    for (const req of parsed.sections.added.requirements) {
+      checkRequirement(req, 'ADDED');
+      if (main && mainNames.has(req.name)) {
+        if (foldBody(mainBodies.get(req.name)) === foldBody(req.body)) {
+          diagnostics.push({
+            file: relFile,
+            line: this.findRequirementLine(content, req.name),
+            rule: 'already-synced',
+            severity: 'warning',
+            message: `ADDED "${req.name}" already exists in the main spec with identical content.`,
+            text: req.header,
+            suggestion: 'Remove the duplicate ADDED entry, or modify it instead.',
+          });
+        } else {
+          diagnostics.push({
+            file: relFile,
+            line: this.findRequirementLine(content, req.name),
+            rule: 'added-conflict',
+            severity: 'blocking',
+            message: `ADDED "${req.name}" already exists in the main spec with different content.`,
+            text: req.header,
+            suggestion: 'Use "## MODIFIED Requirements" instead of ADDED for existing requirements.',
+          });
+        }
+      }
+    }
+
+    for (const req of parsed.sections.modified.requirements) {
+      checkRequirement(req, 'MODIFIED');
+      const effective = renameMap.get(req.name) || req.name;
+      if (main && !mainNames.has(effective)) {
+        diagnostics.push({
+          file: relFile,
+          line: this.findRequirementLine(content, req.name),
+          rule: 'modified-target-missing',
+          severity: 'blocking',
+          message: `MODIFIED "${req.name}" not found in the main spec.`,
+          text: req.header,
+          suggestion: 'Match the exact "### Requirement:" header used in stdd/specs.',
+        });
+      }
+    }
+
+    for (const req of parsed.sections.removed.requirements) {
+      if (seen.has(req.name)) {
+        diagnostics.push({
+          file: relFile,
+          line: this.findRequirementLine(content, req.name),
+          rule: 'duplicate-header',
+          severity: 'blocking',
+          message: `Duplicate "### Requirement: ${req.name}" in this delta.`,
+          text: req.header,
+          suggestion: 'Requirement headers must be unique within a spec file.',
+        });
+      }
+      seen.add(req.name);
+      if (main && !mainNames.has(req.name)) {
+        diagnostics.push({
+          file: relFile,
+          line: this.findRequirementLine(content, req.name),
+          rule: 'removed-target-missing',
+          severity: 'blocking',
+          message: `REMOVED "${req.name}" not found in the main spec.`,
+          text: req.header,
+          suggestion: 'Match the exact "### Requirement:" header used in stdd/specs.',
+        });
+      }
+    }
+
+    for (const { from, to } of parsed.sections.renamed.entries) {
+      if (main && !mainNames.has(from)) {
+        if (mainNames.has(to)) {
+          diagnostics.push({
+            file: relFile,
+            line: 1,
+            rule: 'already-synced',
+            severity: 'warning',
+            message: `Rename "${from}" -> "${to}" appears already applied in the main spec.`,
+            text: `- FROM: ${from}`,
+            suggestion: 'Remove the stale RENAMED entry.',
+          });
+        } else {
+          diagnostics.push({
+            file: relFile,
+            line: 1,
+            rule: 'renamed-source-missing',
+            severity: 'blocking',
+            message: `RENAMED source "${from}" not found in the main spec.`,
+            text: `- FROM: ${from}`,
+            suggestion: 'Match the exact "### Requirement:" header used in stdd/specs.',
+          });
+        }
+      } else if (main && mainNames.has(to) && from !== to) {
+        diagnostics.push({
+          file: relFile,
+          line: 1,
+          rule: 'renamed-target-exists',
+          severity: 'blocking',
+          message: `RENAMED target "${to}" already exists in the main spec.`,
+          text: `- TO: ${to}`,
+          suggestion: 'Pick a target name that is not already in use.',
+        });
+      }
+    }
+
+    return diagnostics;
+  }
+
+  checkMainFile(file, relFile, content) {
+    const parsed = parseSpecRequirements(content);
+    const diagnostics = [];
+    const seen = new Set();
+    for (const req of parsed.requirements) {
+      const line = this.findRequirementLine(content, req.name);
+      if (seen.has(req.name)) {
+        diagnostics.push({
+          file: relFile,
+          line,
+          rule: 'duplicate-header',
+          severity: 'blocking',
+          message: `Duplicate "### Requirement: ${req.name}" in this spec.`,
+          text: req.header,
+          suggestion: 'Requirement headers must be unique within a spec file.',
+        });
+      }
+      seen.add(req.name);
+      if (!SCENARIO_STEP_RE.test(req.body)) {
+        diagnostics.push({
+          file: relFile,
+          line,
+          rule: 'requirement-scenario',
+          severity: 'blocking',
+          message: `Requirement "${req.name}" has no "#### Scenario:" section.`,
+          text: req.header,
+          suggestion: 'Add at least one scenario so the requirement stays verifiable.',
+        });
+      }
+      if (!SHALL_RE.test(req.body)) {
+        diagnostics.push({
+          file: relFile,
+          line,
+          rule: 'shall-statement',
+          severity: 'warning',
+          message: `Requirement "${req.name}" has no SHALL/MUST statement.`,
+          text: req.header,
+          suggestion: 'Describe core behavior with a SHALL/MUST statement.',
+        });
+      }
+    }
+    return diagnostics;
+  }
+
   execute(changeName, options = {}) {
     const stddDir = path.join(this.cwd, 'stdd');
     if (!fs.existsSync(stddDir)) {
@@ -128,13 +375,18 @@ class ValidateCommand {
 
     const specFiles = walkFiles(specsDir, { predicate: file => /\.(feature|md)$/.test(file) });
     const diagnostics = specFiles.flatMap(file => lineDiagnostics(file, this.cwd));
+    if (options.strict) {
+      diagnostics.push(...this.strictDiagnostics(changeDir, specFiles));
+    }
     const taskReport = changeDir ? this.compareTasksToSpecs(changeDir, specFiles) : null;
     const blocking = diagnostics.filter(d => d.severity === 'blocking');
     const warning = diagnostics.filter(d => d.severity !== 'blocking');
 
     const report = {
       status: blocking.length > 0 ? 'fail' : 'pass',
-      mode: options.specGuardian ? 'spec-guardian' : 'validate',
+      mode: options.specGuardian && options.strict
+        ? 'strict+spec-guardian'
+        : options.specGuardian ? 'spec-guardian' : options.strict ? 'strict' : 'validate',
       change: changeDir ? path.basename(changeDir) : null,
       specFiles: specFiles.map(file => path.relative(this.cwd, file).replace(/\\/g, '/')),
       diagnostics,

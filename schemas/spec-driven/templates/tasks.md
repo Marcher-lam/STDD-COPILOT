@@ -16,7 +16,9 @@
 - ✅ 每个任务 ≤ 30 分钟
 - ✅ 任务之间有明确的依赖关系
 - ✅ 任务总数 ≤ 6 个
-- ✅ 遵循 TDD: 测试先行
+- ✅ 遵循 TDD: 测试先行（RED 必须亲眼看到失败，GREEN 只写最小实现）
+- ✅ 每个任务自带 Verification（命令 + 期望输出）与 Source 溯源
+- ✅ 任务间接口通过 Interfaces 块声明（Produces/Consumes）
 
 ---
 
@@ -31,6 +33,10 @@
 **Description:**
 [描述需要创建的测试基础设施]
 
+**Sources:**
+- [Source: proposal.md#Scope] — 本任务覆盖的范围边界
+- [Source: specs/[domain].md#Requirement: XX] — 本任务对应的规格条目
+
 **Acceptance Criteria:**
 - [ ] 测试文件创建
 - [ ] 失败测试编写
@@ -38,6 +44,14 @@
 
 **Files:**
 - `tests/__tests__/[feature].test.ts` (CREATE)
+
+**Interfaces:**
+- Produces: `[导出的函数/类型签名，供下游任务消费]`
+- Consumes: `[依赖的上游接口签名]`
+
+**Verification:**
+- Run: `npm test -- [feature]`
+- Expected: `[新测试失败，失败信息指向未实现的行为]`
 
 ---
 
@@ -52,6 +66,10 @@
 **Description:**
 [描述核心功能实现]
 
+**Sources:**
+- [Source: design.md#Technical Approach] — 实现遵循的技术方案
+- [Source: specs/[domain].md#Requirement: XX] — 本任务对应的规格条目
+
 **Acceptance Criteria:**
 - [ ] 所有测试通过
 - [ ] 代码符合规范
@@ -59,6 +77,14 @@
 
 **Files:**
 - `src/[module]/[file].ts` (CREATE/MODIFY)
+
+**Interfaces:**
+- Produces: `[本任务对外暴露的精确签名]`
+- Consumes: `[TASK-001 提供的测试桩/夹具]`
+
+**Verification:**
+- Run: `npm test`
+- Expected: `[全量测试通过，无新增警告]`
 
 ---
 

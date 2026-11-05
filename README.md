@@ -452,6 +452,7 @@ stdd-copilot/
 | [docs/concepts.md](./docs/concepts.md) | 核心理念：Spec-First、Ralph Loop、Constitution |
 | [docs/workflows.md](./docs/workflows.md) | 工作流详解：Greenfield / Brownfield / 快速修复 |
 | [docs/capabilities.md](./docs/capabilities.md) | 全部能力清单 |
+| [docs/framework-benchmark.md](./docs/framework-benchmark.md) | superpowers + BMAD + OpenSpec 框架对标与差距分析 |
 | [docs/agent-protocol.md](./docs/agent-protocol.md) | AI Agent 行为协议（Phase 过渡、确认门、路径选择） |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 系统架构（含 Mermaid 图） |
 | [USAGE.md](./USAGE.md) | 完整使用指南 |
