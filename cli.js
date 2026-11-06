@@ -44,6 +44,8 @@ const {
 } = require('./src/cli/commands/index');
 
 const { ProgressCommand } = require('./src/cli/commands/progress');
+const { UiCommand } = require('./src/cli/commands/ui');
+const { DashboardCommand } = require('./src/cli/commands/dashboard');
 
 const { BrowserCommand } = require('./src/cli/commands/browser');
 const { SpecGenerator } = require('./src/cli/commands/spec-generator');
@@ -358,6 +360,29 @@ program.command('prp [action] [title...]')
   .action(safeAction(async (action, title, options) => {
     const cmd = new PrpCommand(process.cwd());
     await cmd.execute(action || 'create', title, options);
+  }));
+
+program.command('dashboard [action]')
+  .description('Zero-dependency HTML dashboard over stdd/ (generate | serve)')
+  .option('--port <port>', 'Port for serve mode', '4173')
+  .option('--json', 'JSON output')
+  .addHelpText('after', '\nExamples:\n  stdd dashboard\n  stdd dashboard generate\n  stdd dashboard serve --port 4173')
+  .action(safeAction(async (action, options) => {
+    const cmd = new DashboardCommand(process.cwd());
+    await cmd.execute(action || 'generate', [], options);
+  }));
+
+program.command('ui [action] [name...]')
+  .description('Generate DESIGN.md-driven UI component/page skeletons')
+  .option('--framework <framework>', 'react (default) | vue | html')
+  .option('--out <dir>', 'Output directory')
+  .option('--force', 'Force overwrite')
+  .option('--no-test', 'Skip companion RTL test scaffold')
+  .option('--json', 'JSON output')
+  .addHelpText('after', '\nActions: generate (component), page (page-level)\n\nExamples:\n  stdd ui generate ProfileCard\n  stdd ui page Settings --out src/pages\n  stdd ui generate Button --framework vue')
+  .action(safeAction(async (action, names, options) => {
+    const cmd = new UiCommand(process.cwd());
+    await cmd.execute(action || 'generate', names || [], options);
   }));
 
 program.command('design [action]')

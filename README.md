@@ -42,7 +42,7 @@
 
 | 指标 | 数值 |
 |------|------|
-| CLI 命令 | 75 个 |
+| CLI 命令 | 77 个 |
 | 命令模板 | 80 个（`/stdd:*` 斜杠命令） |
 | Skill 模板 | 47 个 |
 | 测试套件 | **214** 套，**4335** 条用例，100% 通过 |
@@ -407,7 +407,7 @@ stdd-copilot/
 ├── cli.js                          # CLI 入口（Commander.js）
 ├── src/
 │   ├── cli/
-│   │   ├── commands/               # 75 个命令实现（每个一个 class）
+│   │   ├── commands/               # 77 个命令实现（每个一个 class）
 │   │   ├── helpers/                # 共享 CLI 工具（spinner、安全包装器）
 │   │   └── registry/               # CommandRegistry + CommandLoader
 │   ├── utils/                      # 21 个共享工具模块

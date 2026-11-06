@@ -1,6 +1,6 @@
 {
   "name": "@marcher-lam/stdd-copilot",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "STDD (Specification + Test Driven Development) Copilot CLI",
   "main": "cli.js",
   "engines": {

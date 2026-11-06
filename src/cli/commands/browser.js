@@ -1,6 +1,7 @@
 const { BrowserController } = require('../../runtime/browser-controller');
 const { BrowserDoctor } = require('../../runtime/browser-doctor');
 const chalk = require('chalk');
+const path = require('path');
 const { createLogger } = require('../../utils/logger');
 const logger = createLogger('browser');
 
@@ -11,6 +12,12 @@ class BrowserCommand {
   }
 
   execute(action, target, options = {}) {
+    if (action === 'baseline') {
+      return this.baseline(target, options);
+    }
+    if (action === 'diff') {
+      return this.diff(target, options);
+    }
     if (action === 'snapshot') {
       return this.snapshot(target, options);
     } else if (action === 'inspect') {
@@ -18,7 +25,7 @@ class BrowserCommand {
     } else if (action === 'doctor') {
       return this.doctor(options);
     } else {
-      console.log(chalk.yellow("Usage: stdd browser <snapshot|inspect|doctor> <url>"));
+      console.log(chalk.yellow("Usage: stdd browser <snapshot|inspect|doctor|baseline|diff> <url> [--name <name>]"));
     }
   }
 
@@ -36,6 +43,78 @@ class BrowserCommand {
         console.log(chalk.yellow("Tip: Run `npm install playwright` to enable built-in browser drive."));
       }
       process.exitCode = 1;
+    }
+  }
+
+  /**
+   * Capture a screenshot buffer via the runtime (requires playwright).
+   * Resolves { buffer, url, title }; rejects with an install hint otherwise.
+   */
+  async captureBuffer(url, options = {}) {
+    // BrowserController#capture requires playwright; without it the call
+    // rejects with an install hint we surface to the user.
+    if (typeof this.controller.capture !== 'function') {
+      return Promise.reject(new Error('playwright is not installed'));
+    }
+    return this.controller.capture({ ...options, url });
+  }
+
+  async baseline(url, options = {}) {
+    const name = options.name || path.basename(url || '') || 'page';
+    try {
+      const capture = await this.captureBuffer(url, options);
+      const { saveBaseline } = require('../../utils/visual-regression');
+      const saved = saveBaseline(this.cwd || process.cwd(), name, capture.buffer, { url });
+      console.log(chalk.green(`Baseline saved: ${name} (${saved.hash.slice(0, 12)}…)`));
+      return saved;
+    } catch (error) {
+      logger.error(`Baseline failed: ${error.message}`);
+      if (/not installed/i.test(error.message)) {
+        console.log(chalk.yellow('  Tip: npm install playwright && npx playwright install'));
+      }
+      process.exitCode = 1;
+      return null;
+    }
+  }
+
+  async diff(url, options = {}) {
+    const cwd = this.cwd || process.cwd();
+    const name = options.name || path.basename(url || '') || 'page';
+    const { compareWithBaseline, archiveDiff, saveBaseline } = require('../../utils/visual-regression');
+
+    const pre = compareWithBaseline(cwd, name, Buffer.alloc(0));
+    if (pre.status === 'no-baseline') {
+      console.log(chalk.yellow(`No baseline named "${name}". Capture one first:`));
+      console.log(chalk.cyan(`  stdd browser baseline <url> --name ${name}`));
+      process.exitCode = 1;
+      return pre;
+    }
+
+    try {
+      const capture = await this.captureBuffer(url, options);
+      const comparison = compareWithBaseline(cwd, name, capture.buffer);
+      if (comparison.status === 'identical') {
+        console.log(chalk.green(`✓ Visual gate passed: "${name}" matches the baseline.`));
+        return comparison;
+      }
+      const evidence = archiveDiff(cwd, name, capture.buffer, comparison);
+      console.log(chalk.red(`✗ Visual change detected: "${name}" differs from the baseline.`));
+      console.log(chalk.dim(`  Evidence: ${path.relative(cwd, evidence.png)}`));
+      if (options.allowChanged) {
+        console.log(chalk.yellow('  --allow-changed set: updating the baseline.'));
+        saveBaseline(cwd, name, capture.buffer, { url });
+      } else {
+        console.log(chalk.yellow('  To accept the change: stdd browser diff <url> --name ' + name + ' --allow-changed'));
+        process.exitCode = 1;
+      }
+      return comparison;
+    } catch (error) {
+      logger.error(`Diff failed: ${error.message}`);
+      if (/not installed/i.test(error.message)) {
+        console.log(chalk.yellow('  Tip: npm install playwright && npx playwright install'));
+      }
+      process.exitCode = 1;
+      return null;
     }
   }
 

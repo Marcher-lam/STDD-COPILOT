@@ -2,6 +2,19 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.0] - 2026-11-06 — 前端五项全部落地
+
+### Added (the frontend five)
+- stdd design reverse: DESIGN.md reverse-engineered from the project's REAL sources - Tailwind config tokens (text-parsed, user code never executed), CSS custom properties, and component-library dependencies - with per-token Source annotations; graceful no-sources guidance back to presets.
+- stdd browser baseline/diff <url> --name <n>: visual regression gate - named baselines under stdd/evidence/visual/baselines, strict hash comparison, diff evidence archived, exit 1 on change, --allow-changed accepts and re-baselines. Requires playwright (graceful install hint without it); pixel-percentage thresholds deliberately deferred to stay zero-dependency.
+- stdd outside-in scaffold --code rtl|playwright|storybook|all: runnable test-code skeletons driven by the change's BDD scenarios - RTL tests with an a11y/axe hook, Playwright specs, Storybook stories (new src/utils/test-scaffolds.js).
+- stdd ui generate|page <Name>: DESIGN.md-token-driven component/page skeletons (react default, vue/html variants; tech-stack aware) with a companion RTL test scaffold (new src/utils/ui-scaffolds.js).
+- stdd dashboard [generate|serve]: zero-dependency single-file HTML dashboard (inline JSON + vanilla JS, no CDN) aggregating changes/rigor/tasks/verify status/deferred/rulings/interruptions; --serve ships a tiny built-in http server.
+
+### Changed
+- CLI command count 75 -> 77 (ui, dashboard) - counts synced across README/USAGE/docs and the taxonomy test.
+- fix.md frontend capability table rewritten: five items landed.
+
 ## [1.1.2] - 2026-11-06 — 引擎收尾与剩余缺口清偿
 
 ### Added

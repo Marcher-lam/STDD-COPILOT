@@ -144,25 +144,17 @@ Coverage:    ~97%+ Stmts | ~93%+ Branch | ~97%+ Funcs | ~97%+ Lines
 | 用户测试脚本 | 已实现 | `stdd user-test` 从 BDD 规格生成 `user-test-human.md` 与 `user-test-agent.json` |
 | 前端 API 支撑 | 已实现 | `stdd api-spec` 可生成 OpenAPI、TypeScript 类型、MSW handlers、Zod validators |
 
-### 未完成能力
+### 前端能力（2026-11-06 五项全部落地）
 
-| 能力 | 状态 | 缺口 |
+| 能力 | 状态 | 实现 |
 |------|------|------|
-| Web UI Dashboard | 未实现 | 尚无浏览器端 STDD 控制台、进度面板、指标仪表盘 |
-| UI 页面/组件生成器 | 未实现 | 尚无 `stdd ui generate` / `stdd page create` / `stdd component create` 类命令 |
-| 视觉回归测试 | 未实现 | 尚无 baseline 截图、diff 比对、阈值判定、CI 报告、失败 evidence 自动归档 |
-| 现有 UI 自动反推设计系统 | 未实现 | 尚未扫描 Tailwind/CSS/组件库并提取真实颜色、字体、spacing |
-| 前端组件测试闭环 | 未实现 | 尚无 React Testing Library、Storybook stories、Playwright specs、accessibility checks 自动生成闭环 |
+| DESIGN.md 反推 | ✅ | `stdd design reverse`：从 Tailwind 配置/CSS 变量/组件库依赖提取真实 token（文本解析不执行用户代码），带 Source 标注 |
+| 视觉回归闭环 | ✅ | `stdd browser baseline/diff`：命名基线 + 严格哈希比对 + diff evidence 归档 + `--allow-changed` 更新基线（需 playwright；无则优雅降级） |
+| 前端组件测试闭环 | ✅ | `stdd outside-in scaffold --code rtl\|playwright\|storybook\|all`：BDD 场景驱动的可运行测试骨架（RTL 含 a11y/axe 钩子） |
+| UI 页面/组件生成器 | ✅ | `stdd ui generate/page <Name>`：DESIGN.md token 驱动的 React/Vue/HTML 骨架 + 配套 RTL 测试 |
+| Web UI Dashboard | ✅ | `stdd dashboard [generate|serve]`：零依赖单文件 HTML（内嵌 JSON + 原生 JS），`--serve` 内置 http 服务 |
 
-### 后续建议优先级
-
-| 优先级 | 建议项 | 价值 |
-|--------|--------|------|
-| P1 | Web UI Dashboard | 可视化展示 changes、phase、tasks、coverage、constitution、evidence |
-| P1 | 视觉回归闭环 | 将 `stdd browser snapshot` 扩展为可比较、可归档、可 CI 阻断的视觉质量门 |
-| P2 | DESIGN.md 反推增强 | 从现有 CSS/Tailwind/组件库反推真实设计系统，而非仅 preset 生成 |
-| P2 | UI 生成命令 | 基于 DESIGN.md + BDD 规格生成页面/组件骨架 |
-| P2 | 前端测试生成 | 生成 RTL/Playwright/Storybook 测试骨架，与 `stdd user-test` 串联 |
+注：视觉回归的像素级比对（百分比阈值）需 PNG 解码依赖，当前为严格哈希门（CI 安全）；见 known-gaps。
 
 ## 各模块覆盖率详情
 

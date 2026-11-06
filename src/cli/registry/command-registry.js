@@ -184,6 +184,7 @@ const commandRegistry = [
     description: 'Manage outside-in TDD registry and layer scaffolds',
     options: [
       { flags: '--feature <name>', description: 'Feature key for generated layer skeletons' },
+      { flags: '--code <kind>', description: 'Also generate runnable test skeletons: rtl | playwright | storybook | all' },
       { flags: '--force', description: 'Overwrite registry during init' },
       { flags: '--json', description: 'JSON output' },
     ],
@@ -606,6 +607,27 @@ const commandRegistry = [
     name: 'browser',
     description: 'Built-in browser drive for E2E testing',
     subcommands: [
+      {
+        name: 'baseline <url>',
+        description: 'Capture and store a named visual baseline (requires playwright)',
+        options: [
+          { flags: '--name <name>', description: 'Baseline name (defaults to the URL basename)' },
+          { flags: '--width <width>', description: 'Viewport width', default: '1280' },
+          { flags: '--height <height>', description: 'Viewport height', default: '800' },
+        ],
+        action: 'BrowserCommand.baseline',
+      },
+      {
+        name: 'diff <url>',
+        description: 'Visual regression gate: compare against the named baseline (exit 1 on change)',
+        options: [
+          { flags: '--name <name>', description: 'Baseline name (defaults to the URL basename)' },
+          { flags: '--allow-changed', description: 'Accept a detected change and update the baseline' },
+          { flags: '--width <width>', description: 'Viewport width', default: '1280' },
+          { flags: '--height <height>', description: 'Viewport height', default: '800' },
+        ],
+        action: 'BrowserCommand.diff',
+      },
       {
         name: 'snapshot <url>',
         description: 'Take a screenshot of the URL and save as evidence',

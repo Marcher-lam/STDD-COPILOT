@@ -333,6 +333,9 @@ class DesignCommand {
         return this.check(options);
       case 'update':
         return await this.update(options);
+      case 'reverse':
+      case 'infer':
+        return this.reverse(options);
       default:
         return await this.create(options);
     }
@@ -364,6 +367,35 @@ class DesignCommand {
       console.log(chalk.dim('\n  AI agents will now use this design system for UI generation.\n'));
     }
     return { path: this.designPath, preset, created: true, previews };
+  }
+
+  /**
+   * Reverse-engineer DESIGN.md from the project's real design sources
+   * (Tailwind config / CSS custom properties / component libraries).
+   */
+  reverse(options = {}) {
+    if (fs.existsSync(this.designPath) && !options.force) {
+      throw new Error('DESIGN.md already exists. Use --force to overwrite.');
+    }
+    const { reverseDesignMarkdown } = require('../../utils/design-reverse');
+    const markdown = reverseDesignMarkdown(this.cwd);
+    if (!markdown) {
+      console.log(chalk.yellow('\n⚠ No design sources found (Tailwind config, CSS custom properties, or a known component library).'));
+      console.log(chalk.yellow('  Nothing to reverse-engineer. Generate from a preset instead:'));
+      console.log(chalk.cyan('    stdd design create [--preset modern|dark|minimal]'));
+      process.exitCode = 1;
+      return { created: false, reason: 'no-design-sources' };
+    }
+    fs.writeFileSync(this.designPath, markdown, 'utf8');
+    if (options.json) {
+      console.log(JSON.stringify({ path: this.designPath, created: true, mode: 'reverse' }, null, 2));
+    } else {
+      console.log(chalk.bold('\n✓ DESIGN.md reverse-engineered from real project sources\n'));
+      console.log(`  ${chalk.cyan(path.relative(this.cwd, this.designPath))}`);
+      const sourceCount = (markdown.match(/^- /gm) || []).length;
+      console.log(chalk.dim(`  ${sourceCount} source(s) annotated; tokens extracted — see the Sources section.`));
+    }
+    return { path: this.designPath, created: true, mode: 'reverse' };
   }
 
   writePreviews(preset, options = {}) {

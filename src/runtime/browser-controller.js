@@ -24,6 +24,28 @@ class BrowserController {
   }
 
   /**
+   * Capture a page screenshot as an in-memory buffer (no file written).
+   * @param {Object} options - { url, width, height, waitUntil }
+   * @returns {{buffer: Buffer, url: string, title: string}}
+   */
+  async capture(options = {}) {
+    await this.ensurePlaywright();
+    const { url, width = 1280, height = 800, waitUntil = 'networkidle' } = options;
+    if (!url) throw new Error('URL is required for capture.');
+
+    const browser = await this.playwright.chromium.launch({ headless: true, args: ['--no-sandbox'] });
+    try {
+      const page = await browser.newPage({ viewport: { width, height } });
+      await page.goto(url, { waitUntil, timeout: 15000 });
+      const buffer = await page.screenshot({ fullPage: false });
+      const title = await page.title();
+      return { buffer, url, title };
+    } finally {
+      await browser.close().catch(() => {});
+    }
+  }
+
+  /**
    * Take a full snapshot of a page and save to stdd/evidence
    * @param {Object} options - { url, width, height }
    * @returns {Object} result info

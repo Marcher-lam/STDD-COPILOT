@@ -74,7 +74,48 @@ class OutsideInCommand {
       skeletons.push(path.relative(this.cwd, filePath).replace(/\\/g, '/'));
     }
 
-    const result = { change: path.basename(changeDir), feature, plan: path.relative(this.cwd, planPath).replace(/\\/g, '/'), skeletons };
+    // Runnable test-code scaffolds (--code rtl|playwright|storybook|all):
+    // driven by the change's BDD scenarios when present.
+    const code = [];
+    if (options.code && options.code !== 'none') {
+      const wanted = options.code === 'all' ? ['rtl', 'playwright', 'storybook'] : [String(options.code)];
+      const { renderRtlTest, renderPlaywrightSpec, renderStorybookStory, pascalCase } = require('../../utils/test-scaffolds');
+      const { parseBddScenarios } = require('../../utils/bdd-scenario-parser');
+      let scenarios = [];
+      const specsDir = path.join(changeDir, 'specs');
+      if (fs.existsSync(specsDir)) {
+        const featureFiles = fs.readdirSync(specsDir)
+          .filter(f => /\.feature$/.test(f))
+          .map(f => path.join(specsDir, f));
+        if (featureFiles.length > 0) {
+          try {
+            scenarios = parseBddScenarios(featureFiles, this.cwd);
+          } catch { /* ignore unreadable specs */ }
+        }
+      }
+      // Normalize to the shape the renderers expect (name + step text).
+      scenarios = scenarios.map(s => ({
+        name: s.name,
+        given: (s.steps || []).find(x => /^Given/i.test(x)),
+        when: (s.steps || []).find(x => /^When/i.test(x)),
+        then: (s.steps || []).find(x => /^Then/i.test(x)),
+      }));
+      const component = pascalCase(feature);
+      const outputs = {
+        rtl: { file: `rtl-${feature}.test.tsx`, content: renderRtlTest(component, feature, scenarios) },
+        playwright: { file: `e2e-${feature}.spec.ts`, content: renderPlaywrightSpec(feature, feature, scenarios) },
+        storybook: { file: `${component}.stories.tsx`, content: renderStorybookStory(component) },
+      };
+      for (const kind of wanted) {
+        const spec = outputs[kind];
+        if (!spec) continue;
+        const filePath = path.join(outputDir, spec.file);
+        fs.writeFileSync(filePath, spec.content, 'utf8');
+        code.push(path.relative(this.cwd, filePath).replace(/\\/g, '/'));
+      }
+    }
+
+    const result = { change: path.basename(changeDir), feature, plan: path.relative(this.cwd, planPath).replace(/\\/g, '/'), skeletons, code };
     this.printResult('Outside-in scaffold generated', result, options);
     return result;
   }

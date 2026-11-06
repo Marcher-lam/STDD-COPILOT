@@ -40,7 +40,7 @@
 
 | 斜杠命令 | CLI 命令 | 功能 |
 |---------|---------|------|
-| `/stdd:outside-in` | `stdd outside-in <action>` | 由外向内 TDD：从 E2E 测试开始，再到集成测试，最后单元测试。支持 init/scaffold/status |
+| `/stdd:outside-in` | `stdd outside-in <action>` | 由外向内 TDD：从 E2E 测试开始，再到集成测试，最后单元测试。支持 init/scaffold/status；`scaffold --code rtl|playwright|storybook|all` 生成可运行测试骨架（BDD 场景驱动 + a11y 钩子） |
 | `/stdd:mutation` | `stdd mutation [change]` | 变异测试：Quick 启发式 anti-fake-green 检测 + Stryker 委托深度分析 (`--mode stryker`) |
 | `/stdd:mock` | `stdd mock [change]` | 自动生成外部依赖的 Mock 实现，支持 `--all` 扫描全量 + `--fake` 生成可运行 fake |
 | `/stdd:factory` | — | 测试数据工厂：Builder 模式 + Faker.js + 嵌套 Fixture，覆盖正常/边界/异常场景 |

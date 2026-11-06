@@ -64,7 +64,7 @@ describe('Documentation taxonomy consistency', () => {
 
     expect(text).toContain('80 个');
     expect(text).toContain('47 个');
-    expect(text).toContain('75 个');
+    expect(text).toContain('77 个');
     expect(text).toContain('命令模板');
     expect(text).toContain('Skill 模板');
 

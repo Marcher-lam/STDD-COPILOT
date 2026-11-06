@@ -10,7 +10,7 @@ STDD Copilot 提供双入口设计：CLI 命令行工具 (`stdd`) 和 Claude Cod
 
 | 概念 | 路径 | 说明 |
 |------|------|------|
-| **Commands** | `.claude/commands/stdd/` | 75 个 `/stdd:*` 斜杠命令模板初始化后的副本 |
+| **Commands** | `.claude/commands/stdd/` | 77 个 `/stdd:*` 斜杠命令模板初始化后的副本 |
 | **Skills** | `.claude/skills/stdd/` | 47 个可被命令调用的技能模块 |
 | **Changes** | `stdd/changes/` | 变更管理 (提案→规格→实现→归档) |
 | **Specs** | `stdd/specs/` | BDD 规格文件 (Source of Truth) |
