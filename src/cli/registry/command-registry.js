@@ -27,7 +27,9 @@ const commandRegistry = [
     ],
     action: 'UpdateCommand',
     spinner: 'Updating STDD Copilot',
-    success: 'Update complete!',
+    success: (result) => result && result.status && ['outdated', 'up-to-date', 'unreachable'].includes(result.status)
+      ? `Version check: ${result.status}`
+      : 'Update complete!',
   },
   {
     name: 'list',
