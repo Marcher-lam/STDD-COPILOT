@@ -196,6 +196,17 @@ ${thenLines}
 
     for (const task of tasks) {
       const baseFilename = _toSafe(task.description);
+      // A task whose description sanitizes to nothing would create a
+      // contentless ".feature" file — skip it instead.
+      if (!baseFilename) {
+        skipped.push({
+          id: task.id,
+          description: task.description,
+          file: null,
+          reason: 'description sanitizes to an empty filename',
+        });
+        continue;
+      }
       const filename = workspaceMeta ? `${workspaceMeta.tag}-${baseFilename}` : baseFilename;
       const featurePath = path.join(specsDir, `${filename}.feature`);
 

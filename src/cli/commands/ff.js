@@ -141,6 +141,7 @@ ${workspaceHeader}
     console.log('Next steps:');
     const workspaceArg = workspaceMeta ? ` --workspace ${workspaceMeta.path}` : '';
     console.log(chalk.cyan(`  stdd apply ${changeName}${workspaceArg}`));
+    console.log(chalk.dim(`  (risk-triggered confirm? record evidence first: stdd certainty assess ${changeName} --scores "req:4,tech:4,risk:4,test:4,vision:4")`));
 
     return { changeName, workspace: workspaceMeta, rigor: rigor.level };
   }

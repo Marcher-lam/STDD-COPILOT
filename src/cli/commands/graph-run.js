@@ -100,6 +100,11 @@ const READONLY_NODES = new Set([
   'stdd-verify', 'stdd-fix-packet', 'stdd-type-check', 'stdd-explore', 'stdd-brainstorm',
 ]);
 
+// Content-level transient signals: a side-effect node whose failure looks
+// transient (network/timeout/rate-limit) may be retried; deterministic
+// failures (syntax, assertion, config) never are.
+const TRANSIENT_RE = /ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|EAGAIN|timed?[- ]?out|network|temporarily|rate.?limit|flaky/i;
+
 const NODE_COMMAND_MAP = {
   'stdd-propose': 'propose',
   'stdd-spec': 'spec',
@@ -190,9 +195,9 @@ class GraphRunCommand {
     const rigorOptions = rigorNodeOptions(nodeName, rigor);
     const nodeOpts = { ...options };
     if (nodeName === 'stdd-verify') {
-      nodeOpts.verifyOptions = { ...rigorOptions, ...(options.verifyOptions || {}) };
+      nodeOpts.verifyOptions = { throwOnFailure: true, ...rigorOptions, ...(options.verifyOptions || {}) };
     } else if (nodeName === 'stdd-archive') {
-      nodeOpts.archiveOptions = { ...rigorOptions, ...(options.archiveOptions || {}) };
+      nodeOpts.archiveOptions = { throwOnFailure: true, ...rigorOptions, ...(options.archiveOptions || {}) };
     }
     return nodeOpts;
   }
@@ -360,25 +365,62 @@ class GraphRunCommand {
 
   /**
    * D2: execute a node with bounded retries (superpowers fix-loop).
+   * Retries apply to read-only nodes OR failures classified transient by
+   * content; deterministic side-effect failures stop after one attempt.
    * Returns the result annotated with the attempt count; the final error
    * carries the attempt count for the delegation guidance.
    */
   async _executeNodeWithRetry(nodeName, changeName, options = {}) {
-    const maxAttempts = 1 + Math.max(0, Number.parseInt(options.retry, 10) || 0);
+    const requested = Math.max(0, Number.parseInt(options.retry, 10) || 0);
+    let maxAttempts = 1 + requested;
     let lastError;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const result = await this._executeNode(nodeName, changeName, options);
+        const result = await this._withTimeout(
+          this._executeNode(nodeName, changeName, options),
+          options.nodeTimeout,
+          nodeName
+        );
         return { ...result, attempts: attempt };
       } catch (error) {
         lastError = error;
-        if (attempt < maxAttempts) {
-          console.log(chalk.yellow(`    ↻ retry ${attempt}/${maxAttempts - 1} after: ${error.message}`));
+        lastError.attempts = attempt;
+        const retryable = READONLY_NODES.has(nodeName) || TRANSIENT_RE.test(String(error.message || ''));
+        if (attempt >= maxAttempts || !retryable || error.timedOut) {
+          if (!retryable && requested > 0 && attempt === 1) {
+            console.log(chalk.dim(`    ⊘ deterministic failure — auto-retry skipped for side-effect node`));
+          }
+          break;
         }
+        console.log(chalk.yellow(`    ↻ retry ${attempt}/${maxAttempts - 1} after: ${error.message}`));
       }
     }
-    lastError.attempts = maxAttempts;
+    if (!lastError.attempts) lastError.attempts = 1;
     throw lastError;
+  }
+
+  /**
+   * E4: race an execution against --node-timeout (seconds). A timed-out node
+   * fails with a timedOut marker and is never retried.
+   */
+  async _withTimeout(promise, nodeTimeoutSeconds, nodeName) {
+    const seconds = Number(nodeTimeoutSeconds);
+    if (!Number.isFinite(seconds) || seconds <= 0) return promise;
+    let timer;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            const err = new Error(`${nodeName} timed out after ${seconds}s`);
+            err.timedOut = true;
+            reject(err);
+          }, seconds * 1000);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async execute(intent = 'feature', options = {}) {
@@ -460,15 +502,13 @@ class GraphRunCommand {
       }
 
       const nodeOptions = this._nodeOptions(options, nodeName, rigor);
-      // D3 retry safety: only read-only nodes auto-retry.
-      const effectiveRetry = READONLY_NODES.has(nodeName) ? nodeOptions.retry : 0;
 
       try {
         const exitCodeBefore = process.exitCode;
-        const result = await this._executeNodeWithRetry(nodeName, changeName, { ...nodeOptions, retry: effectiveRetry });
-        if (READONLY_NODES.has(nodeName) === false && Number(nodeOptions.retry) > 0) {
-          result.retrySkipped = true;
-        }
+        // Retry policy is enforced inside _executeNodeWithRetry: read-only
+        // nodes retry freely; side-effect nodes only on transient-classified
+        // failures (content-level, see TRANSIENT_RE).
+        const result = await this._executeNodeWithRetry(nodeName, changeName, { ...nodeOptions });
         // verify/archive report gate failures via process.exitCode = 1 without
         // throwing — a node that set it must be treated as failed, never
         // checkpointed. (In parallel layers this check is best-effort: a
@@ -509,6 +549,7 @@ class GraphRunCommand {
           layer: layerIndex,
           status: 'failed',
           error: error.message,
+          timedOut: error.timedOut || undefined,
           attempts,
           retrySkipped: !READONLY_NODES.has(nodeName) && Number(options.retry) > 0 ? true : undefined,
           propagation,
@@ -557,6 +598,7 @@ class GraphRunCommand {
     if (failed) {
       this.result.failedAt = failed.node;
       this._persistRunResult(stddDir, changeName);
+      this._persistHistoryEvidence(stddDir, path.join(stddDir, 'changes', changeName), changeName);
       console.log(chalk.red(`\n  Graph run aborted at ${failed.node}.`));
       console.log(chalk.yellow(`  Re-run with --change-name ${changeName} to resume from this node (cached checkpoints are skipped).`));
       console.log(chalk.dim(`  Run result: ${path.relative(cwd, path.join(stddDir, 'changes', changeName, 'graph-run-result.json'))}`));
@@ -564,8 +606,26 @@ class GraphRunCommand {
       return this.result;
     }
 
+    this._persistHistoryEvidence(stddDir, path.join(stddDir, 'changes', changeName), changeName);
     console.log(chalk.green(`\n  Graph run completed for ${changeName}.`));
     return this.result;
+  }
+
+  /**
+   * E6: write the run result as an evidence entry under the change's
+   * evidence/ directory so `stdd graph history` sees every run (success
+   * and failure) without a separate recording path.
+   */
+  _persistHistoryEvidence(stddDir, changeDir, changeName) {
+    try {
+      if (!changeDir || !fs.existsSync(changeDir)) return;
+      const EvidenceCapture = require('../../utils/evidence-capture');
+      const capture = new EvidenceCapture();
+      const evidence = capture.captureVerify('graph-run', this.result, { changeName, cwd: stddDir });
+      capture.saveToFile(evidence, changeDir, 'graph-run');
+    } catch (err) {
+      logger.warn(`History evidence not recorded: ${err.message}`);
+    }
   }
 
   _persistRunResult(stddDir, changeName) {

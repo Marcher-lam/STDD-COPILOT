@@ -278,6 +278,7 @@ class ArchiveCommand {
       });
       console.log(chalk.yellow('\n  Complete all tasks or run `stdd verify' + (resolvedName ? ' ' + resolvedName : '') + '` first.'));
       process.exitCode = 1;
+      if (options.throwOnFailure) throw new Error(`archive refused: incomplete tasks in ${changeNameActual}`);
       return;
     }
 
@@ -324,6 +325,7 @@ class ArchiveCommand {
       console.log(chalk.yellow('  or update the main spec first, then re-run stdd archive.'));
       console.log(chalk.dim(`\n  Details: ${path.relative(process.cwd(), path.join(changeDir, 'spec-merge-report.json'))}`));
       process.exitCode = 1;
+      if (options.throwOnFailure) throw new Error(`archive refused: spec merge conflicts in ${changeNameActual}`);
       return;
     }
 

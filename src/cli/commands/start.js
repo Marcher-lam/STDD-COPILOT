@@ -33,6 +33,10 @@ ${chalk.cyan('Other Useful Commands:')}
   ${chalk.dim('stdd list')}                   - List all changes
   ${chalk.dim('stdd status [name]')}          - Show change status
   ${chalk.dim('stdd recommend')}              - Get next step suggestion
+  ${chalk.dim('Risk-scoped workflow (v1.1):')}
+  ${chalk.dim('stdd ff <desc> --rigor strict')}     - Change-level rigor (light/standard/strict)
+  ${chalk.dim('stdd graph run --intent feature')}   - Layered parallel DAG with checkpoints
+  ${chalk.dim("stdd verify <name> --defer \"<msg>\"")} - Defer findings to the ledger
   ${chalk.dim('stdd doctor')}                 - Diagnose project health
 
 ${chalk.dim('Run "stdd start" for interactive guide.')}

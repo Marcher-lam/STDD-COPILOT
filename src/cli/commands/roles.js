@@ -137,6 +137,22 @@ class RolesCommand {
    * bucket (intent-gap / plan-defect / patch / defer). Deferred items are
    * recorded via the deferred-work ledger instead of being dropped.
    */
+  /** Prefer a Tier-1 engine other than the first registry entry (claude_code). */
+  suggestDiverseEngine() {
+    try {
+      const yaml = require('js-yaml');
+      const enginesPath = path.join(this.cwd, 'stdd', 'config', 'engines.yaml');
+      if (fs.existsSync(enginesPath)) {
+        const registry = yaml.load(fs.readFileSync(enginesPath, 'utf8')) || {};
+        const alternative = Object.keys(registry).find(k => k !== 'claude_code' && k !== 'custom');
+        return alternative || 'cursor';
+      }
+    } catch (err) {
+      logger.warn(err.message);
+    }
+    return 'cursor';
+  }
+
   writeTriageSheet(report) {
     const lines = [
       '# Review Triage Worksheet',

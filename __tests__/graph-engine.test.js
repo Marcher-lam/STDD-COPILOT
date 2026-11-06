@@ -294,6 +294,145 @@ describe('Skill Graph engine enhancements', () => {
     });
   });
 
+  describe('E4: node timeout', () => {
+    it('fails a node that exceeds --node-timeout and records the timeout', async () => {
+      VerifyCommand.mockImplementation(() => ({
+        execute: jest.fn(() => new Promise(r => setTimeout(r, 500))),
+      }));
+
+      const result = await new GraphRunCommand().execute('feature', {
+        changeName: 'timeout-demo', noCache: true, nodeTimeout: 0.1,
+      });
+
+      expect(result.failedAt).toBe('stdd-verify');
+      const step = result.steps.find(s => s.node === 'stdd-verify');
+      expect(step.status).toBe('failed');
+      expect(step.error).toMatch(/timed out/i);
+      expect(step.timedOut).toBe(true);
+    });
+
+    it('no timeout by default (long node completes)', async () => {
+      let done = false;
+      VerifyCommand.mockImplementation(() => ({
+        execute: jest.fn(async () => { await new Promise(r => setTimeout(r, 120)); done = true; }),
+      }));
+
+      const result = await new GraphRunCommand().execute('feature', { changeName: 'slow-demo', noCache: true });
+      expect(result.failedAt).toBeNull();
+      expect(done).toBe(true);
+    });
+  });
+
+  describe('E5: content-level retry classification', () => {
+    it('retries a side-effect node whose error is transient (network/timeout)', async () => {
+      let calls = 0;
+      ApplyCommand.mockImplementation(() => ({
+        execute: jest.fn(async () => {
+          calls++;
+          if (calls < 2) throw new Error('ETIMEDOUT network blip');
+          return {};
+        }),
+      }));
+
+      const result = await new GraphRunCommand().execute('feature', { changeName: 'transient-demo', noCache: true, retry: 2 });
+
+      expect(result.failedAt).toBeNull();
+      expect(calls).toBe(2);
+    });
+
+    it('does not retry a side-effect node on a deterministic error', async () => {
+      let calls = 0;
+      ApplyCommand.mockImplementation(() => ({
+        execute: jest.fn(async () => { calls++; throw new Error('syntax error in config'); }),
+      }));
+
+      const result = await new GraphRunCommand().execute('feature', { changeName: 'det-demo', noCache: true, retry: 2 });
+
+      expect(result.failedAt).toBe('stdd-apply');
+      expect(calls).toBe(1);
+    });
+  });
+
+  describe('E6: graph run writes execution history evidence', () => {
+    it('persists an evidence entry visible to stdd graph history', async () => {
+      VerifyCommand.mockImplementation(() => ({
+        execute: jest.fn(async () => { process.exitCode = 1; }),
+      }));
+
+      // Simulate the real flow: the propose node has created the change dir.
+      fs.mkdirSync(path.join(tempRoot, 'stdd', 'changes', 'hist-demo'), { recursive: true });
+      const cmd = new GraphRunCommand();
+      await cmd.execute('feature', { changeName: 'hist-demo', noCache: true });
+      process.exitCode = 0;
+
+      const evDir = path.join(tempRoot, 'stdd', 'changes', 'hist-demo', 'evidence');
+      const files = fs.readdirSync(evDir).filter(f => f.startsWith('graph-run'));
+      expect(files.length).toBe(1);
+      const payload = JSON.parse(fs.readFileSync(path.join(evDir, files[0]), 'utf8'));
+      expect(payload.results.failedAt).toBe('stdd-verify');
+      expect(payload.metadata.changeName).toBe('hist-demo');
+
+      // Visible to the history scanner.
+      const { GraphHistoryCommand } = require('../src/cli/commands/graph-history');
+      const entries = new GraphHistoryCommand(tempRoot).scanEvidence();
+      expect(entries.some(e => e.changeName === 'hist-demo')).toBe(true);
+    });
+
+    it('records successful runs too', async () => {
+      fs.mkdirSync(path.join(tempRoot, 'stdd', 'changes', 'hist-ok'), { recursive: true });
+      await new GraphRunCommand().execute('feature', { changeName: 'hist-ok', noCache: true });
+      const evDir = path.join(tempRoot, 'stdd', 'changes', 'hist-ok', 'evidence');
+      const files = fs.readdirSync(evDir).filter(f => f.startsWith('graph-run'));
+      expect(files.length).toBe(1);
+      const payload = JSON.parse(fs.readFileSync(path.join(evDir, files[0]), 'utf8'));
+      expect(payload.results.failedAt).toBeNull();
+    });
+  });
+
+  describe('E7: precise failure attribution in parallel layers', () => {
+    it('verify/archive failures throw via throwOnFailure — no sibling mis-attribution', async () => {
+      // Two concurrent verify-like nodes; one fails via exitCode, one is clean.
+      const origCompile = DynamicGraphRouter.prototype.compile;
+      DynamicGraphRouter.prototype.compile = function (intent) {
+        if (intent === 'duo') {
+          return {
+            version: '1.0', name: 'DUO', config: {},
+            skills: { 'stdd-verify': { depends_on: [] }, 'stdd-archive': { depends_on: [] } },
+          };
+        }
+        return origCompile.call(this, intent);
+      };
+      VerifyCommand.mockImplementation(() => ({
+        execute: jest.fn(async function (name, opts) {
+          await new Promise(r => setTimeout(r, 30));
+          if (opts && opts.throwOnFailure) {
+            // Simulate the real verify behavior under throwOnFailure: fail.
+            process.exitCode = 1;
+            throw new Error('verification failed');
+          }
+        }),
+      }));
+      ArchiveCommand.mockImplementation(() => ({
+        execute: jest.fn(async function (name, opts) {
+          await new Promise(r => setTimeout(r, 10));
+          // Clean node resolving AFTER the sibling set exitCode=1 must NOT
+          // be failed by the outer exit-code heuristic.
+          void opts;
+        }),
+      }));
+
+      try {
+        const result = await new GraphRunCommand().execute('duo', { changeName: 'attr-demo', noCache: true });
+        expect(result.failedAt).toBe('stdd-verify');
+        const archiveStep = result.steps.find(s => s.node === 'stdd-archive');
+        expect(archiveStep.status).toBe('success');
+      } finally {
+        DynamicGraphRouter.prototype.compile = origCompile;
+        process.exitCode = 0;
+      }
+    });
+  });
+
   describe('E3: retry safety + error propagation', () => {
     it('does NOT retry side-effect nodes (fail fast, one attempt)', async () => {
       let applyCalls = 0;

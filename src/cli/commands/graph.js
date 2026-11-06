@@ -264,6 +264,7 @@ Currently implemented: visualize, analyze, parallel --detect, history, replay, r
     .option('--retry <n>', 'Retry a failed node up to n extra times before aborting', (v) => Math.max(0, Number.parseInt(v, 10) || 0), 0)
     .option('--no-cache', 'Disable checkpoint cache (re-execute all nodes)')
     .option('--sequential', 'Force linear execution (no same-layer concurrency)')
+    .option('--node-timeout <seconds>', 'Fail a node that runs longer than this (default: no timeout)')
     .addHelpText('after', `
 Examples:
   stdd graph run
@@ -288,6 +289,7 @@ Successful nodes are checkpointed per change+intent+rigor; re-running the same c
           retry: options.retry,
           noCache: options.cache === false,
           sequential: options.sequential,
+          nodeTimeout: options.nodeTimeout,
         });
       } catch (error) {
         logger.error(error.message);

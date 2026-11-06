@@ -2,6 +2,26 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.1.2] - 2026-11-06 — 引擎收尾与剩余缺口清偿
+
+### Added
+- Node timeout: `stdd graph run --node-timeout <seconds>` — a node exceeding it fails with a timedOut marker and is never retried; off by default.
+- Content-level retry classification: side-effect nodes retry only when the failure looks transient (ETIMEDOUT/ECONN/network/rate-limit/flaky); deterministic failures stop after one attempt regardless of the whitelist.
+- Graph history wiring: every graph run (success or failure) writes a graph-run evidence entry into the change's evidence/ dir — `stdd graph history` sees runs immediately.
+- Precise parallel failure attribution: verify/archive accept throwOnFailure (injected by graph run) so failures throw from the owning node instead of relying on the best-effort exit-code heuristic.
+- Engine-diverse triage suggestion: the triage worksheet recommends a Tier-1 engine different from the implementer, read from engines.yaml.
+- certainty nudge: ff prints the `stdd certainty assess` command (with a scores example) after creating a change.
+- English docs: en/framework-benchmark.md and en/model-strength-adaptation.md (condensed editions linking back to the authoritative Chinese versions).
+
+### Fixed
+- spec-generator: tasks whose description sanitizes to an empty filename produced a contentless `.feature` file — now skipped with a recorded reason.
+- README engine count corrected 24 → 22 (matches engines.yaml and ARCHITECTURE).
+- `stdd start` wizard help now covers the v1.1 capabilities (--rigor, graph run, --defer).
+
+### Verified
+- npm run test:benchmark passes (graph compile 0.4ms, constitution check 13.9ms median).
+- Docker: CLI present but daemon unavailable on this machine — build/compose verification deferred to a daemon-equipped environment (noted in known-gaps).
+
 ## [1.1.1] - 2026-11-06 — Skill Graph 引擎增强与缺口清偿
 
 ### Added

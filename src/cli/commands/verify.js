@@ -371,6 +371,10 @@ class VerifyCommand {
     if (!healthy) {
       console.log(chalk.red(`✗ Verification failed for ${changeNameActual}`));
       process.exitCode = 1;
+      // Escape hatch for orchestrators (graph run): throw instead of only
+      // setting exit code, so parallel layers attribute the failure to THIS
+      // node instead of a best-effort exit-code heuristic.
+      if (options.throwOnFailure) throw new Error(`verification failed for ${changeNameActual}`);
       return;
     }
 

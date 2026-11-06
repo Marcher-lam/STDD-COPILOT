@@ -48,7 +48,7 @@
 | 测试套件 | **214** 套，**4335** 条用例，100% 通过 |
 | 语句覆盖率 | **84.9%** |
 | 分支覆盖率 | **78.03%** |
-| 支持的 AI 引擎 | 24 种（Claude Code、Cursor、Windsurf 等 4 层兼容） |
+| 支持的 AI 引擎 | 22 种（Claude Code、Cursor、Windsurf 等 4 层兼容） |
 | 代码生成语言 | TypeScript/JS、Python、Java、Go、Rust、C#、PHP |
 
 ### 使用方式
@@ -394,7 +394,7 @@ STDD Copilot 基于 **Skill Graph（技能图谱）** 将 Spec-First 与 TDD 深
 - 每个 CLI 命令是一个独立的 class 模块，通过 `CommandLoader` 动态加载
 - Skill Graph 根据用户意图自动选择 DAG 路径
 - 所有产物以文件形式持久化，AI 读取即可恢复上下文
-- 支持 4 层 24 种外部 AI 引擎的适配
+- 支持 4 层 22 种外部 AI 引擎的适配
 
 完整的架构文档见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
 

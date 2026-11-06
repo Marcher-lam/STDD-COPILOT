@@ -1,6 +1,6 @@
 # 已知缺口（受管清单）
 
-> Version: 1.1 | Last Updated: 2026-11-06
+> Version: 1.2 | Last Updated: 2026-11-06
 >
 > 交付门槛（premerge/smoke）全绿 ≠ 无缺口。本清单受管所有"声明未对齐 / 深度不足 / 范围未做"的项，避免散落在对话中。每项含实证与处置。
 
@@ -23,7 +23,7 @@
 | retry 无错误分类 | ✅ 只读白名单（2026-11-06） | 副作用节点（propose/spec/apply/issue/archive/commit）不自动重试；只读节点（verify/fix-packet/type-check/explore/brainstorm）可重试。按错误内容分类（transient vs deterministic）仍未做——白名单是保守近似 |
 | 同层并行 | ✅ 已实现（2026-11-06） | Kahn 分层 + max_parallel 限流 + `--sequential` 逃生口；per-node options 快照防竞态 |
 | 项目自定义 intent | ✅ 已实现（2026-11-06） | `stdd/graph/intents.yaml` 增/覆盖 intent 路径，坏文件容错 |
-| 节点级超时 | 📋 | config `graph.timeout` 仍为全局声明，未实施 per-node 超时 |
+| 节点级超时 | ✅ 已实现（2026-11-06 v1.1.2） | `graph run --node-timeout <seconds>`：超时节点失败并标 `timedOut`，不重试；默认关闭 |
 | heterogeneous-adapter 强制异构审查 | 📋 | Tier 链存在；"审查必须异构引擎"仍是协议级（worksheet 字段），引擎调度未强制 |
 
 ## 三、功能深度
@@ -31,25 +31,26 @@
 | 项 | 状态 | 说明 |
 |---|---|---|
 | plan 任务内容固定模板 | ✅ 已真实化（2026-11-06） | 任务从提案 In-Scope 项派生（含 TDD 描述），支撑任务（错误处理/变异）补位；无 scope 项时回退支撑模板 |
-| certainty 证据半自动 | 🔧 | 设计即 AI/人工评估；首次变更必然 pending-human 属预期。可做：ff 后自动提示跑 certainty |
-| spec-generator 内容质量 | 📋 | 从 tasks 生成 .feature 的骨架质量未审计（属 AI 细化范畴） |
-| `stdd start` 向导未覆盖 v1.1 特性 | 📋 | 快速入门向导（start.js）对新特性（rigor/risk-triggered/台账）零引用（grep=0），仍为 v1.0 流程 |
+| certainty 证据半自动 | ✅ 提示已加（2026-11-06） | ff 创建变更后输出 certainty assess 提示（含示例 --scores）；评估本体仍由 AI/人工执行（设计边界） |
+| spec-generator | ✅ 已审计+修复（2026-11-06） | 审计发现空描述任务生成无名 `.feature` 空文件——已修（跳过并记录 reason）；骨架为占位级（As a user...）属 AI 细化范畴，维持现状 |
+| `stdd start` 向导 | ✅ 已补（2026-11-06） | 帮助文本加入 v1.1 特性速览（--rigor / graph run / --defer） |
 
 ## 四、文档
 
 | 项 | 状态 | 说明 |
 |---|---|---|
-| en 文档新特性 | 🔧 | en/cli-guide 已补选项段（2026-11-06）；benchmark / model-strength-adaptation 英文版未写 |
+| en 文档 | ✅ 已补齐（2026-11-06） | en/cli-guide v1.1 选项节 + en/framework-benchmark.md + en/model-strength-adaptation.md（精简英文版，指回中文权威版） |
 | fix.md 前端缺口表 | 📋 | Web UI Dashboard（P1）/ 视觉回归闭环（P1）/ DESIGN.md 反推（P2）/ UI 生成（P2）/ 前端测试闭环（P2）——整块未动 |
 
 ## 补充实证（2026-11-06 复查新增）
 
 | 项 | 状态 | 说明 |
 |---|---|---|
-| README 引擎数 "24 种" | 📋 声明失真 | engines.yaml 实际 22 个引擎（+1 个 custom 占位）；ARCHITECTURE 写 22，README 写 24——应以 22 为准修正 |
-| 并行层 exitCode 归因 | 🔧 已知限制 | 同层并行时兄弟节点设置的 exitCode=1 可能被误归因给已 resolve 的节点（代码注释已声明 best-effort）；彻底方案需命令级退出码捕获 |
-| test:benchmark / Docker 流程 | 📋 未验证 | package.json 声称 benchmark 与 docker-compose 部署路径，本系列从未执行验证 |
-| graph history 与 graph run 断点联动 | 📋 | graph-history 命令存在，但 graph run 失败/续跑不写入 history 记录（两套状态各自为政） |
+| README 引擎数 "24 种" | ✅ 已修正（2026-11-06） | 中英 README 统一为 22（与 engines.yaml/ARCHITECTURE 一致） |
+| 并行层 exitCode 归因 | ✅ 已解决（2026-11-06 v1.1.2） | verify/archive 在被编排时接收 `throwOnFailure`（graph run 注入）——失败以异常精确归属本节点，消除并行 best-effort 误归因 |
+| test:benchmark | ✅ 已验证（2026-11-06） | 全部基准通过（Graph Compile 0.4ms / Constitution 13.9ms 等，结果入 benchmark-results.json） |
+| Docker 构建 | 🔧 本机受限 | Docker CLI 29.9.2 存在但 daemon 未运行，无法本机验证 build/up；Dockerfile/compose 未变更，维持"按 INSTALL.md 在有 daemon 的环境验证" |
+| graph history 联动 | ✅ 已实现（2026-11-06 v1.1.2） | graph run 成功/失败均写 evidence（`graph-run-*.json` 入 change evidence 目录），`stdd graph history` 即刻可见 |
 
 ## 五、显式不采纳
 
