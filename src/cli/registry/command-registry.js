@@ -95,6 +95,7 @@ const commandRegistry = [
     name: 'issue <description>',
     description: 'Create bug-fix change',
     options: [
+      { flags: '--change-name <name>', description: 'Custom change name' },
       { flags: '--title <title>', description: 'Issue title' },
       { flags: '--severity <severity>', description: 'Issue severity' },
       { flags: '--workspace <workspace>', description: 'Scope to workspace' },
@@ -163,6 +164,7 @@ const commandRegistry = [
     options: [
       { flags: '--spec-guardian', description: 'Run implementation leakage checks' },
       { flags: '--strict', description: 'Strict OpenSpec-style delta structure validation' },
+      { flags: '--schema-driven', description: "Run schema.yaml's validation DSL against the change's artifacts" },
       { flags: '--fix', description: 'Write rewrite suggestions for diagnostics' },
       { flags: '--json', description: 'JSON output' },
     ],

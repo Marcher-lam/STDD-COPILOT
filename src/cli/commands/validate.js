@@ -11,6 +11,7 @@ const EvidenceCapture = require('../../utils/evidence-capture');
 const { walkFiles } = require('../../utils/file-walker');
 const { createLogger } = require('../../utils/logger');
 const { parseDeltaSections, parseSpecRequirements, foldBody } = require('../../utils/delta-spec');
+const { runSchemaRules } = require('../../utils/schema-rules');
 const logger = createLogger('validate');
 
 // Accepts both Gherkin ("When ...") and OpenSpec-style ("- **WHEN** ...") steps.
@@ -433,12 +434,29 @@ class ValidateCommand {
     if (options.strict) {
       diagnostics.push(...this.strictDiagnostics(changeDir, specFiles));
     }
+    if (options.schemaDriven) {
+      // Schema-driven DSL: run schema.yaml's declared validation rules
+      // against the change's artifacts (previously declarative theater).
+      for (const finding of runSchemaRules(this.cwd, path.basename(changeDir))) {
+        diagnostics.push({
+          file: finding.field,
+          line: 1,
+          rule: finding.rule,
+          severity: finding.severity,
+          message: finding.message,
+          text: '',
+          suggestion: 'Satisfy the schema.yaml rule, or adjust the declared threshold.',
+        });
+      }
+    }
     const taskReport = changeDir ? this.compareTasksToSpecs(changeDir, specFiles) : null;
     const blocking = diagnostics.filter(d => d.severity === 'blocking');
     const warning = diagnostics.filter(d => d.severity !== 'blocking');
 
     let mode = 'validate';
-    if (options.specGuardian) {
+    if (options.schemaDriven) {
+      mode = 'schema-driven';
+    } else if (options.specGuardian) {
       mode = options.strict ? 'strict+spec-guardian' : 'spec-guardian';
     } else if (options.strict) {
       mode = 'strict';

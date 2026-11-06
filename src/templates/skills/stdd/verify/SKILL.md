@@ -259,3 +259,8 @@ cargo tarpaulin --out Html
 - **质量**: 确保高质量
 - **合规**: 符合规范
 - **可追溯**: 完整证据链
+
+## v1.1+ Gates
+
+- RED-evidence gate: GREEN without a watched RED fails verification.
+- `--defer`/`--resolve` manage the deferred-work ledger.

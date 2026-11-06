@@ -376,11 +376,18 @@ program.command('ui [action] [name...]')
   .description('Generate DESIGN.md-driven UI component/page skeletons')
   .option('--framework <framework>', 'react (default) | vue | html')
   .option('--out <dir>', 'Output directory')
+  .option('--workspace <workspace>', 'Scope output under a workspace (path or package name)')
   .option('--force', 'Force overwrite')
   .option('--no-test', 'Skip companion RTL test scaffold')
   .option('--json', 'JSON output')
   .addHelpText('after', '\nActions: generate (component), page (page-level)\n\nExamples:\n  stdd ui generate ProfileCard\n  stdd ui page Settings --out src/pages\n  stdd ui generate Button --framework vue')
   .action(safeAction(async (action, names, options) => {
+    if (options.workspace) {
+      const { resolveWorkspace } = require('./src/utils/workspace-detector');
+      const ws = resolveWorkspace(process.cwd(), options.workspace);
+      if (!ws) throw new Error(`Workspace '${options.workspace}' not found.`);
+      options.out = options.out || path.join(path.relative(process.cwd(), ws.root), 'src', 'components');
+    }
     const cmd = new UiCommand(process.cwd());
     await cmd.execute(action || 'generate', names || [], options);
   }));
@@ -388,6 +395,7 @@ program.command('ui [action] [name...]')
 program.command('design [action]')
   .description('Design system document generation')
   .option('--json', 'JSON output')
+  .option('--workspace <workspace>', 'Scan a workspace root (reverse action)')
   .option('--preset <name>', 'Design preset (modern, dark, minimal)')
   .option('-p <name>', 'Design preset (shorthand)')
   .option('--no-preview', 'Skip preview.html and preview-dark.html generation')

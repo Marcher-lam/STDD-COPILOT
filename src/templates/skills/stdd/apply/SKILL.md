@@ -356,3 +356,9 @@ stdd/changes/<change-id>/
 - STDD 是**通用 TDD 工具**，不绑定特定技术栈
 - 不同团队使用不同语言（前端 TS，后端 Go/Python/Java）
 - 统一的 TDD 工作流，语言特定的测试命令
+
+## v1.1+ Discipline
+
+- First apply captures `baseline_commit` (review-by-diff).
+- `--ruling` records execution decisions to rulings.md.
+- 3 consecutive failures on a task = circuit-breaker: re-plan, don't patch.

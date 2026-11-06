@@ -1,6 +1,6 @@
 # 已知缺口（受管清单）
 
-> Version: 1.3 | Last Updated: 2026-11-06
+> Version: 1.4 | Last Updated: 2026-11-06
 >
 > 交付门槛（premerge/smoke）全绿 ≠ 无缺口。本清单受管所有"声明未对齐 / 深度不足 / 范围未做"的项，避免散落在对话中。每项含实证与处置。
 
@@ -66,3 +66,9 @@
 ## 五、显式不采纳
 
 memlog（三层日志映射替代）· git worktrees（执行器层职责）· 三路径分级（ff/turbo/标准流已语义等价）· Stores（超出定位）· deprecated 死配置键（已标注，未删除以保兼容）
+
+## 2026-11-06 v1.2.2 清偿
+- 斜杠命令模板陈旧（P0）→ ✅ 13 模板 + 3 核心 skill 同步全部 v1.1+ 能力
+- schema.yaml DSL 零消费者（P1a）→ ✅ `validate --schema-driven` 真执行器
+- engines.yaml env 插值（P1b）→ ✅ heterogeneous-adapter 接线
+- issue --change-name / workspace 双命令 / graph 全局 timeout / en 命令参考 / 12 模块 jest 阈值（P2）→ ✅ 全部

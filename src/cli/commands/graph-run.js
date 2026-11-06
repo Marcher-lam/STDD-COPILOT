@@ -567,8 +567,37 @@ class GraphRunCommand {
       }
     };
 
+    // Global run timeout (stdd/config.yaml graph.timeout, ms; default 1h):
+    // checked between layers — a long-running graph cannot outlive it.
+    let globalTimeoutMs = 3600000;
+    try {
+      const yaml = require('js-yaml');
+      const configPath = path.join(cwd, 'stdd', 'config.yaml');
+      if (fs.existsSync(configPath)) {
+        const cfg = yaml.load(fs.readFileSync(configPath, 'utf8')) || {};
+        if (cfg.graph && Number.isFinite(Number(cfg.graph.timeout))) {
+          globalTimeoutMs = Number(cfg.graph.timeout);
+        }
+      }
+    } catch (err) { logger.warn(`graph.timeout not readable: ${err.message}`); }
+    const runStartedAt = Date.now();
+
     let failed = null;
     for (let layerIndex = 0; layerIndex < layers.length && !failed; layerIndex++) {
+      if (Date.now() - runStartedAt > globalTimeoutMs) {
+        this.result.failedAt = 'graph-timeout';
+        this.result.steps.push({
+          node: 'graph-timeout',
+          command: 'graph-timeout',
+          status: 'failed',
+          error: `Global graph timeout of ${globalTimeoutMs}ms exceeded (stdd/config.yaml graph.timeout).`,
+          attempts: 1,
+        });
+        this._persistRunResult(stddDir, changeName);
+        console.log(chalk.red(`\n  Graph run exceeded the global timeout (${globalTimeoutMs}ms).`));
+        process.exitCode = 1;
+        return this.result;
+      }
       const layer = layers[layerIndex];
       const parallel = !options.sequential && layer.length > 1;
       console.log(chalk.dim(`  Layer ${layerIndex + 1}/${layers.length}: ${layer.map(n => NODE_COMMAND_MAP[n] || n).join(', ')}`));

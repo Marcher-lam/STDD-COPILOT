@@ -378,7 +378,14 @@ class DesignCommand {
       throw new Error('DESIGN.md already exists. Use --force to overwrite.');
     }
     const { reverseDesignMarkdown } = require('../../utils/design-reverse');
-    const markdown = reverseDesignMarkdown(this.cwd);
+    let scanRoot = this.cwd;
+    if (options.workspace) {
+      const { resolveWorkspace } = require('../../utils/workspace-detector');
+      const ws = resolveWorkspace(this.cwd, options.workspace);
+      if (!ws) throw new Error(`Workspace '${options.workspace}' not found.`);
+      scanRoot = ws.root;
+    }
+    const markdown = reverseDesignMarkdown(scanRoot);
     if (!markdown) {
       console.log(chalk.yellow('\n⚠ No design sources found (Tailwind config, CSS custom properties, or a known component library).'));
       console.log(chalk.yellow('  Nothing to reverse-engineer. Generate from a preset instead:'));

@@ -25,3 +25,8 @@ Validates specification consistency, Spec Guardian leakage detection, and RFC 21
 - Validation report
 - Issues found
 - Fix suggestions
+
+## v1.1+: `--strict` enables OpenSpec-style delta structure checks:
+requirement/scenario completeness, duplicate headers, MODIFIED/REMOVED
+target resolution (rename-aware), ADDED conflicts; `--schema-driven` runs
+the schema.yaml validation DSL (min_length / min_items on change artifacts).

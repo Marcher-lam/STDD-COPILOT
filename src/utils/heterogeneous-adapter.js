@@ -162,7 +162,10 @@ class HeterogeneousAdapter {
       const fullPath = configPath
         || path.join(getPackageRoot(), 'stdd', 'config', 'engines.yaml');
       const content = fs.readFileSync(fullPath, 'utf8');
-      const parsed = yaml.load(content);
+      const { interpolateObject } = require('./env-interpolate');
+      // engines.yaml uses ${VAR:-default} placeholders — interpolate them
+      // so enabled/model reflect the actual environment.
+      const parsed = interpolateObject(yaml.load(content));
       // 过滤掉 custom 空占位和注释字段
       const engines = {};
       for (const [key, val] of Object.entries(parsed)) {

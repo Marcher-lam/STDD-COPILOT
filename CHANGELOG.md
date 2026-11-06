@@ -2,6 +2,24 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.2] - 2026-11-06 — P0+P1+P2：模板同步、声明剧场执行器化、边角清偿
+
+### P0: slash command templates synced (13 + 3 skills)
+design(reverse) / browser(baseline+diff --threshold) / ff,issue,turbo(--rigor) / verify(RED gate, --defer/--resolve/--no-lint) / apply(baseline_commit, --ruling, 3-strikes) / archive(strict gate, --skip-strict) / validate(--strict, --schema-driven) / outside-in(--code) / clarify(conversational, actions) / roles(--triage/--implemented-by) / graph(engine options) — the AI-facing interface now knows every v1.1+ capability.
+
+### P1: declarative theater made real
+- schema.yaml validation DSL executor (src/utils/schema-rules.js): `stdd validate <change> --schema-driven` runs the declared rules (required / min_length / min_items on artifact sections, leaf-heading resolution for dotted fields like Scope.In Scope). Previously zero consumers.
+- engines.yaml ${VAR:-default} interpolation (src/utils/env-interpolate.js) wired into the heterogeneous adapter's engine loader — enabled/model now reflect the actual environment instead of literal placeholders.
+
+### P2: edges
+- issue --change-name (parity with ff/turbo)
+- ui generate --workspace (output defaults into <ws>/src/components); design reverse --workspace (scans the workspace root)
+- graph run global timeout: stdd/config.yaml graph.timeout (default 1h) checked between layers — a long run cannot outlive it
+- docs/en/command-reference.md (condensed EN reference, 77 commands)
+- jest coverage thresholds added for all 12 new util modules (calibrated to measured levels)
+
+Gates: premerge exit 0; 223 suites / 4406 tests; lint clean; docs 9/9.
+
 ## [1.2.1] - 2026-11-06 — 全量修复：像素阈值、验证盲区补测、异构排除
 
 ### Added

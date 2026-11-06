@@ -650,3 +650,7 @@ gantt
 - **文本即图**: 用 Markdown 描述图表
 - **版本控制友好**: 图表随代码一起版本化
 - **多平台支持**: GitHub/GitLab 等平台原生支持
+
+## v1.2+
+
+`stdd design reverse` derives tokens from the project's real Tailwind/CSS/library sources (Source-annotated).

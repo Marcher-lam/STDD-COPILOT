@@ -24,3 +24,7 @@ Outside-in TDD approach starting from E2E tests, then integration tests, finally
 - E2E test skeleton
 - Integration test skeleton
 - Unit test skeleton
+
+## v1.2: `scaffold <change> --code rtl|playwright|storybook|all` also
+generates RUNNABLE test skeletons driven by the change's BDD scenarios
+(RTL with an a11y/axe hook, Playwright specs, Storybook stories).

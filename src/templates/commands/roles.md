@@ -24,3 +24,8 @@ stdd roles --mode=party          # Party Mode debate
 - Role descriptions
 - Task execution by role
 - Debate transcripts
+
+## v1.1+: `review --triage` emits findings untriaged with a verdict
+worksheet (high/medium/low/false/maybe-false; buckets intent-gap /
+plan-defect / patch / defer). `--implemented-by <engine>` excludes it from
+the suggested triage engine (diversity rule made actionable).

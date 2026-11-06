@@ -30,3 +30,7 @@ Conducts multi-round clarification sessions for requirement drafts. Helps resolv
 ## Output
 - Updated `proposal.md` with clarified requirements
 - Refined scope and boundary definitions
+
+## v1.1+: Conversational by default — core questions + signal-selected
+probes (no more 20-question dump). `--exhaustive` restores the full
+checklist. Actions: `questions` (list only), `edge-cases`, `constraints`.
