@@ -2,18 +2,25 @@
 
 > Last Updated: 2026-11-05 | Round 38 完成（v1.1.0）
 
+### Round 40-41 — v1.2.2~v1.2.5（2026-11-06）
+
+模板真全量同步（P0 轮脚本 bug 修复后复扫 ALL SYNCED）；schema DSL 执行器化（--schema-driven）；
+engines env 插值；issue --change-name + workspace 双命令 + graph 全局 timeout；配置段
+接线/诚实化六段；update --check-version 联网；Docker 端到端验证（含 2 个 Dockerfile bug 修复）；
+en 文档 12 篇全译（撤销精简版决策）。测试 4394→4412。
+
 ### Round 39 — v1.2.x：前端五项 + 全量修复（2026-11-06）
 
 v1.2.0 前端五项落地（design reverse / browser baseline-diff / outside-in --code /
 ui generate / dashboard，命令 75→77）；v1.2.1 全量修复（零依赖 PNG 像素比对补
 `--threshold`、验证盲区补测 27 例、`--implemented-by` 动态异构排除、known-gaps
-自身腐化修复）。测试 4335→4394。
+自身腐化修复）。测试 4335→4412。
 
 ## v1.1.0 基线（Round 35-38，2026-11-05）
 
 ```
 Test Suites: 214 passed
-Tests:       4394 passed (100%)
+Tests:       4412 passed (100%)
 Coverage:    84.1% lines | 76.55% branch（premerge 阈值全过）
 ```
 

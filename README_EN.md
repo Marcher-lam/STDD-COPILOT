@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org/)
 [![npm](https://img.shields.io/npm/v/@marcher-lam/stdd-copilot)](https://www.npmjs.com/package/@marcher-lam/stdd-copilot)
-[![Tests](https://img.shields.io/badge/tests-4394%2F4394%20passing-brightgreen.svg)](CONTRIBUTING.md)
+[![Tests](https://img.shields.io/badge/tests-4412%2F4412%20passing-brightgreen.svg)](CONTRIBUTING.md)
 [![Coverage](https://img.shields.io/badge/coverage-84.1%25%20stmts%20%7C%2076.55%25%20branch-green.svg)](CONTRIBUTING.md)
 
 [简体中文](./README.md) · [English](./README_EN.md)

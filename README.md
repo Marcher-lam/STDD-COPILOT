@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org/)
 [![npm](https://img.shields.io/npm/v/@marcher-lam/stdd-copilot)](https://www.npmjs.com/package/@marcher-lam/stdd-copilot)
-[![Tests](https://img.shields.io/badge/tests-4394%2F4394%20passing-brightgreen.svg)](CONTRIBUTING.md)
+[![Tests](https://img.shields.io/badge/tests-4412%2F4412%20passing-brightgreen.svg)](CONTRIBUTING.md)
 [![Coverage](https://img.shields.io/badge/coverage-84.1%25%20stmts%20%7C%2076.55%25%20branch-green.svg)](CONTRIBUTING.md)
 
 [简体中文](./README.md) · [English](./README_EN.md)
@@ -45,7 +45,7 @@
 | CLI 命令 | 77 个 |
 | 命令模板 | 80 个（`/stdd:*` 斜杠命令） |
 | Skill 模板 | 47 个 |
-| 测试套件 | **221** 套，**4394** 条用例，100% 通过 |
+| 测试套件 | **224** 套，**4412** 条用例，100% 通过 |
 | 语句覆盖率 | **84.1%** |
 | 分支覆盖率 | **76.55%** |
 | 支持的 AI 引擎 | 22 种（Claude Code、Cursor、Windsurf 等 4 层兼容） |
@@ -434,7 +434,7 @@ stdd-copilot/
 │   ├── memory/                     # 项目记忆存储
 │   ├── config/                     # 额外配置（engines.yaml 等）
 │   └── reporters/                  # 测试报告器插件
-├── __tests__/                      # 221 套件 / 4394 个测试
+├── __tests__/                      # 224 套件 / 4412 个测试
 ├── docs/                           # 文档
 │   ├── agent-protocol.md           # AI Agent 行为协议
 │   ├── cli-guide.md                # 完整 CLI 参考
@@ -463,6 +463,7 @@ stdd-copilot/
 | [docs/workflows.md](./docs/workflows.md) | 工作流详解：Greenfield / Brownfield / 快速修复 |
 | [docs/capabilities.md](./docs/capabilities.md) | 全部能力清单 |
 | [docs/framework-benchmark.md](./docs/framework-benchmark.md) | superpowers + BMAD + OpenSpec 框架对标与差距分析 |
+| [docs/known-gaps.md](./docs/known-gaps.md) | 受管缺口清单（已解决/环境受限/显式不采纳） |
 | [docs/agent-protocol.md](./docs/agent-protocol.md) | AI Agent 行为协议（Phase 过渡、确认门、路径选择） |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 系统架构（含 Mermaid 图） |
 | [USAGE.md](./USAGE.md) | 完整使用指南 |
@@ -496,7 +497,7 @@ docker compose up -d
 ### 开发和测试
 
 ```bash
-npm test                # 运行 221 套件 / 4394 个测试
+npm test                # 运行 224 套件 / 4412 个测试
 npm run lint            # ESLint 检查
 npm run premerge        # 合并前全量检查（audit + lint + docs + coverage）
 npm run test:coverage   # 带覆盖率报告运行
