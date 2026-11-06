@@ -22,9 +22,15 @@ class UpdateCommand {
   }
 
   async execute(targetPath, options = {}) {
+    // `stdd update` with no path argument: operate on the cwd.
+    const root = targetPath && typeof targetPath === 'string' ? targetPath : process.cwd();
     this.report = this.createReport();
     this.options = options;
-    const stddDir = path.join(targetPath, 'stdd');
+    const stddDir = path.join(root, 'stdd');
+
+    if (options.checkVersion) {
+      return this.checkPublishedVersion(options);
+    }
 
     if (!await this.exists(stddDir)) {
       throw new Error('STDD not initialized. Run `stdd init` first.');
@@ -687,6 +693,41 @@ class UpdateCommand {
     }
     return [...new Set(newKeys)];
   }
+
+  checkPublishedVersion(options = {}) {
+    const { fetchLatestVersion, compareVersions, PACKAGE } = require('../../utils/version-check');
+    const current = require('../../../package.json').version;
+    const { latest, reachable } = fetchLatestVersion();
+    const result = { current, latest, reachable };
+
+    if (!reachable) {
+      result.status = 'unreachable';
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(chalk.yellow(`\n⚠ Could not reach the npm registry to check ${PACKAGE}.`));
+        console.log(chalk.yellow(`  Current version: ${current}. Assuming up to date (offline).`));
+      }
+      return result;
+    }
+
+    const cmp = compareVersions(current, latest);
+    result.status = cmp < 0 ? 'outdated' : 'up-to-date';
+    if (options.json) {
+      console.log(JSON.stringify(result, null, 2));
+    } else if (cmp < 0) {
+      console.log(chalk.yellow(`\n⚠ ${PACKAGE} ${latest} is available (current: ${current}).`));
+      console.log(chalk.cyan('  npm install -g ' + PACKAGE + '@latest'));
+    } else {
+      console.log(chalk.green(`\n✓ ${current} is up to date (latest published: ${latest}).`));
+    }
+    return result;
+  }
 }
 
 module.exports = { UpdateCommand };
+
+  /**
+   * npm latest-version check (previously the "update check" in the docs
+   * never contacted the registry). Graceful offline: never hard-fails.
+   */

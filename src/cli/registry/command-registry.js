@@ -22,6 +22,8 @@ const commandRegistry = [
     options: [
       { flags: '--force', description: 'Force update' },
       { flags: '--dry-run', description: 'Show changes without writing' },
+      { flags: '--check-version', description: 'Check npm for a newer published version' },
+      { flags: '--json', description: 'JSON output' },
     ],
     action: 'UpdateCommand',
     spinner: 'Updating STDD Copilot',
@@ -518,7 +520,7 @@ const commandRegistry = [
     options: [
       { flags: '--mode <mode>', description: 'quick or stryker', default: 'quick' },
       { flags: '--workspace <workspace>', description: 'Scope to workspace' },
-      { flags: '--threshold <num>', description: 'Score threshold', default: '80' },
+      { flags: '--threshold <num>', description: 'Score threshold (default: config mutation_review.threshold or 80)' },
       { flags: '--json', description: 'JSON output' },
     ],
     action: 'MutationCommand',

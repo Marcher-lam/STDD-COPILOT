@@ -1,6 +1,6 @@
 # 已知缺口（受管清单）
 
-> Version: 1.4 | Last Updated: 2026-11-06
+> Version: 1.5 | Last Updated: 2026-11-06
 >
 > 交付门槛（premerge/smoke）全绿 ≠ 无缺口。本清单受管所有"声明未对齐 / 深度不足 / 范围未做"的项，避免散落在对话中。每项含实证与处置。
 
@@ -72,3 +72,9 @@ memlog（三层日志映射替代）· git worktrees（执行器层职责）· �
 - schema.yaml DSL 零消费者（P1a）→ ✅ `validate --schema-driven` 真执行器
 - engines.yaml env 插值（P1b）→ ✅ heterogeneous-adapter 接线
 - issue --change-name / workspace 双命令 / graph 全局 timeout / en 命令参考 / 12 模块 jest 阈值（P2）→ ✅ 全部
+
+## 2026-11-06 v1.2.3 清偿（第 4 轮审计）
+- 6 个零消费者配置段 → test_pipeline/mutation_review/sprint_spec 已真接线；i18n/ai_engines/docs_site 已标 deprecated（诚实化）
+- progress --resume 语义 → ✅ 明示“仅上下文恢复”；执行续跑归 graph run
+- stdd update 版本检查 → ✅ --check-version 联网 + 离线优雅降级（此前从未联网）
+- schema.yaml DSL 边界 → ✅ 注明执行器分工

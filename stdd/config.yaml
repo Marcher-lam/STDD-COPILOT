@@ -6,6 +6,7 @@ name: "STDD Copilot"
 description: "Specification & Test-Driven Development Framework"
 
 # 多语言支持
+# deprecated（未接线）：CLI 输出语言固定；文档双语由 docs/ 与 docs/en/ 目录结构承担。
 i18n:
   default_language: "zh"          # 默认语言: zh / en
   supported_languages:
@@ -167,8 +168,9 @@ planning:
   # 数字        — 固定任务预算（如 3）
   max_tasks: "auto"
 
-# 外部 AI 引擎（完整注册表见 stdd/config/engines.yaml）
-# 支持 24 种 AI 代码助手，按兼容性分 4 个 Tier
+# 外部 AI 引擎
+# deprecated（未接线副本）：真实配置在 stdd/config/engines.yaml（由 heterogeneous-adapter
+# 消费，支持 ${VAR:-default} 环境插值）。本段仅为历史示例，将被移除。
 ai_engines:
   registry_file: "stdd/config/engines.yaml"
 
@@ -265,7 +267,8 @@ sprint_spec:
         level: "all"
         max_scenarios: 15
 
-# 文档站点生成器（参考 BMAD Astro 站点）
+# 文档站点生成器
+# deprecated（未接线）：无命令消费此段；stdd/templates/docs-site 模板保留供手动使用。
 docs_site:
   enabled: false               # 默认关闭，按需启用
   framework: "astro"           # astro (默认) / vitepress / docusaurus

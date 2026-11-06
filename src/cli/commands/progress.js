@@ -59,6 +59,9 @@ class ProgressCommand {
       console.log(chalk.dim('  Inspect the command output and rerun the appropriate command manually.'));
     }
     console.log();
+    if (!opts.json) {
+      console.log(chalk.dim('  (context recovery only — execution does NOT auto-resume; re-run the failing command, or stdd graph run --change-name <n> for checkpoint resume)'));
+    }
   }
 
   _resumeHint(ctx) {

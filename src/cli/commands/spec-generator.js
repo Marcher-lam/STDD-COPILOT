@@ -228,7 +228,25 @@ ${thenLines}
       });
     }
 
+    this._warnScenarioBudget(generated);
     return { generated, skipped, workspace: workspaceMeta };
+  }
+
+  /**
+   * sprint_spec config (stdd/config.yaml): warn when a change generates more
+   * feature files than max_scenarios_per_feature — "just enough specs".
+   */
+  _warnScenarioBudget(generated) {
+    try {
+      const yaml = require('js-yaml');
+      const configPath = path.join(process.cwd(), 'stdd', 'config.yaml');
+      if (!fsSync.existsSync(configPath)) return;
+      const config = yaml.load(fsSync.readFileSync(configPath, 'utf8')) || {};
+      const max = config.sprint_spec && Number(config.sprint_spec.max_scenarios_per_feature);
+      if (Number.isFinite(max) && generated.length > max) {
+        console.log(`⚠ sprint_spec.max_scenarios_per_feature=${max}: generated ${generated.length} spec(s) — consider splitting the change or trimming scenarios.`);
+      }
+    } catch { /* config is optional */ }
   }
 }
 

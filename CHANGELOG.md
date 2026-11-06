@@ -2,6 +2,26 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.3] - 2026-11-06 — 第 4 轮审计全清：配置段接线/诚实化、update 联网检查、resume 语义
+
+### Wired (previously dead config sections)
+- test_pipeline -> stdd pipeline: honors output_dir / ir_dir / placeholder_mode (todo|skip|pending)
+- mutation_review -> stdd mutation: threshold as the default (CLI flag still wins), enabled=false waives the failure exit (evidence kept, status waived-by-config)
+- sprint_spec -> spec-generator: warns when a change exceeds max_scenarios_per_feature ("just enough specs")
+
+### Honest deprecation (template stdd/config.yaml)
+- i18n / ai_engines / docs_site sections marked deprecated with pointers (docs dirs handle bilingual; engines.yaml is the live registry consumed with env interpolation; docs-site templates remain manual-use)
+
+### New
+- stdd update --check-version [--json]: npm registry latest-version check (new src/utils/version-check.js with semver-aware compareVersions, prerelease sorts before release); offline degrades gracefully (never hard-fails). `stdd update` with no path now operates on the cwd instead of crashing.
+
+### Fixed / Clarified
+- progress --resume now states its semantics explicitly: context recovery only — execution does NOT auto-resume (checkpoint resume belongs to graph run); README wording aligned.
+- schema.yaml documents the DSL boundary: which validation keys the --schema-driven executor runs, and which engines own the rest.
+- update.js: registry no longer hardcodes threshold default 80 (config participates); several latent crashes fixed while wiring (undefined path arg, method placement).
+
+Gates: premerge exit 0; 224 suites / 4412 tests; lint clean; docs 9/9.
+
 ## [1.2.2] - 2026-11-06 — P0+P1+P2：模板同步、声明剧场执行器化、边角清偿
 
 ### P0: slash command templates synced (13 + 3 skills)

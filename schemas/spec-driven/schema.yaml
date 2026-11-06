@@ -6,6 +6,14 @@ version: "1.0"
 description: STDD Copilot 默认的规格驱动开发 Schema
 
 # Artifact 定义
+
+# NOTE (DSL 支持边界):
+#   `stdd validate <change> --schema-driven` 执行本文件 validation 段中
+#   required / min_length / min_items 三类规则。
+#   其余规则由各自引擎执行：
+#     - Scenarios / Given-When-Then / Red Line -> `stdd validate --strict` 与 Spec Guardian
+#     - each_decision_has -> `stdd validate --strict`（design.md AD 检查）
+#   未列引擎的键为声明性描述，无执行器。
 artifacts:
   - id: proposal
     name: 提案

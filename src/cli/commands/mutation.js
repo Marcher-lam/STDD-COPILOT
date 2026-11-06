@@ -82,7 +82,11 @@ class MutationCommand {
 
   execute(changeName, options = {}) {
     const mode = options.mode || 'quick';
-    const threshold = Number.isFinite(Number(options.threshold)) ? Number(options.threshold) : 80;
+    // mutation_review config (stdd/config.yaml) participates: threshold as
+    // the default, enabled=false marks the gate as administratively off.
+    const cfg = this._loadMutationReviewConfig();
+    const threshold = Number.isFinite(Number(options.threshold)) ? Number(options.threshold)
+      : (Number.isFinite(Number(cfg.threshold)) ? Number(cfg.threshold) : 80);
     const workspace = this._resolveWorkspace(options.workspace);
 
     if (!['quick', 'stryker'].includes(mode)) {
@@ -94,6 +98,7 @@ class MutationCommand {
       : this._runQuick(threshold, workspace);
 
     const evidence = this._buildEvidence(result, threshold, mode, workspace, changeName);
+    evidence.config = { enabled: cfg.enabled !== false, threshold: cfg.threshold ?? null };
     const evidencePath = this._saveEvidence(evidence, changeName);
     evidence.evidencePath = path.relative(this.cwd, evidencePath);
 
@@ -103,11 +108,27 @@ class MutationCommand {
       this._printResult(evidence);
     }
 
-    if (evidence.status === 'fail') {
+    if (evidence.status === 'fail' && cfg.enabled !== false) {
       process.exitCode = 1;
+    }
+    if (evidence.status === 'fail' && cfg.enabled === false) {
+      // Gate administratively off: keep the evidence, drop the failure exit.
+      evidence.status = 'waived-by-config';
     }
 
     return evidence;
+  }
+
+  _loadMutationReviewConfig() {
+    try {
+      const yaml = require('js-yaml');
+      const configPath = path.join(this.cwd, 'stdd', 'config.yaml');
+      if (!fs.existsSync(configPath)) return {};
+      const config = yaml.load(fs.readFileSync(configPath, 'utf8')) || {};
+      return config.mutation_review || {};
+    } catch {
+      return {};
+    }
   }
 
   _resolveWorkspace(selector) {
