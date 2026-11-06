@@ -33,6 +33,7 @@
 | plan 任务内容固定模板 | ✅ 已真实化（2026-11-06） | 任务从提案 In-Scope 项派生（含 TDD 描述），支撑任务（错误处理/变异）补位；无 scope 项时回退支撑模板 |
 | certainty 证据半自动 | 🔧 | 设计即 AI/人工评估；首次变更必然 pending-human 属预期。可做：ff 后自动提示跑 certainty |
 | spec-generator 内容质量 | 📋 | 从 tasks 生成 .feature 的骨架质量未审计（属 AI 细化范畴） |
+| `stdd start` 向导未覆盖 v1.1 特性 | 📋 | 快速入门向导（start.js）对新特性（rigor/risk-triggered/台账）零引用（grep=0），仍为 v1.0 流程 |
 
 ## 四、文档
 
@@ -40,6 +41,15 @@
 |---|---|---|
 | en 文档新特性 | 🔧 | en/cli-guide 已补选项段（2026-11-06）；benchmark / model-strength-adaptation 英文版未写 |
 | fix.md 前端缺口表 | 📋 | Web UI Dashboard（P1）/ 视觉回归闭环（P1）/ DESIGN.md 反推（P2）/ UI 生成（P2）/ 前端测试闭环（P2）——整块未动 |
+
+## 补充实证（2026-11-06 复查新增）
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| README 引擎数 "24 种" | 📋 声明失真 | engines.yaml 实际 22 个引擎（+1 个 custom 占位）；ARCHITECTURE 写 22，README 写 24——应以 22 为准修正 |
+| 并行层 exitCode 归因 | 🔧 已知限制 | 同层并行时兄弟节点设置的 exitCode=1 可能被误归因给已 resolve 的节点（代码注释已声明 best-effort）；彻底方案需命令级退出码捕获 |
+| test:benchmark / Docker 流程 | 📋 未验证 | package.json 声称 benchmark 与 docker-compose 部署路径，本系列从未执行验证 |
+| graph history 与 graph run 断点联动 | 📋 | graph-history 命令存在，但 graph run 失败/续跑不写入 history 记录（两套状态各自为政） |
 
 ## 五、显式不采纳
 
