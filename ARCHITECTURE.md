@@ -1,7 +1,7 @@
 # STDD Copilot 系统架构
 
-version: "2.5"
-last_updated: "2026-05-24"
+version: "2.7"
+last_updated: "2026-11-06"
 
 ## 概述
 
@@ -513,6 +513,16 @@ sequenceDiagram
 | **workspace-scope.js** | 工作区作用域 | workspace 路径标准化、作用域隔离 |
 | **reporter-injector.js** | 测试报告器注入 | STDD Reporter 环境变量注入和结果捕获 |
 | **mock-gen.js** | Mock 生成 | 从 spec/接口生成测试 Mock 数据 |
+| **png-diff.js** | 零依赖 PNG 像素比对 | 内置 zlib 解码（RGBA/RGB/调色板 + 5 种行过滤器），供视觉回归 `--threshold` 使用 |
+| **visual-regression.js** | 视觉回归门 | 命名基线 + 哈希/像素双模比对 + diff evidence 归档 |
+| **design-reverse.js** | DESIGN.md 反推 | 文本解析 Tailwind/CSS 变量/组件库依赖，提取真实 token（不执行用户代码） |
+| **test-scaffolds.js** | 可运行测试骨架 | RTL（含 a11y 钩子）/ Playwright / Storybook 模板，BDD 场景驱动 |
+| **ui-scaffolds.js** | UI 骨架生成 | DESIGN.md token 驱动的 react/vue/html 组件/页面模板 |
+| **dashboard.js** | 零依赖仪表盘 | stdd/ 目录聚合为单文件 HTML（内嵌 JSON + 原生 JS） |
+| **rigor.js** | 变更级严谨度 | light/standard/strict 语义（意图映射/文本升级/节点门限缩放/状态持久化） |
+| **interruption.js** | 中断预算 | 人类暂停记账（.state.yaml 计数 + 超额告警，不阻断决策） |
+| **delegation.js** | 委托引擎清单 | apply/graph-run 共享的 fresh-engine 建议常量 |
+| **apply-log.js** | apply.log 读取器 | apply 与 verify 共享的日志格式契约 |
 | **memory-scan.js** | 记忆扫描 | stdd/memory/ 目录扫描和索引 |
 
 ### 反向自愈流程

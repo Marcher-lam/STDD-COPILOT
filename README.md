@@ -7,8 +7,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org/)
 [![npm](https://img.shields.io/npm/v/@marcher-lam/stdd-copilot)](https://www.npmjs.com/package/@marcher-lam/stdd-copilot)
-[![Tests](https://img.shields.io/badge/tests-4335%2F4335%20passing-brightgreen.svg)](CONTRIBUTING.md)
-[![Coverage](https://img.shields.io/badge/coverage-84.9%25%20stmts%20%7C%2078.03%25%20branch-green.svg)](CONTRIBUTING.md)
+[![Tests](https://img.shields.io/badge/tests-4394%2F4394%20passing-brightgreen.svg)](CONTRIBUTING.md)
+[![Coverage](https://img.shields.io/badge/coverage-84.1%25%20stmts%20%7C%2076.55%25%20branch-green.svg)](CONTRIBUTING.md)
 
 [简体中文](./README.md) · [English](./README_EN.md)
 
@@ -45,9 +45,9 @@
 | CLI 命令 | 77 个 |
 | 命令模板 | 80 个（`/stdd:*` 斜杠命令） |
 | Skill 模板 | 47 个 |
-| 测试套件 | **214** 套，**4335** 条用例，100% 通过 |
-| 语句覆盖率 | **84.9%** |
-| 分支覆盖率 | **78.03%** |
+| 测试套件 | **221** 套，**4394** 条用例，100% 通过 |
+| 语句覆盖率 | **84.1%** |
+| 分支覆盖率 | **76.55%** |
 | 支持的 AI 引擎 | 22 种（Claude Code、Cursor、Windsurf 等 4 层兼容） |
 | 代码生成语言 | TypeScript/JS、Python、Java、Go、Rust、C#、PHP |
 
@@ -281,6 +281,16 @@ init → new → propose → clarify → confirm → spec → plan → apply →
 | `stdd ci` | CI 流水线配置生成 |
 | `stdd update` | 框架版本更新检查 |
 
+### 前端与可视化（v1.2 新增）
+
+| CLI | 用途 |
+|-----|------|
+| `stdd design reverse` | 从项目真实源（Tailwind/CSS 变量/组件库）反推 DESIGN.md token |
+| `stdd browser baseline/diff <url>` | 视觉回归门：命名基线 + 像素漂移阈值（`--threshold`）或严格哈希 |
+| `stdd outside-in scaffold --code` | 生成可运行测试骨架（RTL 含 a11y / Playwright / Storybook） |
+| `stdd ui generate/page <Name>` | DESIGN.md token 驱动的组件/页面骨架（react/vue/html） |
+| `stdd dashboard [generate\|serve]` | 零依赖单文件 HTML 仪表盘 + 内置 http 服务 |
+
 ### Graph 引擎
 
 | CLI | 用途 |
@@ -424,7 +434,7 @@ stdd-copilot/
 │   ├── memory/                     # 项目记忆存储
 │   ├── config/                     # 额外配置（engines.yaml 等）
 │   └── reporters/                  # 测试报告器插件
-├── __tests__/                      # 214 套件 / 4335 个测试
+├── __tests__/                      # 221 套件 / 4394 个测试
 ├── docs/                           # 文档
 │   ├── agent-protocol.md           # AI Agent 行为协议
 │   ├── cli-guide.md                # 完整 CLI 参考
@@ -486,7 +496,7 @@ docker compose up -d
 ### 开发和测试
 
 ```bash
-npm test                # 运行 214 套件 / 4335 个测试
+npm test                # 运行 221 套件 / 4394 个测试
 npm run lint            # ESLint 检查
 npm run premerge        # 合并前全量检查（audit + lint + docs + coverage）
 npm run test:coverage   # 带覆盖率报告运行

@@ -2,12 +2,19 @@
 
 > Last Updated: 2026-11-05 | Round 38 完成（v1.1.0）
 
+### Round 39 — v1.2.x：前端五项 + 全量修复（2026-11-06）
+
+v1.2.0 前端五项落地（design reverse / browser baseline-diff / outside-in --code /
+ui generate / dashboard，命令 75→77）；v1.2.1 全量修复（零依赖 PNG 像素比对补
+`--threshold`、验证盲区补测 27 例、`--implemented-by` 动态异构排除、known-gaps
+自身腐化修复）。测试 4335→4394。
+
 ## v1.1.0 基线（Round 35-38，2026-11-05）
 
 ```
 Test Suites: 214 passed
-Tests:       4335 passed (100%)
-Coverage:    84.9% lines | 78.03% branch | 85.5% funcs（premerge 阈值全过）
+Tests:       4394 passed (100%)
+Coverage:    84.1% lines | 76.55% branch（premerge 阈值全过）
 ```
 
 ### Round 35 — 框架对标（superpowers + BMAD + OpenSpec，18 项落地）

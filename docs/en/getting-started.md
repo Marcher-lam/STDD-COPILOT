@@ -35,3 +35,7 @@ docker run --rm -v "$PWD:/workspace" marcher-lam/stdd-copilot:latest --help
 - [English Docs Index](README.md) — English documentation hub
 - [CLI Guide](cli-guide.md) — Full CLI command reference
 - [Project README](../../README_EN.md) — Project overview and top-level examples
+
+## Frontend project?
+
+Since v1.2: `stdd design reverse` (token extraction), `stdd browser baseline/diff` (visual regression gate), `stdd outside-in --code` (runnable test skeletons), `stdd ui generate` (UI scaffolds), `stdd dashboard` (HTML dashboard). See [cli-guide.md](cli-guide.md).

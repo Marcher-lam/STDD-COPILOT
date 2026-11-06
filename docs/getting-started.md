@@ -40,3 +40,7 @@ docker run --rm -v "$PWD:/workspace" marcher-lam/stdd-copilot:latest --help
 - [命令参考](commands.md) - 统一会话入口参考
 - [核心概念](concepts.md) - 深入理解 specs、changes 和 schemas
 - [英文文档入口](en/README.md) - English docs index
+
+## 前端项目？
+
+v1.2 起提供前端五件套：`stdd design reverse`（设计反推）、`stdd browser baseline/diff`（视觉回归门）、`stdd outside-in --code`（测试骨架）、`stdd ui generate`（UI 骨架）、`stdd dashboard`（HTML 仪表盘）。详见 [capabilities.md](capabilities.md)。

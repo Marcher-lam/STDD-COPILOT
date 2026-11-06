@@ -27,6 +27,13 @@
 | `/stdd:brainstorm` | `stdd brainstorm <topic>` | 只读头脑风暴，多维度分析 (架构洞察/代码质量/技术评估/重构建议)，零文件修改，支持 `--method` |
 | `/stdd:issue` | `stdd issue <desc>` | Bug TDD 修复：分类缺陷，先写失败测试 (RED)，最小修复 (GREEN)，验证无回归；默认 light rigor，高严重度/不可逆信号自动升 strict |
 
+### 前端与可视化 (v1.2)
+
+| 斜杠命令 | CLI 命令 | 功能 |
+|---------|---------|------|
+| — | `stdd ui generate/page <Name>` | DESIGN.md token 驱动的组件/页面骨架（react/vue/html + 配套 RTL 测试） |
+| — | `stdd dashboard [generate\|serve]` | 零依赖单文件 HTML 仪表盘（changes/rigor/任务/verify/台账聚合）+ `--serve` 内置 http 服务 |
+
 ## 3. SDD 增强 — 规格驱动 (4 个)
 
 | 斜杠命令 | CLI 命令 | 功能 |

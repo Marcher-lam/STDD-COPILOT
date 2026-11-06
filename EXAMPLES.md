@@ -500,3 +500,36 @@ node "/Users/marcher/Desktop/stdd-copliot/cli.js" verify <change> --no-constitut
 ```bash
 node "/Users/marcher/Desktop/stdd-copliot/cli.js" apply <change> --allow-no-tests
 ```
+
+
+## 场景：前端项目接入（v1.2 前端五项）
+
+### 1. 从现有项目反推设计系统
+
+```bash
+stdd design reverse          # 扫描 tailwind.config / CSS 变量 / 组件库 → DESIGN.md（含 Source 标注）
+```
+
+### 2. 建立视觉回归门
+
+```bash
+stdd browser baseline https://localhost:3000 --name home
+stdd browser diff https://localhost:3000 --name home --threshold 0.01   # 容忍 1% 像素漂移
+# 变更可接受时：
+stdd browser diff https://localhost:3000 --name home --allow-changed
+```
+
+### 3. BDD 驱动的测试骨架 + UI 骨架
+
+```bash
+stdd outside-in scaffold add-dark-mode --code all      # RTL/a11y + Playwright + Storybook
+stdd ui generate DarkModeToggle                        # DESIGN.md token 入骨架 + 配套测试
+stdd ui page Settings --out src/pages
+```
+
+### 4. 仪表盘总览
+
+```bash
+stdd dashboard          # 生成 stdd/dashboard.html（零依赖单文件）
+stdd dashboard serve    # http://localhost:4173
+```

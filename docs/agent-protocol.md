@@ -523,6 +523,9 @@ cat stdd/changes/<change>/evidence/fix-packet-*.md  # 分析失败原因
 ### 评估与学习
 `/stdd:metrics` `/stdd:learn` `/stdd:certainty` `/stdd:complexity` `/stdd:vision`
 
+### 前端与可视化 (v1.2)
+`/stdd:design`（含 `reverse` 反推） · `/stdd:browser`（含 `baseline/diff` 视觉回归门） · CLI：`stdd ui generate/page` · `stdd dashboard`
+
 ### 测试与运维
 `/stdd:user-test` `/stdd:ci` `/stdd:browser` `/stdd:depcheck` `/stdd:doctor`
 

@@ -402,6 +402,8 @@ stdd/changes/change-YYYYMMDD-HHMMSS/
 | `stdd outside-in init/scaffold/status` | 管理外向内 TDD layer registry，并生成 E2E/集成/单元测试骨架 |
 | `stdd extensions list/install/validate/publish` | 管理 extension catalog、本地安装与发布校验 |
 | `stdd graph run/history/recommend` | CLI Graph 执行、历史和推荐 |
+| `stdd ui generate/page` / `stdd dashboard` | v1.2 前端：UI 骨架生成 + HTML 仪表盘 |
+| `stdd design reverse` / `stdd browser baseline/diff` | v1.2 前端：设计反推 + 视觉回归门（`--threshold` 像素容忍） |
 | `stdd recommend [change]` | 基于当前状态推荐下一步 |
 | `stdd skills` | 列出所有技能 (`--phase <1-5>`) |
 | `stdd commands` | 列出 Claude Code 斜杠命令 |

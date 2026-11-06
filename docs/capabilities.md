@@ -189,3 +189,11 @@ stdd new auth-flow
 - [USAGE.md](../USAGE.md) - 完整使用指南
 - [ARCHITECTURE.md](../ARCHITECTURE.md) - 系统架构
 - [agent-protocol.md](./agent-protocol.md) - AI Agent 行为协议
+
+## 前端能力（v1.2 前端五项）
+
+- `stdd design reverse` — 从 Tailwind 配置/CSS 自定义属性/组件库依赖反推 DESIGN.md（文本解析，不执行用户代码；Source 标注）
+- `stdd browser baseline/diff <url> --name <n>` — 视觉回归门：严格哈希或 `--threshold <ratio>` 像素漂移容忍（零依赖 PNG 解码）；`--allow-changed` 接受变更
+- `stdd outside-in scaffold <change> --code rtl|playwright|storybook|all` — BDD 场景驱动的可运行测试骨架（RTL 含 a11y/axe 钩子）
+- `stdd ui generate|page <Name> --framework react|vue|html` — DESIGN.md token 驱动骨架 + 配套 RTL 测试
+- `stdd dashboard generate|serve` — 零依赖单文件 HTML 仪表盘（changes/rigor/tasks/verify/deferred/rulings/interruptions）

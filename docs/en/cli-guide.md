@@ -32,6 +32,14 @@ stdd apply <name> --allow-no-tests
 - `stdd fix-packet [change]` — Golden Packet style AI handoff context for failed tests
 - `stdd outside-in init/scaffold/status` — Layer registry for outside-in TDD
 
+## Frontend Tooling (v1.2)
+
+- `stdd design reverse` — DESIGN.md reverse-engineered from Tailwind config / CSS custom properties / component libraries (text-parsed, never executes user code)
+- `stdd browser baseline/diff <url> --name <n>` — visual regression gate: strict hash or `--threshold <ratio>` pixel-drift tolerance (zero-dependency PNG decode); `--allow-changed` re-baselines
+- `stdd outside-in scaffold <change> --code rtl|playwright|storybook|all` — runnable, BDD-scenario-driven test skeletons (RTL with an a11y/axe hook)
+- `stdd ui generate|page <Name>` — DESIGN.md-token-driven component/page skeletons (react/vue/html) with a companion RTL test
+- `stdd dashboard generate|serve` — zero-dependency single-file HTML dashboard; `--serve` ships a tiny http server
+
 ## Risk-Scoped Gates and Ledgers (v1.1)
 
 - `stdd ff/issue/turbo <desc> --rigor light|standard|strict` — change-level rigor, auto-escalating to strict on irreversible signals (migrate/drop table/payment/breaking change/public API)
