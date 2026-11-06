@@ -2,6 +2,13 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.5] - 2026-11-06 — en 文档全译完成（撤销原"精简版"决策）
+
+### Changed
+- docs/en/ now carries FULL English editions of all 12 documents (was: condensed stubs for the strategic docs). New full translations: concepts, workflows, commands, capabilities, agent-protocol, framework-benchmark (all 18 adoption items), model-strength-adaptation (taxonomy + principles + landed items), known-gaps; the README index rebuilt with sections, keeping the test-locked cross-link lines verbatim. Chinese docs remain the authoritative source.
+
+Gates: docs consistency 9/9.
+
 ## [1.2.4] - 2026-11-06 — 第 6 轮：模板真全量同步 + Docker 端到端验证
 
 ### Fixed
