@@ -27,9 +27,15 @@ const LIBRARY_MAP = {
 
 /** Extract the brace-balanced block following `key:` inside config text. */
 function findBlock(text, key) {
-  const match = text.match(new RegExp('[,{\\s]' + key + '\\s*:\\s*\\{'));
-  if (!match) return null;
-  const start = match.index + match[0].length - 1; // at '{'
+  // Merge EVERY `key: { ... }` block — Tailwind configs routinely define
+  // tokens in both theme.colors and theme.extend.colors.
+  const blocks = [...String(text).matchAll(new RegExp('[,{\\s]' + key + '\\s*:\\s*\\{', 'g'))]
+    .map(m => readBalancedBlock(text, m.index + m[0].length - 1))
+    .filter(Boolean);
+  return blocks.length ? blocks.join(',') : null;
+}
+
+function readBalancedBlock(text, start) {
   let depth = 0;
   for (let i = start; i < text.length; i++) {
     if (text[i] === '{') depth++;
@@ -102,10 +108,14 @@ function firstColorValue(raw) {
 function extractCssVariables(cssText) {
   const out = { colors: [], fonts: [], spacing: [], radius: [] };
   const re = /--(color|colour|font|spacing|radius)-([\w-]+)\s*:\s*([^;]+);/g;
+  const seenVars = new Set();
   let m;
   while ((m = re.exec(String(cssText || '')))) {
     const kind = m[1];
     const name = m[2];
+    const dedupeKey = kind + ':' + name;
+    if (seenVars.has(dedupeKey)) continue; // dark-theme override; keep base
+    seenVars.add(dedupeKey);
     const value = m[3].trim();
     const entry = { token: name, value };
     if (kind === 'color' || kind === 'colour') out.colors.push(entry);
@@ -229,17 +239,17 @@ function reverseDesignMarkdown(cwd) {
     lines.push('| `' + c.token + '` | `' + c.value + '` | ' + c.source + ' | ' + suggestRole(c.token) + ' |');
   }
 
-  lines.push('', '## Typography Rules', '', '| Slot | Font | Source |', '|------|------|--------|');
-  if (fontRows.length === 0) lines.push('| _none extracted_ | | |');
-  for (const f of fontRows) lines.push('| `' + f.token + '` | ' + f.value + ' | ' + f.source + ' |');
+  lines.push('', '## Typography Rules', '', '| Slot | Font | Source | Notes |', '|------|------|--------|-------|');
+  if (fontRows.length === 0) lines.push('| _none extracted_ | | | |');
+  for (const f of fontRows) lines.push('| `' + f.token + '` | `' + f.value + '` | ' + f.source + ' | |');
   if (libraries.some(l => /Ant Design|Material UI|Chakra|Vuetify/.test(l.name))) {
     lines.push('', '> Note: a component library is present - inherit its type scale unless overridden above.');
   }
 
   if (spacingRows.length || cssTokens.radius.length) {
-    lines.push('', '## Spacing & Radius', '', '| Token | Value | Source |', '|-------|-------|--------|');
-    for (const s of spacingRows) lines.push('| `' + s.token + '` | `' + s.value + '` | ' + s.source + ' |');
-    for (const r of cssTokens.radius) lines.push('| `radius-' + r.token + '` | `' + r.value + '` | CSS variables |');
+    lines.push('', '## Spacing & Radius', '', '| Token | Value | Source | Notes |', '|-------|-------|--------|-------|');
+    for (const s of spacingRows) lines.push('| `' + s.token + '` | `' + s.value + '` | ' + s.source + ' | |');
+    for (const r of cssTokens.radius) lines.push('| `radius-' + r.token + '` | `' + r.value + '` | CSS variables | |');
   }
 
   lines.push(

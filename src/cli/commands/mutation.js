@@ -99,6 +99,11 @@ class MutationCommand {
 
     const evidence = this._buildEvidence(result, threshold, mode, workspace, changeName);
     evidence.config = { enabled: cfg.enabled !== false, threshold: cfg.threshold ?? null };
+    // Resolve the waived status BEFORE persisting so the durable record
+    // matches what consumers (verify's mutation gate) will read.
+    if (evidence.status === 'fail' && cfg.enabled === false) {
+      evidence.status = 'waived-by-config';
+    }
     const evidencePath = this._saveEvidence(evidence, changeName);
     evidence.evidencePath = path.relative(this.cwd, evidencePath);
 
@@ -108,12 +113,8 @@ class MutationCommand {
       this._printResult(evidence);
     }
 
-    if (evidence.status === 'fail' && cfg.enabled !== false) {
+    if (evidence.status === 'fail') {
       process.exitCode = 1;
-    }
-    if (evidence.status === 'fail' && cfg.enabled === false) {
-      // Gate administratively off: keep the evidence, drop the failure exit.
-      evidence.status = 'waived-by-config';
     }
 
     return evidence;

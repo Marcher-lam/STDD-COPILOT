@@ -17,16 +17,19 @@ class PipelineCommand {
     // test skeleton, ir_dir for the IR, placeholder_mode for pending bodies.
     const cfg = this._loadTestPipelineConfig();
     const outDir = changeName ? path.join(changeDir, 'pipeline') : path.join(this.cwd, 'stdd', 'pipeline');
-    const testDir = cfg.output_dir ? path.join(this.cwd, cfg.output_dir) : outDir;
-    const irDir = cfg.ir_dir ? path.join(this.cwd, cfg.ir_dir) : outDir;
+    // Config dirs are project-global: only apply them to repo-wide runs —
+    // per-change invocations stay change-scoped so artifacts never collide.
+    const testDir = (cfg.output_dir && !changeName) ? path.resolve(this.cwd, cfg.output_dir) : outDir;
+    const irDir = (cfg.ir_dir && !changeName) ? path.resolve(this.cwd, cfg.ir_dir) : outDir;
     fs.mkdirSync(testDir, { recursive: true });
     fs.mkdirSync(irDir, { recursive: true });
     const irPath = path.join(irDir, 'ir.json');
     const testPath = path.join(testDir, 'generated-tests.test.js');
     fs.writeFileSync(irPath, JSON.stringify(ir, null, 2), 'utf8');
-    fs.writeFileSync(testPath, this.generateTestSkeleton(ir, cfg.placeholder_mode), 'utf8');
+        const mode = ['todo', 'skip', 'pending'].includes(cfg.placeholder_mode) ? cfg.placeholder_mode : 'todo';
+    fs.writeFileSync(testPath, this.generateTestSkeleton(ir, mode), 'utf8');
     if (options.json) console.log(JSON.stringify({ status: 'generated', ir: irPath, tests: testPath }, null, 2));
-    else console.log(`Generated pipeline IR and test skeleton in ${path.relative(this.cwd, outDir)}`);
+    else console.log(`Generated pipeline IR in ${path.relative(this.cwd, irDir)} and test skeleton in ${path.relative(this.cwd, testDir)}`);
     return { status: 'generated', ir: irPath, tests: testPath, files: [irPath, testPath] };
   }
 
@@ -36,7 +39,8 @@ class PipelineCommand {
       const configPath = path.join(this.cwd, 'stdd', 'config.yaml');
       if (!fs.existsSync(configPath)) return {};
       const config = yaml.load(fs.readFileSync(configPath, 'utf8')) || {};
-      return config.test_pipeline || {};
+      const tdd = (config && config.tdd) || {};
+      return tdd.test_pipeline || config.test_pipeline || {};
     } catch {
       return {};
     }

@@ -56,7 +56,12 @@ class BrowserCommand {
     if (typeof this.controller.capture !== 'function') {
       return Promise.reject(new Error('playwright is not installed'));
     }
-    return this.controller.capture({ ...options, url });
+    return this.controller.capture({
+      ...options,
+      url,
+      width: Number(options.width) || 1280,
+      height: Number(options.height) || 800,
+    });
   }
 
   async baseline(url, options = {}) {

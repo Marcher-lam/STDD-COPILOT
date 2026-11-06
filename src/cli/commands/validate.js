@@ -135,6 +135,9 @@ class ValidateCommand {
         continue;
       }
       if (changeDir) {
+        // .feature files are copied verbatim by archive (legacy append),
+        // never merged as deltas — skip delta checks for them.
+        if (!file.endsWith('.md')) continue;
         const rel = path.relative(path.join(changeDir, 'specs'), file);
         const mainPath = path.join(this.cwd, 'stdd', 'specs', rel);
         let mainContent = null;
@@ -230,7 +233,6 @@ class ValidateCommand {
     const main = mainContent !== null ? parseSpecRequirements(mainContent) : null;
     const mainNames = new Set(main ? main.requirements.map(r => r.name) : []);
     const mainBodies = new Map(main ? main.requirements.map(r => [r.name, r.body]) : []);
-    const renameMap = new Map(parsed.sections.renamed.entries.map(e => [e.from, e.to]));
     const seen = new Set();
 
     if (!parsed.hasSections) {
@@ -252,9 +254,10 @@ class ValidateCommand {
       this.checkRequirementDuplicate(req.name, relFile, content, seen).forEach(d => diagnostics.push(d));
     };
 
+    const removedNames = new Set(parsed.sections.removed.requirements.map(r => r.name));
     for (const req of parsed.sections.added.requirements) {
       checkRequirement(req, 'ADDED');
-      if (main && mainNames.has(req.name)) {
+      if (main && mainNames.has(req.name) && !removedNames.has(req.name)) {
         if (foldBody(mainBodies.get(req.name)) === foldBody(req.body)) {
           diagnostics.push({
             file: relFile,
@@ -284,8 +287,9 @@ class ValidateCommand {
     // old name until the merge applies it).
     const renamedFrom = new Set(parsed.sections.renamed.entries.map(e => e.from));
     const renamedTo = new Map(parsed.sections.renamed.entries.map(e => [e.to, e.from]));
+    // applyDelta only lets REMOVED reference the TO side of an in-delta
+    // rename; the FROM side is a removed-renamed-conflict there.
     const existsForMerge = name => mainNames.has(name)
-      || renamedFrom.has(name)
       || (renamedTo.has(name) && mainNames.has(renamedTo.get(name)));
 
     for (const req of parsed.sections.modified.requirements) {
@@ -434,7 +438,7 @@ class ValidateCommand {
     if (options.strict) {
       diagnostics.push(...this.strictDiagnostics(changeDir, specFiles));
     }
-    if (options.schemaDriven) {
+    if (options.schemaDriven && changeDir) {
       // Schema-driven DSL: run schema.yaml's declared validation rules
       // against the change's artifacts (previously declarative theater).
       for (const finding of runSchemaRules(this.cwd, path.basename(changeDir))) {
@@ -454,7 +458,7 @@ class ValidateCommand {
     const warning = diagnostics.filter(d => d.severity !== 'blocking');
 
     let mode = 'validate';
-    if (options.schemaDriven) {
+    if (options.schemaDriven && changeDir) {
       mode = 'schema-driven';
     } else if (options.specGuardian) {
       mode = options.strict ? 'strict+spec-guardian' : 'spec-guardian';

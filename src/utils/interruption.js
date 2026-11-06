@@ -32,7 +32,12 @@ function readInterruptions(changeDir) {
     const match = content.match(/^interruptions_used:\s*(\d+)\s*$/m);
     const reason = content.match(/^interruption_last:\s*(.+?)\s*$/m);
     if (!match) return { used: 0, lastReason: null };
-    return { used: Number(match[1]), lastReason: reason ? reason[1].trim() : null };
+    // Unwrap the JSON-quoted storage form for callers.
+    let lastReason = reason ? reason[1].trim() : null;
+    if (lastReason !== null) {
+      try { lastReason = JSON.parse(lastReason); } catch { /* plain unquoted legacy value */ }
+    }
+    return { used: Number(match[1]), lastReason };
   } catch {
     return { used: 0, lastReason: null };
   }
@@ -50,7 +55,7 @@ function recordInterruption(changeDir, reason) {
     const next = current.used + 1;
     const lines = [
       `interruptions_used: ${next}`,
-      `interruption_last: ${String(reason).replace(/\n/g, ' ')}`,
+      `interruption_last: ${JSON.stringify(String(reason).replace(/[\r\n]+/g, ' '))}`,
     ];
     if (fs.existsSync(file)) {
       let content = fs.readFileSync(file, 'utf8');

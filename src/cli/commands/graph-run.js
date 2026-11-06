@@ -103,7 +103,7 @@ const READONLY_NODES = new Set([
 // Content-level transient signals: a side-effect node whose failure looks
 // transient (network/timeout/rate-limit) may be retried; deterministic
 // failures (syntax, assertion, config) never are.
-const TRANSIENT_RE = /ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|EAGAIN|timed?[- ]?out|network|temporarily|rate.?limit|flaky/i;
+const TRANSIENT_RE = /\b(?:ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|EAGAIN)\b|timed?[- ]?out after|rate[ -]?limit exceeded|socket hang up/i;
 
 const NODE_COMMAND_MAP = {
   'stdd-propose': 'propose',
@@ -178,6 +178,10 @@ class GraphRunCommand {
         }
       }
       frontier = next;
+    }
+    const cyclic = nodes.filter(n => indegree.get(n) > 0);
+    if (cyclic.length > 0) {
+      throw new Error(`Dependency cycle detected among nodes: ${cyclic.join(', ')}`);
     }
     return layers;
   }
@@ -455,19 +459,6 @@ class GraphRunCommand {
     options.changeName = changeName;
     this.result.changeName = changeName;
 
-    // D3: project-local checkpoint cache keyed by change+intent+rigor so a
-    // failed run can resume from the last successful node on re-run.
-    const cache = options.noCache
-      ? null
-      : new GraphCacheManager(changeName, path.join(stddDir, 'graph', 'cache'));
-    const cacheInputs = {
-      change: changeName,
-      intent,
-      rigor,
-      skipApply: Boolean(options.skipApply),
-      workspace: options.workspaceContext ? options.workspaceContext.name : null,
-    };
-
     if (options.workspace) {
       const workspace = resolveWorkspace(process.cwd(), options.workspace);
       if (!workspace) {
@@ -482,6 +473,20 @@ class GraphRunCommand {
       this.result.workspace = options.workspaceContext;
     }
 
+    // D3: checkpoint cache — built AFTER workspace resolution so the key
+    // carries the real workspace, and cleared when the archive node lands so
+    // completed changes never resume from stale checkpoints.
+    const cache = options.noCache
+      ? null
+      : new GraphCacheManager(changeName, path.join(stddDir, 'graph', 'cache'));
+    const cacheInputs = {
+      change: changeName,
+      intent,
+      rigor,
+      skipApply: Boolean(options.skipApply),
+      workspace: options.workspaceContext ? options.workspaceContext.name : null,
+    };
+
     console.log(chalk.bold(`\n🚀 Graph Run: ${chalk.cyan(graph.name)}`));
     console.log(chalk.dim(`  Intent: ${intent} | Change: ${changeName} | Rigor: ${rigor}`));
     if (options.workspaceContext) {
@@ -489,7 +494,7 @@ class GraphRunCommand {
     }
     console.log(chalk.dim(`  Steps: ${nodes.length} in ${layers.length} layer(s)\n`));
 
-    const runNode = async (nodeName, layerIndex) => {
+    const runNode = async (nodeName, layerIndex, sequentialLayer) => {
       const label = NODE_COMMAND_MAP[nodeName] || nodeName;
 
       // D3: checkpoint resume — skip nodes that already succeeded for this
@@ -513,14 +518,23 @@ class GraphRunCommand {
         // throwing — a node that set it must be treated as failed, never
         // checkpointed. (In parallel layers this check is best-effort: a
         // sibling setting exitCode can be mis-attributed to a resolving node.)
-        if (process.exitCode === 1 && exitCodeBefore !== 1) {
+        // Exit-code sniffing is only reliable in sequential layers — in a
+        // parallel layer a failing sibling can flip the global and be
+        // mis-attributed here (verify/archive throw precisely under
+        // throwOnFailure, which covers the parallel case).
+        if (sequentialLayer && process.exitCode === 1 && exitCodeBefore !== 1) {
           throw new Error(`${label} reported failure (exit code 1)`);
         }
         this.result.steps.push({ node: nodeName, command: label, layer: layerIndex, ...result });
 
         if (result.status === 'success') {
           console.log(chalk.green(`    ✓ ${label} completed`));
-          if (cache) cache.set(nodeName, cacheInputs, { status: result.status });
+          if (nodeName === 'stdd-archive' && cache) {
+            // Archived change: its checkpoints must not outlive the change.
+            cache.clear();
+          } else if (cache) {
+            cache.set(nodeName, cacheInputs, { status: result.status });
+          }
         } else if (result.status === 'skipped') {
           // A skip (e.g. --skip-apply) is not a completed checkpoint.
           console.log(chalk.dim(`    ⊘ ${label} skipped`));
@@ -604,7 +618,7 @@ class GraphRunCommand {
 
       if (!parallel) {
         for (const nodeName of layer) {
-          const outcome = await runNode(nodeName, layerIndex);
+          const outcome = await runNode(nodeName, layerIndex, true);
           if (!outcome.ok) { failed = outcome; break; }
         }
       } else {
@@ -614,7 +628,7 @@ class GraphRunCommand {
         const outcomes = [];
         for (let i = 0; i < layer.length; i += limit) {
           const chunk = layer.slice(i, i + limit);
-          const settled = await Promise.allSettled(chunk.map(n => runNode(n, layerIndex)));
+          const settled = await Promise.allSettled(chunk.map(n => runNode(n, layerIndex, false)));
           for (const s of settled) {
             outcomes.push(s.status === 'fulfilled' ? s.value : { ok: false, node: 'unknown' });
           }

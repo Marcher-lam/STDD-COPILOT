@@ -386,7 +386,8 @@ program.command('ui [action] [name...]')
       const { resolveWorkspace } = require('./src/utils/workspace-detector');
       const ws = resolveWorkspace(process.cwd(), options.workspace);
       if (!ws) throw new Error(`Workspace '${options.workspace}' not found.`);
-      options.out = options.out || path.join(path.relative(process.cwd(), ws.root), 'src', 'components');
+      const sub = action === 'page' ? 'pages' : 'components';
+        options.out = options.out || path.join(path.relative(process.cwd(), ws.root), 'src', sub);
     }
     const cmd = new UiCommand(process.cwd());
     await cmd.execute(action || 'generate', names || [], options);

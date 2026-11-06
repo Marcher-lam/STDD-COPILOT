@@ -120,10 +120,26 @@ function parseDeltaSections(content) {
     if (from) rawFrom.push(normalizeHeader(from[1]));
     else if (to) rawTo.push(normalizeHeader(to[1]));
   }
-  const pairCount = Math.min(rawFrom.length, rawTo.length);
-  for (let i = 0; i < pairCount; i++) {
-    sections.renamed.entries.push({ from: rawFrom[i], to: rawTo[i] });
+  // Pair sequentially (FROM opens, TO closes); unmatched bullets are kept
+  // as degenerate self-renames so they surface instead of silently dropping.
+  let pendingFrom = null;
+  const flush = () => {
+    if (pendingFrom !== null) {
+      sections.renamed.entries.push({ from: pendingFrom, to: pendingFrom });
+      pendingFrom = null;
+    }
+  };
+  for (const line of buffers.RENAMED) {
+    const from = line.match(RENAMED_FROM_RE);
+    const to = line.match(RENAMED_TO_RE);
+    if (from) { flush(); pendingFrom = normalizeHeader(from[1]); }
+    else if (to) {
+      if (pendingFrom === null) pendingFrom = normalizeHeader(to[1]);
+      sections.renamed.entries.push({ from: pendingFrom, to: normalizeHeader(to[1]) });
+      pendingFrom = null;
+    }
   }
+  flush();
 
   return {
     hasSections,
@@ -195,8 +211,17 @@ function applyDelta(mainContent, deltaContent) {
   const parsedDelta = parseDeltaSections(deltaContent);
 
   if (!parsedDelta.hasSections) {
-    // Legacy plain content: append verbatim.
-    const content = `${String(mainContent).trimEnd()}\n\n${String(deltaContent).trim()}\n`;
+    // Legacy plain content: append verbatim — but keep re-runs idempotent
+    // (a conflict-aborted earlier archive may have written it already).
+    const trimmed = String(deltaContent).trim();
+    if (String(mainContent).includes(trimmed)) {
+      warnings.push({
+        type: 'already-synced',
+        message: 'Legacy delta content already present in spec; skipping.',
+      });
+      return { content: String(mainContent), conflicts, warnings, operations: [] };
+    }
+    const content = `${String(mainContent).trimEnd()}\n\n${trimmed}\n`;
     return {
       content,
       conflicts,

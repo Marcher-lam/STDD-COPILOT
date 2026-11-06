@@ -95,6 +95,13 @@ class ClarifyCommand {
     // Documented actions: 'questions' lists without writing, 'edge-cases' /
     // 'constraints' focus on a single area (see the command helpText).
     const ACTIONS = { 'questions': 'list', 'edge-cases': 'edge_cases', 'constraints': 'implicit_constraints' };
+    // `stdd clarify questions` (single positional) puts the action into the
+    // changeName slot — normalize so the documented one-arg form works and
+    // falls back to the active change.
+    if (!action && changeName && ACTIONS[changeName]) {
+      action = changeName;
+      changeName = undefined;
+    }
     const mode = action && ACTIONS[action] ? ACTIONS[action] : null;
 
     const changesDir = path.join(process.cwd(), 'stdd', 'changes');

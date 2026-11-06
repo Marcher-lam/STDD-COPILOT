@@ -44,7 +44,7 @@ function extractSection(text, field) {
 }
 
 function countListItems(text) {
-  return String(text || '').split('\n').filter(l => /^\\s*-\\s+\\S/.test(l)).length;
+  return String(text || '').split('\n').filter(l => /^\s*-\s+\S/.test(l)).length;
 }
 
 /**
@@ -59,7 +59,7 @@ function runSchemaRules(cwd, changeName) {
   const changeDir = path.join(cwd, 'stdd', 'changes', changeName);
   if (!fs.existsSync(changeDir)) return findings;
 
-  const artifacts = {}; // artifact id -> file content
+  const artifacts = {}; // artifact id -> single-file content
   for (const file of ['proposal.md', 'tasks.md', 'design.md']) {
     const p = path.join(changeDir, file);
     artifacts[file.replace('.md', '')] = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
@@ -67,6 +67,9 @@ function runSchemaRules(cwd, changeName) {
 
   for (const [artifactId, ruleList] of Object.entries(rules)) {
     if (!Array.isArray(ruleList)) continue;
+    // Artifact ids like 'specs' map to directory globs (specs/**/*.md), not
+    // a single file — the executor has no per-file mapping for them yet.
+    if (!(artifactId in artifacts)) continue;
     const content = artifacts[artifactId];
     for (const rule of ruleList) {
       const field = rule.field;

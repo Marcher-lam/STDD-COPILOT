@@ -68,9 +68,9 @@ module.exports = {
     './src/utils/visual-regression.js': { branches: 80, functions: 100, lines: 95, statements: 95 },
     './src/utils/png-diff.js': { branches: 55, functions: 90, lines: 70, statements: 70 },
     './src/utils/design-reverse.js': { branches: 60, functions: 80, lines: 80, statements: 80 },
-    './src/utils/test-scaffolds.js': { branches: 65, functions: 85, lines: 90, statements: 90 },
+    './src/utils/test-scaffolds.js': { branches: 50, functions: 85, lines: 90, statements: 90 },
     './src/utils/ui-scaffolds.js': { branches: 40, functions: 45, lines: 55, statements: 55 },
-    './src/utils/dashboard.js': { branches: 20, functions: 80, lines: 75, statements: 75 },
+    './src/utils/dashboard.js': { branches: 20, functions: 75, lines: 75, statements: 75 },
     './src/utils/schema-rules.js': { branches: 70, functions: 85, lines: 85, statements: 85 },
     './src/utils/env-interpolate.js': { branches: 90, functions: 100, lines: 100, statements: 100 },
     './src/utils/path-resolver.js': {

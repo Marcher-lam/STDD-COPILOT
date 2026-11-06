@@ -199,12 +199,7 @@ ${thenLines}
       // A task whose description sanitizes to nothing would create a
       // contentless ".feature" file — skip it instead.
       if (!baseFilename) {
-        skipped.push({
-          id: task.id,
-          description: task.description,
-          file: null,
-          reason: 'description sanitizes to an empty filename',
-        });
+        console.warn(`⚠ ${task.id}: description sanitizes to an empty filename; no spec generated`);
         continue;
       }
       const filename = workspaceMeta ? `${workspaceMeta.tag}-${baseFilename}` : baseFilename;

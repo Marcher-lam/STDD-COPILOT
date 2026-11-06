@@ -23,17 +23,17 @@ function compareVersions(a, b) {
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
     const x = pa[i];
     const y = pb[i];
-    if (x === undefined) return y === undefined ? 0 : -1;
+    if (x === undefined) return y === undefined ? 0 : (typeof y === 'number' ? -1 : 1);
     // semver: at equal numeric prefix, the side WITH extra (prerelease)
     // segments sorts first — 2.0.0-rc.1 < 2.0.0.
-    if (y === undefined) return -1;
+    if (y === undefined) return typeof x === 'number' ? 1 : -1;
     const xn = typeof x === 'number';
     const yn = typeof y === 'number';
     if (xn && yn) {
       if (x !== y) return x < y ? -1 : 1;
     } else if (xn !== yn) {
-      // semver: a prerelease segment sorts BEFORE its release counterpart
-      return xn ? 1 : -1;
+      // semver: numeric identifiers sort BELOW alphanumeric prerelease labels
+      return xn ? -1 : 1;
     } else if (x !== y) {
       return x < y ? -1 : 1;
     }
@@ -41,7 +41,7 @@ function compareVersions(a, b) {
   return 0;
 }
 
-const PACKAGE = '@marcher-lam/stdd-copilot';
+const PACKAGE = require('../../package.json').name;
 
 /**
  * Query the npm registry for the latest published version.
@@ -53,7 +53,9 @@ function fetchLatestVersion() {
       encoding: 'utf8',
       timeout: 10000,
       stdio: 'pipe',
+      shell: process.platform === 'win32', // npm is npm.cmd on Windows
     });
+    if (result.error) logger.warn(`npm view failed to spawn: ${result.error.message}`);
     if (result.status !== 0 || !result.stdout) {
       return { latest: null, reachable: false };
     }

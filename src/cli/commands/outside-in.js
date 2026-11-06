@@ -78,14 +78,19 @@ class OutsideInCommand {
     // driven by the change's BDD scenarios when present.
     const code = [];
     if (options.code && options.code !== 'none') {
-      const wanted = options.code === 'all' ? ['rtl', 'playwright', 'storybook'] : [String(options.code)];
+      const VALID_CODE = ['rtl', 'playwright', 'storybook', 'all'];
+      const codeKind = String(options.code);
+      if (!VALID_CODE.includes(codeKind)) {
+        throw new Error(`Unknown --code '${codeKind}'. Use rtl | playwright | storybook | all.`);
+      }
+      const wanted = codeKind === 'all' ? ['rtl', 'playwright', 'storybook'] : [codeKind];
       const { renderRtlTest, renderPlaywrightSpec, renderStorybookStory, pascalCase } = require('../../utils/test-scaffolds');
       const { parseBddScenarios } = require('../../utils/bdd-scenario-parser');
       let scenarios = [];
       const specsDir = path.join(changeDir, 'specs');
       if (fs.existsSync(specsDir)) {
         const featureFiles = fs.readdirSync(specsDir)
-          .filter(f => /\.feature$/.test(f))
+          .filter(f => /\.(feature|md)$/.test(f))
           .map(f => path.join(specsDir, f));
         if (featureFiles.length > 0) {
           try {
@@ -102,15 +107,15 @@ class OutsideInCommand {
       }));
       const component = pascalCase(feature);
       const outputs = {
-        rtl: { file: `rtl-${feature}.test.tsx`, content: renderRtlTest(component, feature, scenarios) },
-        playwright: { file: `e2e-${feature}.spec.ts`, content: renderPlaywrightSpec(feature, feature, scenarios) },
-        storybook: { file: `${component}.stories.tsx`, content: renderStorybookStory(component) },
+        rtl: { file: `rtl-${feature}.test.tsx`, render: () => renderRtlTest(component, feature, scenarios) },
+        playwright: { file: `e2e-${feature}.spec.ts`, render: () => renderPlaywrightSpec(feature, feature, scenarios) },
+        storybook: { file: `${component}.stories.tsx`, render: () => renderStorybookStory(component) },
       };
       for (const kind of wanted) {
         const spec = outputs[kind];
         if (!spec) continue;
         const filePath = path.join(outputDir, spec.file);
-        fs.writeFileSync(filePath, spec.content, 'utf8');
+        fs.writeFileSync(filePath, spec.render(), 'utf8');
         code.push(path.relative(this.cwd, filePath).replace(/\\/g, '/'));
       }
     }

@@ -8,6 +8,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const { parseTasks } = require('./change-utils');
+const { readDeferred } = require('./deferred-work');
+const { readRulings } = require('./ruling-ledger');
+const { readChangeRigor } = require('./rigor');
+const { readInterruptions } = require('./interruption');
 
 function readIfExists(file) {
   try {
@@ -15,29 +20,6 @@ function readIfExists(file) {
   } catch {
     return null;
   }
-}
-
-function parseTasksMini(content) {
-  const lines = String(content || '').split('\n').filter(l => /^\s*- \[/.test(l));
-  const done = lines.filter(l => /^\s*- \[[xX]\]/.test(l)).length;
-  return { done, total: lines.length };
-}
-
-function parseDeferredMini(content) {
-  const lines = String(content || '').split('\n').filter(l => /^\s*-\s+\[ \]\s+#/.test(l));
-  const total = String(content || '').split('\n').filter(l => /^\s*-\s+\[#/.test(l) || /^-\s+#/.test(l)).length;
-  return { open: lines.length, total: Math.max(lines.length, total) };
-}
-
-function parseRulingsMini(content) {
-  const total = String(content || '').split('\n').filter(l => /^-\s+#\d+/.test(l)).length;
-  return { total };
-}
-
-function parseStateMini(content) {
-  const rigor = String(content || '').match(/^rigor:\s*(\w+)$/m);
-  const interruptions = String(content || '').match(/^interruptions_used:\s*(\d+)$/m);
-  return { rigor: rigor ? rigor[1] : null, interruptionsUsed: interruptions ? Number(interruptions[1]) : 0 };
 }
 
 function lastEvidenceStatus(changeDir) {
@@ -65,15 +47,16 @@ function buildDashboardData(cwd) {
     for (const entry of fs.readdirSync(changesDir, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name === 'archive') continue;
       const changeDir = path.join(changesDir, entry.name);
-      const tasks = parseTasksMini(readIfExists(path.join(changeDir, 'tasks.md')));
-      const state = parseStateMini(readIfExists(path.join(changeDir, '.state.yaml')));
+      // Canonical readers shared with the verify/archive gates — the
+      // dashboard can never disagree with them.
+      const taskList = parseTasks(path.join(changeDir, 'tasks.md')) || [];
       changes.push({
         name: entry.name,
-        tasks,
-        rigor: state.rigor,
-        interruptionsUsed: state.interruptionsUsed,
-        deferred: parseDeferredMini(readIfExists(path.join(changeDir, 'deferred-work.md'))),
-        rulings: parseRulingsMini(readIfExists(path.join(changeDir, 'rulings.md'))),
+        tasks: { done: taskList.filter(t => t.isDone).length, total: taskList.length },
+        rigor: readChangeRigor(changeDir),
+        interruptionsUsed: readInterruptions(changeDir).used,
+        deferred: readDeferred(changeDir),
+        rulings: readRulings(changeDir),
         lastVerifyStatus: lastEvidenceStatus(changeDir),
       });
     }

@@ -41,19 +41,19 @@ class UpdateCommand {
     }
 
     this.spinner.text = 'Scanning engine commands...';
-    this.report.engineCommands = await this.updateEngineCommands(targetPath, options);
+    this.report.engineCommands = await this.updateEngineCommands(root, options);
 
     this.spinner.text = 'Scanning skills...';
-    this.report.skills = await this.updateSkills(targetPath, options);
+    this.report.skills = await this.updateSkills(root, options);
 
     this.spinner.text = 'Scanning schemas...';
-    this.report.schemas = await this.updateSchemas(targetPath, options);
+    this.report.schemas = await this.updateSchemas(root, options);
 
     this.spinner.text = 'Scanning GitHub templates...';
-    this.report.githubTemplates = await this.updateGitHubTemplates(targetPath, options);
+    this.report.githubTemplates = await this.updateGitHubTemplates(root, options);
 
     this.spinner.text = 'Checking config.yaml...';
-    this.report.config = await this.updateConfig(targetPath, options);
+    this.report.config = await this.updateConfig(root, options);
 
     this.printSummary();
 

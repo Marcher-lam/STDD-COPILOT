@@ -59,8 +59,13 @@ class UiCommand {
     fs.writeFileSync(filePath, renderComponent(name, framework, tokens), 'utf8');
     const written = [filePath];
 
-    if (framework === 'react' && options.test !== false && !options.noTest) {
+    if (framework === 'react' && options.test !== false) {
       const testPath = path.join(outDir, `${name}.test.tsx`);
+      // Guard the companion test like the component: a TDD-first user may
+      // have written their failing test before scaffolding.
+      if (fs.existsSync(testPath) && !options.force) {
+        throw new Error(`${path.relative(this.cwd, testPath)} already exists. Use --force to overwrite.`);
+      }
       fs.writeFileSync(testPath, renderRtlTest(name, slug, []), 'utf8');
       written.push(testPath);
     }

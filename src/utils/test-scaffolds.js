@@ -48,7 +48,8 @@ function renderRtlTest(componentName, featureSlug, scenarios = []) {
 
   return [
     "import { render, screen } from '@testing-library/react';",
-    "import '" + componentName + "'; // TODO: fix the import path",
+    "import " + componentName + " from './" + componentName + "'; // TODO: fix the import path",
+    "import '@testing-library/jest-dom'; // provides toBeInTheDocument()",
     "",
     "// Accessibility: run axe on the rendered output in CI",
     "//   e.g. import { axe } from 'jest-axe'; expect(await axe(container)).toHaveNoViolations();",

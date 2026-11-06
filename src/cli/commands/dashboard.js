@@ -43,13 +43,21 @@ class DashboardCommand {
   serve(options = {}) {
     if (!fs.existsSync(this.outPath)) this.generate({ ...options, json: true });
     const port = Number(options.port) || 4173;
-    const html = fs.readFileSync(this.outPath, 'utf8');
     const server = http.createServer((req, res) => {
+      if (req.url !== '/' && req.url !== '/index.html') {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        return res.end('Not found');
+      }
+      // Read per-request so a regenerate-while-serving stays fresh.
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(html);
+      res.end(fs.readFileSync(this.outPath, 'utf8'));
     });
-    return new Promise(resolve => {
-      server.listen(port, () => {
+    return new Promise((resolve, reject) => {
+      server.on('error', err => reject(new Error(
+        `Cannot serve dashboard on port ${port}: ${err.code === 'EADDRINUSE' ? 'port already in use' : err.message}`
+      )));
+      // Loopback only — the dashboard carries change names and workflow state.
+      server.listen(port, '127.0.0.1', () => {
         console.log(chalk.green(`\n✓ Dashboard served at http://localhost:${port} (Ctrl+C to stop)`));
         resolve({ server, port });
       });

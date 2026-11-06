@@ -377,8 +377,12 @@ class ArchiveCommand {
     const report = [];
     if (files.length === 0) return report;
     fs.mkdirSync(mainSpecsDir, { recursive: true });
+    // Two-phase merge: compute every result first, write targets only when
+    // NO entry conflicts — the conflict-abort is then truly atomic and the
+    // "idempotent re-archive" invariant holds for every path.
+    const plannedWrites = [];
     for (const file of files) {
-      const rel = path.relative(changeSpecsDir, file);
+      const rel = path.relative(changeSpecsDir, file).replace(/\\/g, '/');
       if (/^contracts\//.test(rel) || /^api-spec\./.test(path.basename(rel))) continue;
       const target = path.join(mainSpecsDir, rel);
       fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -397,9 +401,15 @@ class ArchiveCommand {
         entry.conflicts = result.conflicts;
         // Conflicted targets stay untouched so they can be resolved manually.
       } else {
-        fs.writeFileSync(target, result.content, 'utf8');
+        plannedWrites.push({ target, content: result.content, dirs: path.dirname(target) });
       }
       report.push(entry);
+    }
+    const hasConflict = report.some(e => e.status === 'conflict');
+    if (!hasConflict) {
+      for (const write of plannedWrites) {
+        fs.writeFileSync(write.target, write.content, 'utf8');
+      }
     }
     return report;
   }
