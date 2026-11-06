@@ -2,6 +2,34 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.6] - 2026-11-06 — OCR 评审第二轮全量修复（11 high + 25 medium）
+
+### Fixed (high)
+- test-scaffolds: RTL skeleton now default-imports the component (+ jest-dom import) — previously every generated test was uncompilable
+- schema-rules: countListItems regex matched literal backslash-s (min_items always 0); specs:* glob rules fired bogus blocking findings — both fixed; non-single-file artifact ids skipped
+- pipeline: config key nesting (tdd.test_pipeline vs top-level) — wiring never activated against the shipped config
+- clarify: single-arg action form (stdd clarify questions) treated the action as a change name
+- update: bare stdd update forwarded undefined path to all five helpers (crash); root threaded through
+- browser: viewport options coerced to numbers (string defaults broke Playwright)
+- delta-spec: legacy verbatim-append idempotent on re-archive; RENAMED FROM/TO pair sequentially
+- archive: two-phase merge (write only when zero conflicts) — conflict-abort truly atomic; strict-gate honors throwOnFailure
+
+### Fixed (medium)
+- dashboard: loopback-only bind; EADDRINUSE clean error; per-request read; 404 non-root; canonical readers (parseTasks/readDeferred/readRulings/readChangeRigor/readInterruptions)
+- graph-run: cache key after workspace resolution; cache cleared on archive node; cycle detection in layering; TRANSIENT_RE narrowed to errno codes; exit-code sniffing sequential-only
+- validate: .feature skip delta checks; replace idiom (REMOVED+ADDED) passes; REMOVED FROM-side rename flagged; schema-driven repo-mode guard
+- design-reverse: multi-block findBlock (theme.colors + extend.colors); token tables 4-col backticked; CSS dedupe
+- version-check: semver prerelease symmetry; Windows npm shell; PACKAGE from package.json
+- outside-in: invalid --code rejected; .md specs included; lazy renderers
+- pipeline: per-change scoping under global dirs; placeholder_mode validated
+- spec-generator: empty-description warns, skipped array contract preserved
+- mutation: waived-by-config resolved before evidence persistence
+- interruption: YAML-quoted storage, reader unwraps
+- ui: companion test guarded; page-under-workspace targets pages/
+- ruling-ledger: CRLF collapsed
+
+Gates: premerge exit 0; 224 suites / 4412 tests; lint clean.
+
 ## [1.2.5] - 2026-11-06 — en 文档全译完成（撤销原"精简版"决策）
 
 ### Changed
