@@ -294,3 +294,8 @@ mod steps {
 - **聚焦**: 只关注变更
 - **简洁**: 减少维护
 - **可追溯**: 明确变更范围
+
+## v1.1+
+
+Scenario budget warning via sprint_spec.max_scenarios_per_feature;
+empty-description tasks are skipped instead of creating empty .feature files.

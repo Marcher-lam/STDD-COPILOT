@@ -85,3 +85,13 @@ Intelligently recommends the next step.
 - Execution logs
 - History records
 - Recommendation suggestions
+
+
+## v1.1+ Engine Options (graph run)
+
+`--rigor` · `--retry <n>` (read-only nodes; transient-classified errors
+retry anywhere) · `--node-timeout <s>` · `--sequential` · `--no-cache`.
+Layered parallel execution; checkpoints resume per change+intent+rigor;
+failures locate a re-planning decision point; history evidence recorded.
+Project intents: stdd/graph/intents.yaml. Global timeout: config
+graph.timeout.

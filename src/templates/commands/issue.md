@@ -30,3 +30,10 @@ Issue Resolution mode for TDD-based bug fix workflow. Follows the test-first app
 - Test case that reproduces the bug
 - Minimal fix implementation
 - Regression test results
+
+
+## v1.1+: Rigor & Safety
+
+`--rigor` as in ff (high severity auto-escalates to strict). Same-task
+3-strikes failures trip a circuit-breaker (architecture problem, not a
+symptom) with escalation evidence. `--change-name <name>` supported.

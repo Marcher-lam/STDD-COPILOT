@@ -226,3 +226,10 @@ confirmed_at: 2026-05-19T14:30:22.000Z
 - **迭代改进**：需求不是一次完美的
 - **反馈循环**：从确认失败中学习
 - **质量控制**：不完美的需求不应进入实施
+
+## v1.1+ Risk-Triggered Mode
+
+With hitl.mode: risk-triggered the gate decides: certainty >= auto threshold
+and no irreversible signal -> auto-approve (decision persisted); otherwise
+pending-human with exact reasons; `--skip` is the explicit human override;
+interruption budget tracked.

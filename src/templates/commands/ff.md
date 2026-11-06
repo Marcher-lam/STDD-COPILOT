@@ -63,3 +63,11 @@ Stop before apply (await confirmation)
 ## Related Commands
 - `/stdd:turbo` - Full automation including implementation
 - `/stdd:apply` - Start implementation
+
+
+## v1.1+: Change-Level Rigor
+
+`stdd ff <desc> --rigor light|standard|strict` — recorded on the change
+(.state.yaml); irreversible wording (migrate/drop table/payment/breaking
+change/public API) auto-escalates to strict. verify/archive honor the level.
+Also: adaptive task budgets (planning.max_tasks) and an interruption ledger.

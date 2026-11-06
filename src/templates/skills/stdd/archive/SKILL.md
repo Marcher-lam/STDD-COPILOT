@@ -258,3 +258,9 @@ stdd/
 - **审计需求**：合规性和问题调查
 - **知识复用**：未来类似变更参考
 - **完整性**：不丢失任何上下文
+
+## v1.1+ Gates
+
+Strict pre-archive structure gate; `--skip-strict` escape; retrospective
+verdict (accepted / accepted-with-open-items / rejected) in summary.md;
+open deferred-work items carried into the archive with a warning.

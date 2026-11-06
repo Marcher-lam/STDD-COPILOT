@@ -49,7 +49,7 @@
 | README 引擎数 "24 种" | ✅ 已修正（2026-11-06） | 中英 README 统一为 22（与 engines.yaml/ARCHITECTURE 一致） |
 | 并行层 exitCode 归因 | ✅ 已解决（2026-11-06 v1.1.2） | verify/archive 在被编排时接收 `throwOnFailure`（graph run 注入）——失败以异常精确归属本节点，消除并行 best-effort 误归因 |
 | test:benchmark | ✅ 已验证（2026-11-06） | 全部基准通过（Graph Compile 0.4ms / Constitution 13.9ms 等，结果入 benchmark-results.json） |
-| Docker 构建 | 🔧 本机受限 | Docker CLI 29.9.2 存在但 daemon 未运行，无法本机验证 build/up；Dockerfile/compose 未变更，维持"按 INSTALL.md 在有 daemon 的环境验证" |
+| Docker 构建 | ✅ 已验证（2026-11-06 v1.2.4） | daemon 启动后 build 成功；容器内 --version / doctor / init / ff / design reverse 全链冒烟通过。修复两个真实 Dockerfile bug：node:20-alpine 上 gid 1000 已被占用导致 addgroup 失败（改为已存在则复用）；LABEL 版本 1.0.0 → 1.2.4 |
 | graph history 联动 | ✅ 已实现（2026-11-06 v1.1.2） | graph run 成功/失败均写 evidence（`graph-run-*.json` 入 change evidence 目录），`stdd graph history` 即刻可见 |
 
 ## 决策标注（2026-11-06 v1.2.1 全量修复轮）

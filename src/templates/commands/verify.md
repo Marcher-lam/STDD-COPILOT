@@ -33,3 +33,12 @@ Validates that the implementation is consistent with the specifications. Checks 
 - Verification report with pass/fail status per dimension
 - List of inconsistencies (if any)
 - Auto-fix diff (with `--fix` flag)
+
+
+## v1.1+ Gates & Ledgers
+
+- RED-evidence gate: TDD-phase tasks that reached GREEN without a recorded
+  RED pass fail verification (anti-fake-green).
+- `--defer "<finding>"` / `--resolve <n>`: deferred-work ledger (open items
+  block a clean summary and are carried into the archive).
+- `--no-lint`: explicit escape from a strict change's lint default.

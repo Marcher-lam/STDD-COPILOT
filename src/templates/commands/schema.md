@@ -24,3 +24,7 @@ Generates JSON Schema and Zod type validation with custom artifact DAG workflow 
 - JSON Schema
 - Zod validators
 - Type definitions
+
+
+## v1.1+: `validate` subcommand supports strict delta structure checks
+(see /stdd:validate --strict and --schema-driven).

@@ -28,3 +28,11 @@ Transform specifications into technical design documents with architecture decis
 - Implementation plan
 - Risk assessment
 - Tech stack documentation
+
+
+## v1.2+: Reverse-Engineering Real Sources
+
+`stdd design reverse [--force] [--workspace <ws>]` derives DESIGN.md from
+the project's REAL design sources instead of a preset: Tailwind config
+tokens (text-parsed — user code is never executed), CSS custom properties,
+and component-library dependencies — every token carries a Source annotation.

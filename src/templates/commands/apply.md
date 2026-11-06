@@ -49,3 +49,12 @@ If a task fails 3 consecutive times, the fuse triggers and manual intervention i
 - Implementation code files
 - Test files
 - `apply.log` with execution records
+
+
+## v1.1+ Evidence & Safety
+
+- First apply records `baseline_commit` into .state.yaml (review-by-diff).
+- `--ruling "<decision> — <reason> — <cost if wrong>"` records execution
+  rulings to rulings.md (fed back into later plans).
+- 3 consecutive failures on one task = circuit-breaker: stop patching,
+  re-plan or delegate with the escalation evidence.

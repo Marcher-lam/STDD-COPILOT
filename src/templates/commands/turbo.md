@@ -31,3 +31,6 @@ One-click serial execution from requirement through task breakdown of the pre-im
   - `specs/`
   - `design.md`
   - `tasks.md`
+
+
+## v1.1+: `--rigor <level>` is recorded on the created change (see ff).

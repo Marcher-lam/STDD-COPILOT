@@ -196,3 +196,9 @@ stdd plan <change-id> --workspace packages/api
 - **合理**: 不太大不太小
 - **可追踪**: 容易跟踪进度
 - **完成感**: 阶段性完成
+
+## v1.1+ Task Content
+
+Tasks derive from the proposal's In-Scope items (scope-driven, not a fixed
+template); adaptive budget via planning.max_tasks; Previous Change
+Intelligence feeds open deferred items and recent rulings back in.

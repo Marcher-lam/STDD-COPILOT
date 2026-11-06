@@ -24,3 +24,9 @@ Updates STDD Copilot template files to the latest version.
 ## Output
 - Update log
 - Changed files list
+
+
+## v1.2+: `--check-version [--json]`
+
+Checks npm for a newer published version (offline degrades gracefully —
+never hard-fails). Bare `stdd update` operates on the cwd.

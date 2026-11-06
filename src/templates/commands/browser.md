@@ -26,3 +26,14 @@ Built-in browser automation using Playwright for E2E testing, screenshots, and p
 - Screenshots (PNG)
 - Inspection results (JSON)
 - Diagnostic reports
+
+
+## v1.2+: Visual Regression Gate
+
+```
+stdd browser baseline <url> --name home
+stdd browser diff <url> --name home --threshold 0.01
+stdd browser diff <url> --name home --allow-changed
+```
+Strict hash by default; --threshold uses a zero-dependency PNG pixel diff
+(node zlib). Diffs archive evidence under stdd/evidence/visual/diffs/.

@@ -2,6 +2,15 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.4] - 2026-11-06 — 第 6 轮：模板真全量同步 + Docker 端到端验证
+
+### Fixed
+- Template sync actually completed: the round-4 batch landed only 4 of 13 command templates (a script bug) — this round re-ran the full set with per-section idempotency markers; a registry-vs-template rescan now reports ALL COMMAND TEMPLATES SYNCED (ff/issue/turbo/verify/apply/archive/design/browser/graph/update/schema + 4 more skills: archive/plan/confirm/spec).
+- Dockerfile: `addgroup -g 1000` failed on node:20-alpine (gid already in use) — now reuses the existing group when present; image LABEL version updated from stale 1.0.0.
+
+### Verified
+- Docker end-to-end: daemon started, image built, container smoke covers --version (1.2.3), doctor, init into a mounted workspace, ff with the certainty nudge, and design reverse's no-sources guidance — the full CLI works inside the published image.
+
 ## [1.2.3] - 2026-11-06 — 第 4 轮审计全清：配置段接线/诚实化、update 联网检查、resume 语义
 
 ### Wired (previously dead config sections)

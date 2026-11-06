@@ -43,3 +43,12 @@ Completes and archives a change, merging delta specs into main specs. The change
 - Updated main specs with merged delta changes
 - `stdd/changes/archive/YYYY-MM-DD-{change-id}/` with all artifacts
 - `archive.md` summary document
+
+
+## v1.1+ Gates
+
+Pre-archive strict structure gate (scenario completeness, duplicate headers)
+runs BEFORE any spec write; `--skip-strict` escapes. Delta conflicts abort
+with spec-merge-report.json. Retrospective verdict (accepted /
+accepted-with-open-items / rejected) lands in summary.md. Open deferred-work
+items are carried into the archive with a warning.

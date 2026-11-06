@@ -35,14 +35,14 @@ FROM node:20-alpine
 
 LABEL org.opencontainers.image.title="STDD Copilot"
 LABEL org.opencontainers.image.description="Specification & Test-Driven Development Framework"
-LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.version="1.2.4"
 LABEL org.opencontainers.image.licenses="MIT"
 
 WORKDIR /workspace
 
-# Create non-root user
-RUN addgroup -g 1000 stdd && \
-    adduser -u 1000 -G stdd -s /bin/sh -D stdd
+# Create non-root user (gid 1000 may already exist on node:20-alpine — use it if so)
+RUN addgroup -g 1000 stdd 2>/dev/null || addgroup stdd; \
+    adduser -u 1000 -G stdd -s /bin/sh -D stdd 2>/dev/null || adduser -G stdd -s /bin/sh -D stdd
 
 # Copy from builder
 COPY --from=builder /app /app
