@@ -1,6 +1,6 @@
 # 已知缺口（受管清单）
 
-> Version: 1.2 | Last Updated: 2026-11-06
+> Version: 1.3 | Last Updated: 2026-11-06
 >
 > 交付门槛（premerge/smoke）全绿 ≠ 无缺口。本清单受管所有"声明未对齐 / 深度不足 / 范围未做"的项，避免散落在对话中。每项含实证与处置。
 
@@ -24,7 +24,7 @@
 | 同层并行 | ✅ 已实现（2026-11-06） | Kahn 分层 + max_parallel 限流 + `--sequential` 逃生口；per-node options 快照防竞态 |
 | 项目自定义 intent | ✅ 已实现（2026-11-06） | `stdd/graph/intents.yaml` 增/覆盖 intent 路径，坏文件容错 |
 | 节点级超时 | ✅ 已实现（2026-11-06 v1.1.2） | `graph run --node-timeout <seconds>`：超时节点失败并标 `timedOut`，不重试；默认关闭 |
-| heterogeneous-adapter 强制异构审查 | 📋 | Tier 链存在；"审查必须异构引擎"仍是协议级（worksheet 字段），引擎调度未强制 |
+| 异构审查 | ✅ 引擎侧排除 + 协议级（2026-11-06 v1.2.1） | `roles review --triage --implemented-by <engine>` 动态从建议中排除实现引擎；调度层"强制拒绝"不适用——STDD 不调度审查者（人/AI 执行），协议层强制 |
 
 ## 三、功能深度
 
@@ -40,7 +40,7 @@
 | 项 | 状态 | 说明 |
 |---|---|---|
 | en 文档 | ✅ 已补齐（2026-11-06） | en/cli-guide v1.1 选项节 + en/framework-benchmark.md + en/model-strength-adaptation.md（精简英文版，指回中文权威版） |
-| fix.md 前端缺口表 | 📋 | Web UI Dashboard（P1）/ 视觉回归闭环（P1）/ DESIGN.md 反推（P2）/ UI 生成（P2）/ 前端测试闭环（P2）——整块未动 |
+| fix.md 前端缺口表 | ✅ 已落地（2026-11-06 v1.2.0） | design reverse / browser baseline/diff / outside-in --code / ui generate / dashboard 五项全部实现（详见第五节） |
 
 ## 补充实证（2026-11-06 复查新增）
 
@@ -51,6 +51,17 @@
 | test:benchmark | ✅ 已验证（2026-11-06） | 全部基准通过（Graph Compile 0.4ms / Constitution 13.9ms 等，结果入 benchmark-results.json） |
 | Docker 构建 | 🔧 本机受限 | Docker CLI 29.9.2 存在但 daemon 未运行，无法本机验证 build/up；Dockerfile/compose 未变更，维持"按 INSTALL.md 在有 daemon 的环境验证" |
 | graph history 联动 | ✅ 已实现（2026-11-06 v1.1.2） | graph run 成功/失败均写 evidence（`graph-run-*.json` 入 change evidence 目录），`stdd graph history` 即刻可见 |
+
+## 决策标注（2026-11-06 v1.2.1 全量修复轮）
+
+| 项 | 决策 | 理由 |
+|---|---|---|
+| outside-in `--code` 骨架的编译验证 | ⛔ 不在本仓库验证 | 骨架依赖（@testing-library 等）属**用户项目**的依赖——在 STDD 仓库装这些依赖验证语义错位；骨架正确性由纯函数测试 + 模板静态性保证 |
+| certainty 自动评估 | ⛔ 设计边界 | 启发式自评会有循环风险（系统给自己打高分喂给 confirm 门）；评估本体保持 AI/人工职责（已有 ff nudge 提示） |
+| en 文档全译 | 🔧 精简版定位 | en 精简版（~30 行摘要 + 指回权威中文版）已覆盖入口；全译的维护成本超过收益 |
+| 视觉回归像素阈值 | ✅ 已实现（v1.2.1） | 零依赖 PNG 解码器（node zlib，RGBA/RGB/调色板 + 5 种行过滤器）+ `--threshold <ratio>` 像素漂移容忍 |
+| dashboard --serve / ui vue/html / tailwind.config.ts | ✅ 已补测试（v1.2.1） | serve 真实 http 起停断言；vue/html CLI 集成；TS 配置语法解析 |
+| roles 异构排除 | ✅ 已实现（v1.2.1） | `--triage --implemented-by <engine>` 从建议中动态排除实现引擎 |
 
 ## 五、显式不采纳
 

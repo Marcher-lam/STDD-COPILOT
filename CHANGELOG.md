@@ -2,6 +2,17 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.1] - 2026-11-06 — 全量修复：像素阈值、验证盲区补测、异构排除
+
+### Added
+- Zero-dependency PNG pixel diff (src/utils/png-diff.js): decodes 8-bit non-interlaced PNGs (RGBA/RGB/palette, all five row filters) with only node's built-in zlib, enabling `stdd browser diff --threshold <ratio>` — tolerate up to N% pixel drift instead of strict hash equality; non-decodable buffers and threshold 0 fall back to the hash gate. Verified against genuine PNG byte streams constructed in-test (deflate + CRC32).
+- `stdd roles review --triage --implemented-by <engine>`: the triage suggestion now dynamically excludes the implementing engine (engine-diversity rule made actionable).
+
+### Fixed / Verified
+- known-gaps.md self-contradiction (the frontend row still said "not started" after v1.2.0 landed them).
+- Verification blind spots closed: dashboard --serve now has a real HTTP start/stop assertion; ui generate vue/html variants have CLI integration tests (plus a page-action test); design reverse parses TypeScript config syntax (export default / typed) at both the unit and CLI level (tailwind.config.ts discovery).
+- Decision annotations added to known-gaps for the three items intentionally not done here (skeleton compilation verification, certainty auto-assessment, full en translation) with reasons.
+
 ## [1.2.0] - 2026-11-06 — 前端五项全部落地
 
 ### Added (the frontend five)

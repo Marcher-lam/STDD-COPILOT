@@ -82,7 +82,7 @@ class BrowserCommand {
     const name = options.name || path.basename(url || '') || 'page';
     const { compareWithBaseline, archiveDiff, saveBaseline } = require('../../utils/visual-regression');
 
-    const pre = compareWithBaseline(cwd, name, Buffer.alloc(0));
+    const pre = compareWithBaseline(cwd, name, Buffer.alloc(0), { threshold: options.threshold });
     if (pre.status === 'no-baseline') {
       console.log(chalk.yellow(`No baseline named "${name}". Capture one first:`));
       console.log(chalk.cyan(`  stdd browser baseline <url> --name ${name}`));
@@ -92,7 +92,7 @@ class BrowserCommand {
 
     try {
       const capture = await this.captureBuffer(url, options);
-      const comparison = compareWithBaseline(cwd, name, capture.buffer);
+      const comparison = compareWithBaseline(cwd, name, capture.buffer, { threshold: options.threshold });
       if (comparison.status === 'identical') {
         console.log(chalk.green(`✓ Visual gate passed: "${name}" matches the baseline.`));
         return comparison;

@@ -196,6 +196,7 @@ const commandRegistry = [
     options: [
       { flags: '--roles <roles>', description: 'Comma-separated role ids for party mode' },
       { flags: '--triage', description: 'Triage mode: findings stay untriaged with a verdict worksheet' },
+      { flags: '--implemented-by <engine>', description: 'Engine that implemented the code; the triage suggestion excludes it' },
       { flags: '--json', description: 'JSON output' },
     ],
     action: 'RolesCommand',
@@ -623,6 +624,7 @@ const commandRegistry = [
         options: [
           { flags: '--name <name>', description: 'Baseline name (defaults to the URL basename)' },
           { flags: '--allow-changed', description: 'Accept a detected change and update the baseline' },
+          { flags: '--threshold <ratio>', description: 'Pixel-drift tolerance 0-1 (e.g. 0.01 = tolerate 1% changed pixels); 0 = strict hash' },
           { flags: '--width <width>', description: 'Viewport width', default: '1280' },
           { flags: '--height <height>', description: 'Viewport height', default: '800' },
         ],

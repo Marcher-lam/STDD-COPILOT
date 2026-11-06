@@ -54,10 +54,15 @@ function saveBaseline(cwd, name, buffer, meta = {}) {
 
 /**
  * Compare a fresh capture against the named baseline.
+ *
+ * threshold > 0 enables pixel comparison (zero-dependency PNG decode):
+ * a changed-pixel ratio <= threshold counts as identical. Non-decodable
+ * buffers and threshold 0 fall back to strict hash equality.
  * @returns {{status: 'no-baseline'|'identical'|'changed', name: string,
- *            baselineHash: string|null, currentHash: string}}
+ *            baselineHash: string|null, currentHash: string,
+ *            ratio?: number, mode?: 'pixels'|'hash'}}
  */
-function compareWithBaseline(cwd, name, buffer) {
+function compareWithBaseline(cwd, name, buffer, options = {}) {
   const safe = safeName(name);
   const metaPath = path.join(baselinesDir(cwd), `${safe}.meta.json`);
   const currentHash = hashBuffer(buffer);
@@ -65,11 +70,31 @@ function compareWithBaseline(cwd, name, buffer) {
     return { status: 'no-baseline', name: safe, baselineHash: null, currentHash };
   }
   const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+
+  const threshold = Number(options.threshold) || 0;
+  if (threshold > 0) {
+    const { pixelRatio } = require('./png-diff');
+    const baselinePath = path.join(baselinesDir(cwd), `${safe}.png`);
+    const result = pixelRatio(fs.readFileSync(baselinePath), buffer);
+    if (result && !result.sizeMismatch) {
+      return {
+        status: result.ratio <= threshold ? 'identical' : 'changed',
+        name: safe,
+        baselineHash: meta.hash,
+        currentHash,
+        ratio: result.ratio,
+        mode: 'pixels',
+      };
+    }
+    // Non-PNG or size mismatch: fall through to the hash gate (a size
+    // change is always a change).
+  }
   return {
     status: meta.hash === currentHash ? 'identical' : 'changed',
     name: safe,
     baselineHash: meta.hash,
     currentHash,
+    mode: 'hash',
   };
 }
 

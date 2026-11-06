@@ -99,6 +99,32 @@ describe('stdd dashboard (CLI)', () => {
     expect(result.stdout).toMatch(/dashboard\.html/);
   });
 
+  it('serve responds with the generated dashboard over http', async () => {
+    const http = require('http');
+    const { DashboardCommand } = require('../src/cli/commands/dashboard');
+    const cwd = createProject('dash-serve');
+    const changeDir = path.join(cwd, 'stdd', 'changes', 'feat');
+    fs.mkdirSync(changeDir, { recursive: true });
+    fs.writeFileSync(path.join(changeDir, 'tasks.md'), '- [x] A\n', 'utf8');
+
+    const cmd = new DashboardCommand(cwd);
+    const { server } = await cmd.serve({ port: 0 });
+    const port = server.address().port;
+
+    const body = await new Promise((resolve, reject) => {
+      http.get(`http://127.0.0.1:${port}/`, res => {
+        let data = '';
+        res.on('data', d => { data += d; });
+        res.on('end', () => resolve({ code: res.statusCode, data }));
+      }).on('error', reject);
+    });
+
+    expect(body.code).toBe(200);
+    expect(body.data).toContain('STDD Dashboard');
+    expect(body.data).toContain('feat');
+    server.close();
+  });
+
   it('generate is the default action', () => {
     const cwd = createProject('dash-default');
     fs.mkdirSync(path.join(cwd, 'stdd', 'changes'), { recursive: true });

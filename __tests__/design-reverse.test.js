@@ -88,6 +88,24 @@ describe('token extractors (pure functions)', () => {
     );
   });
 
+  it('parses TypeScript config syntax (export default + typed theme)', () => {
+    const ts = [
+      'import type { Config } from "tailwindcss";',
+      'const config: Config = {',
+      '  theme: {',
+      '    extend: {',
+      '      colors: {',
+      "        accent: '#7c3aed',",
+      '      },',
+      '    },',
+      '  },',
+      '};',
+      'export default config;',
+    ].join('\n');
+    const tokens = extractTailwindTokens(ts);
+    expect(tokens.colors).toEqual([{ token: 'accent', value: '#7c3aed' }]);
+  });
+
   it('extracts CSS custom properties from :root blocks', () => {
     const css = [
       ':root {',
@@ -156,6 +174,17 @@ describe('stdd design reverse (CLI)', () => {
     const design = fs.readFileSync(path.join(projectPath, 'DESIGN.md'), 'utf8');
     expect(design).toContain('#123456');
     expect(design).toMatch(/Source/i);
+  });
+
+  it('discovers tailwind.config.ts on disk', () => {
+    const projectPath = createProject('rev-ts', {
+      'tailwind.config.ts': 'export default { theme: { extend: { colors: { ink: "#101828" } } } };',
+    });
+
+    const result = runCli(['design', 'reverse'], projectPath);
+
+    expect(result.status).toBe(0);
+    expect(fs.readFileSync(path.join(projectPath, 'DESIGN.md'), 'utf8')).toContain('#101828');
   });
 
   it('refuses to report success when no sources exist (guides to presets)', () => {

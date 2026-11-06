@@ -73,6 +73,25 @@ describe('stdd ui generate (CLI)', () => {
     expect(test).toContain("@testing-library/react");
   });
 
+  it('generates vue and html variants via CLI', () => {
+    const vueProject = createProject('ui-vue');
+    const vue = runCli(['ui', 'generate', 'NavBar', '--framework', 'vue'], vueProject);
+    expect(vue.status).toBe(0);
+    expect(fs.readFileSync(path.join(vueProject, 'src', 'components', 'NavBar.vue'), 'utf8')).toMatch(/<template>/);
+
+    const htmlProject = createProject('ui-html');
+    const html = runCli(['ui', 'generate', 'NavBar', '--framework', 'html'], htmlProject);
+    expect(html.status).toBe(0);
+    expect(fs.readFileSync(path.join(htmlProject, 'src', 'components', 'NavBar.html'), 'utf8')).toMatch(/<section/);
+  });
+
+  it('page action targets src/pages', () => {
+    const projectPath = createProject('ui-page');
+    const result = runCli(['ui', 'page', 'Settings'], projectPath);
+    expect(result.status).toBe(0);
+    expect(fs.existsSync(path.join(projectPath, 'src', 'pages', 'Settings.tsx'))).toBe(true);
+  });
+
   it('refuses to overwrite an existing component without --force', () => {
     const projectPath = createProject('ui-force', {
       'src/components/ProfileCard.tsx': 'export const existing = true;\n',
