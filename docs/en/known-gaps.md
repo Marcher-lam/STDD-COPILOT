@@ -33,3 +33,9 @@ Daemon started; image built; container smoke covered --version, doctor, init, ff
 ## 7. Explicitly not adopted
 
 memlog (three-log mapping) · git worktrees (executor layer) · three-path ceremony scaling (equivalent flows exist) · Stores (out of scope) · deprecated config keys kept annotated for compatibility. Decision items: skeleton compilation verification (user-project dependency semantics) · certainty auto-assessment (self-scoring loop risk). en full translation is DONE (this document is part of it) — see the Chinese doc for full rationale on the remaining two.
+
+## v1.2.6 — OCR review round 2
+- All 11 high + 25 medium findings fixed (RTL scaffold compilation / schema-rules regexes /
+  atomic archive / dashboard security etc.)
+- Known remainder: --node-timeout remains best-effort for synchronous spawn paths (full
+  async + child SIGTERM is a follow-up)

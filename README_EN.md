@@ -8,7 +8,7 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org/)
 [![npm](https://img.shields.io/npm/v/@marcher-lam/stdd-copilot)](https://www.npmjs.com/package/@marcher-lam/stdd-copilot)
 [![Tests](https://img.shields.io/badge/tests-4412%2F4412%20passing-brightgreen.svg)](CONTRIBUTING.md)
-[![Coverage](https://img.shields.io/badge/coverage-84.1%25%20stmts%20%7C%2076.55%25%20branch-green.svg)](CONTRIBUTING.md)
+[![Coverage](https://img.shields.io/badge/coverage-83.9%25%20stmts%20%7C%2076.00%25%20branch-green.svg)](CONTRIBUTING.md)
 
 [简体中文](./README.md) · [English](./README_EN.md)
 
@@ -46,8 +46,8 @@
 | Command Templates | 80 (`/stdd:*` slash commands) |
 | Skill Templates | 47 |
 | Test Suites | **192** suites, **4,172** tests, 100% passing |
-| Statement Coverage | **84.1%** |
-| Branch Coverage | **76.55%** |
+| Statement Coverage | **83.9%** |
+| Branch Coverage | **76.00%** |
 | Supported AI Engines | 24 (Claude Code, Cursor, Windsurf, etc. across 4 tiers) |
 | Code Generation Targets | TypeScript/JS, Python, Java, Go, Rust, C#, PHP |
 

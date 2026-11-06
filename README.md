@@ -8,7 +8,7 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-green.svg)](https://nodejs.org/)
 [![npm](https://img.shields.io/npm/v/@marcher-lam/stdd-copilot)](https://www.npmjs.com/package/@marcher-lam/stdd-copilot)
 [![Tests](https://img.shields.io/badge/tests-4412%2F4412%20passing-brightgreen.svg)](CONTRIBUTING.md)
-[![Coverage](https://img.shields.io/badge/coverage-84.1%25%20stmts%20%7C%2076.55%25%20branch-green.svg)](CONTRIBUTING.md)
+[![Coverage](https://img.shields.io/badge/coverage-83.9%25%20stmts%20%7C%2076.00%25%20branch-green.svg)](CONTRIBUTING.md)
 
 [简体中文](./README.md) · [English](./README_EN.md)
 
@@ -46,8 +46,8 @@
 | 命令模板 | 80 个（`/stdd:*` 斜杠命令） |
 | Skill 模板 | 47 个 |
 | 测试套件 | **224** 套，**4412** 条用例，100% 通过 |
-| 语句覆盖率 | **84.1%** |
-| 分支覆盖率 | **76.55%** |
+| 语句覆盖率 | **83.9%** |
+| 分支覆盖率 | **76.00%** |
 | 支持的 AI 引擎 | 22 种（Claude Code、Cursor、Windsurf 等 4 层兼容） |
 | 代码生成语言 | TypeScript/JS、Python、Java、Go、Rust、C#、PHP |
 

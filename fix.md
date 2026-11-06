@@ -2,6 +2,13 @@
 
 > Last Updated: 2026-11-05 | Round 38 完成（v1.1.0）
 
+### Round 42 — v1.2.6：OCR 评审第二轮全量修复（2026-11-06）
+
+11 high（RTL 骨架 import / schema-rules 双正则 / pipeline 嵌套 / clarify 单参 / update
+root / viewport 数值 / delta-spec 幂等+配对 / archive 原子化+throwOnFailure）+ 25 medium
+（dashboard 安全绑定+权威 reader / graph-run cache 生命周期+环检测+TRANSIENT 收窄 /
+validate .feature+替换惯用法 / design-reverse 多块+表对齐 / version-check semver+Windows 等）。
+
 ### Round 40-41 — v1.2.2~v1.2.5（2026-11-06）
 
 模板真全量同步（P0 轮脚本 bug 修复后复扫 ALL SYNCED）；schema DSL 执行器化（--schema-driven）；
@@ -21,7 +28,7 @@ ui generate / dashboard，命令 75→77）；v1.2.1 全量修复（零依赖 PN
 ```
 Test Suites: 214 passed
 Tests:       4412 passed (100%)
-Coverage:    84.1% lines | 76.55% branch（premerge 阈值全过）
+Coverage:    83.9% lines | 76.00% branch（premerge 阈值全过）
 ```
 
 ### Round 35 — 框架对标（superpowers + BMAD + OpenSpec，18 项落地）

@@ -78,3 +78,7 @@ memlog（三层日志映射替代）· git worktrees（执行器层职责）· �
 - progress --resume 语义 → ✅ 明示“仅上下文恢复”；执行续跑归 graph run
 - stdd update 版本检查 → ✅ --check-version 联网 + 离线优雅降级（此前从未联网）
 - schema.yaml DSL 边界 → ✅ 注明执行器分工
+
+## 2026-11-06 v1.2.6：OCR 评审第二轮
+- 11 high + 25 medium 全部修复（RTL 骨架编译 / schema-rules 正则 / archive 原子化 / dashboard 安全等）
+- 已知残留：--node-timeout 对同步 spawn 路径仍是 best-effort（完整异步化 + 子进程 SIGTERM 为后续项）
