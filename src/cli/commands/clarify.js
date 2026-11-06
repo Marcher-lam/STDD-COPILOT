@@ -91,7 +91,12 @@ class ClarifyCommand {
     };
   }
 
-  async execute(changeName, options = {}) {
+  async execute(changeName, options = {}, action = null) {
+    // Documented actions: 'questions' lists without writing, 'edge-cases' /
+    // 'constraints' focus on a single area (see the command helpText).
+    const ACTIONS = { 'questions': 'list', 'edge-cases': 'edge_cases', 'constraints': 'implicit_constraints' };
+    const mode = action && ACTIONS[action] ? ACTIONS[action] : null;
+
     const changesDir = path.join(process.cwd(), 'stdd', 'changes');
     const changeDir = changeName
       ? path.join(changesDir, changeName)
@@ -110,6 +115,19 @@ class ClarifyCommand {
 
     const proposal = await fs.readFile(proposalPath, 'utf-8');
     const clarification = await this.generateClarification(proposal, options);
+
+    if (mode === 'list') {
+      this.printClarification(clarification);
+      console.log(chalk.dim('(questions listed only — nothing written; run `stdd clarify <change>` to record)'));
+      return clarification;
+    }
+    if (mode) {
+      const filtered = { timestamp: clarification.timestamp, mode: `focus:${action}`, areas: {} };
+      filtered.areas[mode] = clarification.areas[mode];
+      this.printClarification(filtered);
+      console.log(chalk.dim(`(focus:${action} — run \`stdd clarify <change>\` for the full conversational set)`));
+      return filtered;
+    }
 
     if (options.dryRun) {
       console.log(chalk.yellow('Dry run - clarification not saved'));

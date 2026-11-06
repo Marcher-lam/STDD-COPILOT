@@ -113,6 +113,31 @@ describe('plan adaptive task budget', () => {
     expect((tasks.match(/- \[ \] \*\*TASK-/g) || []).length).toBe(3);
   });
 
+  it('derives task content from the proposal scope (not a fixed template)', () => {
+    const { projectPath, changeDir } = createTempProject('plan-content', [
+      '# Proposal: Billing exports',
+      '',
+      '## description',
+      'Add CSV and PDF exports for billing.',
+      '',
+      '## scope',
+      '- CSV export endpoint',
+      '- PDF invoice renderer',
+      '- export permission check',
+      '',
+      '## success_criteria',
+      '- exports downloadable',
+    ].join('\n'));
+
+    const result = runCli(['plan', 'demo'], projectPath);
+
+    expect(result.status).toBe(0);
+    const tasks = fs.readFileSync(path.join(changeDir, 'tasks.md'), 'utf8');
+    expect(tasks).toContain('CSV export endpoint');
+    expect(tasks).toContain('PDF invoice renderer');
+    expect(tasks).toContain('export permission check');
+  });
+
   it('falls back to auto when config has no planning section', () => {
     const { projectPath } = createTempProject('budget-noconf', SMALL_PROPOSAL);
     fs.writeFileSync(path.join(projectPath, 'stdd', 'config.yaml'),

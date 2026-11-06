@@ -13,6 +13,33 @@ class DynamicGraphRouter {
       'repair': ['stdd-fix-packet', 'stdd-apply', 'stdd-verify'],
       'research': ['stdd-explore', 'stdd-brainstorm', 'stdd-final-doc'],
     };
+    this._mergeProjectIntents();
+  }
+
+  /**
+   * Merge project-defined intents from <cwd>/stdd/graph/intents.yaml.
+   * Projects can add pathways or override built-ins of the same name:
+   *   intents:
+   *     release:
+   *       description: release gate
+   *       path: [stdd-verify, stdd-archive, stdd-commit]
+   * A malformed file is ignored (built-ins keep working).
+   */
+  _mergeProjectIntents() {
+    try {
+      const intentsPath = path.join(process.cwd(), 'stdd', 'graph', 'intents.yaml');
+      if (!fs.existsSync(intentsPath)) return;
+      const spec = yaml.load(fs.readFileSync(intentsPath, 'utf8')) || {};
+      const intents = spec.intents || {};
+      for (const [name, def] of Object.entries(intents)) {
+        const pathway = Array.isArray(def) ? def : def && def.path;
+        if (Array.isArray(pathway) && pathway.length > 0 && pathway.every(n => typeof n === 'string')) {
+          this.intentPathways[name] = pathway;
+        }
+      }
+    } catch (e) {
+      // Malformed intents.yaml: ignore, built-ins still work.
+    }
   }
 
   loadGraph(configPath) {

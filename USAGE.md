@@ -626,7 +626,7 @@ stdd product-proposal --output my-report.md  # 自定义输出路径
 
 1. **首次使用先初始化** — 运行 `/stdd:init` 创建工作区
 2. **简单需求用 ff** — 明确需求直接 `/stdd:ff` 一键完成
-3. **一键全流程用 turbo** — `/stdd:turbo` 自动完成所有阶段
+3. **一键生成全工件用 turbo** — `/stdd:turbo` 一次产出提案+规格，随后 apply → verify → archive
 4. **复杂需求逐步生成** — 使用 `/stdd:continue` 允许中间干预
 5. **启用守护** — 运行 `/stdd:guard on` 强制 TDD 纪律
 6. **小步快跑** — 每个变更控制在 5~6 个任务

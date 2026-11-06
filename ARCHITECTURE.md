@@ -212,6 +212,12 @@ graph TB
 
 **幂等断点缓存**：graph run 已接线 `graph-cache.js`——成功节点按 `change+intent+rigor` 指纹缓存于**项目内** `stdd/graph/cache/`（不再写入包根，避免跨项目污染）；同一命令重跑自动跳过已成功节点（断点续跑），`--no-cache` 全量重执行。
 
+**分层并行执行**：graph run 按 Kahn 拓扑分层调度——同层互不依赖的节点并发执行（限流 `graph.max_parallel`，默认 4），`--sequential` 强制线性。并发下 rigor 选项注入采用 per-node 快照，杜绝共享 options 竞态。
+
+**项目自定义 intent**：`stdd/graph/intents.yaml` 可新增或覆盖 intent 路径（`intents.<name>.path: [节点链]`），坏文件自动容错，内置 5 条 intent 不受影响。
+
+**重试安全与错误传播**：`--retry` 仅对只读节点（verify/fix-packet/type-check/explore/brainstorm）生效；副作用节点（propose/spec/apply/issue/archive/commit）确定性失败时一次即停，不盲目重跑。节点失败经 `error-propagator` 反向定位回炉决策点（策划类节点），写入失败条目与控制台指引。
+
 底层运行时能力由 `graph-cache.js`、`evidence-capture.js`、`error-propagator.js`、`heterogeneous-adapter.js` 和 `parallel-executor.js` 组合提供：缓存、证据采集、失败传播、异构引擎适配和 DAG 分层并行执行。真实编码节点仍需要外部 AI 工具或 Skill 调用完成。
 
 ### 2. 核心 Skills (5 阶段工作流)

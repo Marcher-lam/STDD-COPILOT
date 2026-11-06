@@ -204,7 +204,7 @@ class PlanCommand {
     const requirements = this.extractRequirements(proposal);
     const tasks = [];
 
-    const taskTemplates = this.getTaskTemplates(requirements, techStack);
+    const taskTemplates = this.getTaskTemplates(requirements, techStack, proposal);
 
     const limit = Math.min(taskTemplates.length, budget);
     if (taskTemplates.length > limit) {
@@ -255,47 +255,85 @@ class PlanCommand {
     return null;
   }
 
-  getTaskTemplates(requirements, techStack) {
-    const templates = [
-      {
-        title: 'Set up test infrastructure',
-        description: 'Configure test framework, test environment, and testing utilities',
+  getTaskTemplates(requirements, techStack, proposal = '') {
+    // Derive implementation tasks from the proposal's In-Scope items —
+    // task CONTENT follows the change, not a fixed template. Quality-gate
+    // and refactor scaffolding fill the remaining budget.
+    const scopeItems = this.extractScopeItems(proposal);
+    const templates = [];
+    for (const item of scopeItems) {
+      templates.push({
+        title: `Implement: ${item}`,
+        description: `Failing test first, then minimal implementation for: ${item}`,
         estimatedMinutes: 30,
-        dependencies: []
-      },
-      {
-        title: 'Write failing tests for core functionality',
-        description: 'Create test cases that define the expected behavior',
-        estimatedMinutes: 30,
-        dependencies: ['TASK-001']
-      },
-      {
-        title: 'Implement core data structures',
-        description: 'Define the main data models and interfaces',
-        estimatedMinutes: 30,
-        dependencies: ['TASK-001']
-      },
-      {
-        title: 'Implement core business logic',
-        description: 'Write the minimum code to make tests pass',
-        estimatedMinutes: 30,
-        dependencies: ['TASK-002', 'TASK-003']
-      },
+        dependencies: templates.length === 0 ? [] : [templates[templates.length - 1].id || `TASK-${String(templates.length).padStart(3, '0')}`],
+      });
+    }
+    templates.push(...this.getSupportTemplates(scopeItems.length > 0));
+    return templates.slice(0, 10);
+  }
+
+  /**
+   * Extract In-Scope items from the proposal's (In) Scope section via a
+   * line scan. extractField's multiline `$` lookahead truncates the section
+   * to its first line, so it cannot be used here.
+   */
+  extractScopeItems(proposal) {
+    const lines = String(proposal || '').split('\n');
+    const items = [];
+    let inScope = false;
+    for (const line of lines) {
+      if (/^#{2,3}\s*(in[ _-]?)?scope\b/i.test(line)) { inScope = true; continue; }
+      if (inScope && /^#{1,3}\s/.test(line)) break;
+      if (!inScope) continue;
+      const match = line.match(/^\s*-\s+(?:\[[ xX]?\]\s*)?(.+)$/);
+      if (!match) continue;
+      const text = match[1].trim();
+      if (text.length > 2 && !/^(高级特性|性能优化|out of scope|排除)/i.test(text)) {
+        items.push(text);
+      }
+    }
+    return items.slice(0, 8);
+  }
+
+  getSupportTemplates(hasScopeTasks) {
+    const support = [
       {
         title: 'Add error handling and edge cases',
         description: 'Handle invalid inputs and boundary conditions',
         estimatedMinutes: 30,
-        dependencies: ['TASK-004']
+        dependencies: []
       },
       {
         title: 'Run mutation testing',
         description: 'Verify tests detect code mutations',
         estimatedMinutes: 30,
-        dependencies: ['TASK-004']
+        dependencies: []
       }
     ];
-
-    return templates;
+    if (!hasScopeTasks) {
+      support.unshift(
+        {
+          title: 'Set up test infrastructure',
+          description: 'Configure test framework, test environment, and testing utilities',
+          estimatedMinutes: 30,
+          dependencies: []
+        },
+        {
+          title: 'Write failing tests for core functionality',
+          description: 'Create test cases that define the expected behavior',
+          estimatedMinutes: 30,
+          dependencies: []
+        },
+        {
+          title: 'Implement core functionality',
+          description: 'Write the minimum code to make tests pass',
+          estimatedMinutes: 30,
+          dependencies: []
+        }
+      );
+    }
+    return support;
   }
 
   /**

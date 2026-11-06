@@ -2,6 +2,21 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.1.1] - 2026-11-06 — Skill Graph 引擎增强与缺口清偿
+
+### Added
+- Layered parallel execution in graph run: Kahn topological layering; same-layer independent nodes run concurrently (bounded by graph.max_parallel, default 4); --sequential forces the previous linear behavior; per-node options snapshots prevent rigor-injection races between concurrent verify/archive nodes.
+- Project-defined intents: stdd/graph/intents.yaml adds or overrides intent pathways; malformed files are ignored, built-ins unaffected.
+- Retry safety: --retry now applies only to read-only nodes (verify/fix-packet/type-check/explore/brainstorm); side-effect nodes fail fast instead of re-running blind.
+- Error propagation wired: node failures run through ErrorPropagator to locate the upstream re-planning decision point, recorded on the failed step and printed as guidance — the previously unwired runtime module now has its first consumer.
+- clarify actions implemented (questions / edge-cases / constraints) matching the documented help; supervisor carries the legacy notice like roles/runtime.
+- plan derives task CONTENT from the proposal's In-Scope items (each becomes an implement-with-TDD task; support tasks backfill) instead of a fixed 6-template list; scope extraction is line-scanned (extractField's multiline `$` truncated sections to their first line).
+- docs/known-gaps.md: managed inventory of every declared-vs-real / depth / scope gap with status and evidence.
+
+### Changed
+- turbo claims aligned with its actual boundary (ff + spec generation; implementation is the apply-stage AI executor's job) across README / agent-protocol / USAGE.
+- ARCHITECTURE.md engine section updated to match reality.
+
 ## [1.1.0] - 2026-11-05 — 框架对标与模型强度适配
 
 ### Fixed (open-code-review round 10 — low/maintainability sweep)

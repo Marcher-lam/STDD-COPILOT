@@ -17,6 +17,7 @@ const { walkFiles } = require('../../utils/file-walker');
 const { validateChangeName } = require('../../utils/change-utils');
 const GraphCacheManager = require('../../utils/graph-cache');
 const { resolveRigor, rigorNodeOptions } = require('../../utils/rigor');
+const ErrorPropagator = require('../../utils/error-propagator');
 const { parseCommand, runCommand: runParsedCommand } = require('../../utils/command-runner');
 const { FFCommand } = require('./ff');
 const { generateChangeName: _genChangeName } = require('../../utils/change-helpers');
@@ -91,6 +92,14 @@ function compareValues(actual, operator, expected) {
 
 const ALLOWED_CONDITION_COMMANDS = new Set(['npm', 'git', 'node', 'npx', 'yarn', 'pnpm']);
 
+// Nodes safe to auto-retry: read-only / idempotent. Side-effect nodes
+// (propose/spec/apply/issue/archive/commit) write artifacts or code and are
+// NOT blindly re-run — a deterministic failure re-executing them can
+// double-apply work.
+const READONLY_NODES = new Set([
+  'stdd-verify', 'stdd-fix-packet', 'stdd-type-check', 'stdd-explore', 'stdd-brainstorm',
+]);
+
 const NODE_COMMAND_MAP = {
   'stdd-propose': 'propose',
   'stdd-spec': 'spec',
@@ -136,6 +145,56 @@ class GraphRunCommand {
     }
 
     return ordered;
+  }
+
+  /**
+   * Kahn topological layering: nodes in the same layer are mutually
+   * independent and can run concurrently.
+   */
+  _topologicalLayers(graph) {
+    const nodes = Object.keys(graph.skills || {});
+    const indegree = new Map(nodes.map(n => [n, 0]));
+    for (const node of nodes) {
+      for (const dep of graph.skills[node].depends_on || []) {
+        if (graph.skills[dep]) indegree.set(node, indegree.get(node) + 1);
+      }
+    }
+    const layers = [];
+    let frontier = nodes.filter(n => indegree.get(n) === 0);
+    while (frontier.length > 0) {
+      layers.push(frontier);
+      const next = [];
+      for (const node of frontier) {
+        for (const dep of nodes) {
+          if ((graph.skills[dep].depends_on || []).includes(node)) {
+            indegree.set(dep, indegree.get(dep) - 1);
+            if (indegree.get(dep) === 0) next.push(dep);
+          }
+        }
+      }
+      frontier = next;
+    }
+    return layers;
+  }
+
+  _maxParallel(graph) {
+    const configured = graph && graph.config && graph.config.max_parallel;
+    return Number.isFinite(configured) && configured > 0 ? configured : 4;
+  }
+
+  /**
+   * Per-node options snapshot: rigor injection is applied to a COPY so
+   * concurrent nodes in the same layer never race on shared option objects.
+   */
+  _nodeOptions(options, nodeName, rigor) {
+    const rigorOptions = rigorNodeOptions(nodeName, rigor);
+    const nodeOpts = { ...options };
+    if (nodeName === 'stdd-verify') {
+      nodeOpts.verifyOptions = { ...rigorOptions, ...(options.verifyOptions || {}) };
+    } else if (nodeName === 'stdd-archive') {
+      nodeOpts.archiveOptions = { ...rigorOptions, ...(options.archiveOptions || {}) };
+    }
+    return nodeOpts;
   }
 
   async _executeNode(nodeName, changeName, options = {}) {
@@ -343,6 +402,7 @@ class GraphRunCommand {
     const graph = router.compile(intent);
     this._applyConditions(graph);
     const nodes = this._topologicalOrder(graph);
+    const layers = this._topologicalLayers(graph);
 
     if (nodes.length === 0) {
       throw new Error(`No nodes found for intent '${intent}'.`);
@@ -385,40 +445,38 @@ class GraphRunCommand {
     if (options.workspaceContext) {
       console.log(chalk.dim(`  Workspace: ${options.workspaceContext.name} (${options.workspaceContext.path})`));
     }
-    console.log(chalk.dim(`  Steps: ${nodes.length}\n`));
+    console.log(chalk.dim(`  Steps: ${nodes.length} in ${layers.length} layer(s)\n`));
 
-    for (const nodeName of nodes) {
+    const runNode = async (nodeName, layerIndex) => {
       const label = NODE_COMMAND_MAP[nodeName] || nodeName;
 
       // D3: checkpoint resume — skip nodes that already succeeded for this
       // change+intent+rigor combination.
       const cached = cache ? cache.get(nodeName, cacheInputs) : null;
       if (cached) {
-        this.result.steps.push({ node: nodeName, command: label, status: 'cached', cachedAt: cached.timestamp });
+        this.result.steps.push({ node: nodeName, command: label, status: 'cached', cachedAt: cached.timestamp, layer: layerIndex });
         console.log(chalk.dim(`  [Cached: ${label}] ⊘ skipped (previous run succeeded)`));
-        continue;
+        return { ok: true };
       }
 
-      // D1: apply rigor defaults; explicit user options win.
-      const rigorOptions = this._rigorNodeOptions(nodeName, rigor);
-      if (nodeName === 'stdd-verify') {
-        options.verifyOptions = { ...rigorOptions, ...(options.verifyOptions || {}) };
-      } else if (nodeName === 'stdd-archive') {
-        options.archiveOptions = { ...rigorOptions, ...(options.archiveOptions || {}) };
-      }
-
-      console.log(chalk.yellow(`  [Executing: ${label}]`));
+      const nodeOptions = this._nodeOptions(options, nodeName, rigor);
+      // D3 retry safety: only read-only nodes auto-retry.
+      const effectiveRetry = READONLY_NODES.has(nodeName) ? nodeOptions.retry : 0;
 
       try {
         const exitCodeBefore = process.exitCode;
-        const result = await this._executeNodeWithRetry(nodeName, changeName, options);
+        const result = await this._executeNodeWithRetry(nodeName, changeName, { ...nodeOptions, retry: effectiveRetry });
+        if (READONLY_NODES.has(nodeName) === false && Number(nodeOptions.retry) > 0) {
+          result.retrySkipped = true;
+        }
         // verify/archive report gate failures via process.exitCode = 1 without
         // throwing — a node that set it must be treated as failed, never
-        // checkpointed.
+        // checkpointed. (In parallel layers this check is best-effort: a
+        // sibling setting exitCode can be mis-attributed to a resolving node.)
         if (process.exitCode === 1 && exitCodeBefore !== 1) {
           throw new Error(`${label} reported failure (exit code 1)`);
         }
-        this.result.steps.push({ node: nodeName, command: label, ...result });
+        this.result.steps.push({ node: nodeName, command: label, layer: layerIndex, ...result });
 
         if (result.status === 'success') {
           console.log(chalk.green(`    ✓ ${label} completed`));
@@ -429,31 +487,81 @@ class GraphRunCommand {
         } else {
           console.log(chalk.yellow(`    ? ${label} unknown`));
         }
+        return { ok: true };
       } catch (error) {
-        // D2: final failure — record delegation guidance and persist the run
-        // result so the next run resumes from here with full context.
         const attempts = error.attempts || 1;
+        // Error propagation: locate the upstream re-planning decision point.
+        let propagation = null;
+        try {
+          const propagated = new ErrorPropagator(graph, cache).propagate(nodeName, error, { change: changeName });
+          propagation = {
+            decisionPoint: propagated.targetNode || nodeName,
+            hops: propagated.hops || 0,
+            message: propagated.message,
+            affectedNodes: propagated.affectedNodes,
+          };
+        } catch (err) {
+          logger.warn(`Error propagation skipped: ${err.message}`);
+        }
         this.result.steps.push({
           node: nodeName,
           command: label,
+          layer: layerIndex,
           status: 'failed',
           error: error.message,
           attempts,
+          retrySkipped: !READONLY_NODES.has(nodeName) && Number(options.retry) > 0 ? true : undefined,
+          propagation,
           delegation: {
             trigger: 'graph-node-failure',
             reason: `Node '${nodeName}' failed after ${attempts} attempt(s); request a fresh engine/role with the fix packet before retrying.`,
             suggestedEngines: [...DELEGATION_ENGINES],
           },
         });
-        this.result.failedAt = nodeName;
         console.log(chalk.red(`    ✗ ${label} failed (${attempts} attempt(s)): ${error.message}`));
-        this._persistRunResult(stddDir, changeName);
-        console.log(chalk.red(`\n  Graph run aborted at ${nodeName}.`));
-        console.log(chalk.yellow(`  Re-run with --change-name ${changeName} to resume from this node (cached checkpoints are skipped).`));
-        console.log(chalk.dim(`  Run result: ${path.relative(cwd, path.join(stddDir, 'changes', changeName, 'graph-run-result.json'))}`));
-        process.exitCode = 1;
-        return this.result;
+        if (propagation) {
+          console.log(chalk.yellow(`    ↩ re-plan at decision point: ${propagation.decisionPoint}`));
+        }
+        return { ok: false, node: nodeName };
       }
+    };
+
+    let failed = null;
+    for (let layerIndex = 0; layerIndex < layers.length && !failed; layerIndex++) {
+      const layer = layers[layerIndex];
+      const parallel = !options.sequential && layer.length > 1;
+      console.log(chalk.dim(`  Layer ${layerIndex + 1}/${layers.length}: ${layer.map(n => NODE_COMMAND_MAP[n] || n).join(', ')}`));
+
+      if (!parallel) {
+        for (const nodeName of layer) {
+          const outcome = await runNode(nodeName, layerIndex);
+          if (!outcome.ok) { failed = outcome; break; }
+        }
+      } else {
+        // Same-layer nodes are mutually independent: run concurrently,
+        // bounded by max_parallel.
+        const limit = this._maxParallel(graph);
+        const outcomes = [];
+        for (let i = 0; i < layer.length; i += limit) {
+          const chunk = layer.slice(i, i + limit);
+          const settled = await Promise.allSettled(chunk.map(n => runNode(n, layerIndex)));
+          for (const s of settled) {
+            outcomes.push(s.status === 'fulfilled' ? s.value : { ok: false, node: 'unknown' });
+          }
+        }
+        const firstFailure = outcomes.find(o => !o.ok);
+        if (firstFailure) failed = firstFailure;
+      }
+    }
+
+    if (failed) {
+      this.result.failedAt = failed.node;
+      this._persistRunResult(stddDir, changeName);
+      console.log(chalk.red(`\n  Graph run aborted at ${failed.node}.`));
+      console.log(chalk.yellow(`  Re-run with --change-name ${changeName} to resume from this node (cached checkpoints are skipped).`));
+      console.log(chalk.dim(`  Run result: ${path.relative(cwd, path.join(stddDir, 'changes', changeName, 'graph-run-result.json'))}`));
+      process.exitCode = 1;
+      return this.result;
     }
 
     console.log(chalk.green(`\n  Graph run completed for ${changeName}.`));

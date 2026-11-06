@@ -403,7 +403,7 @@ init → issue → apply → verify → archive
 
 ### 一键全流程（用户说 "快速开发xx"）
 ```
-turbo（自动完成所有阶段，仅在最终确认时暂停）
+turbo（一次生成提案与规格等全部工件；实现/验证/归档仍走 apply → verify → archive，AI 执行器职责）
 ```
 
 ### 探索分析（用户说 "分析xx可行性"）

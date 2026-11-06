@@ -129,9 +129,11 @@ describe('GraphRunCommand DAG enhancements', () => {
   });
 
   describe('D2: node retry + delegation evidence', () => {
-    it('retries a failing node until it succeeds', async () => {
+    it('retries a failing READ-ONLY node until it succeeds', async () => {
+      // apply is a side-effect node and no longer auto-retries; verify is
+      // read-only and retries per the whitelist.
       let calls = 0;
-      ApplyCommand.mockImplementation(() => ({
+      VerifyCommand.mockImplementation(() => ({
         execute: jest.fn(async () => {
           calls++;
           if (calls < 3) throw new Error('flaky');
@@ -142,9 +144,9 @@ describe('GraphRunCommand DAG enhancements', () => {
       const cmd = new GraphRunCommand();
       const result = await cmd.execute('feature', { changeName: 'retry-ok', noCache: true, retry: 2 });
 
-      const applyStep = result.steps.find(s => s.node === 'stdd-apply');
-      expect(applyStep.status).toBe('success');
-      expect(applyStep.attempts).toBe(3);
+      const verifyStep = result.steps.find(s => s.node === 'stdd-verify');
+      expect(verifyStep.status).toBe('success');
+      expect(verifyStep.attempts).toBe(3);
       expect(result.failedAt).toBeNull();
     });
 

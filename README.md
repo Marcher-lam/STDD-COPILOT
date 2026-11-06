@@ -215,7 +215,7 @@ init → new → propose → clarify → confirm → spec → plan → apply →
 | 需求明确 | `stdd ff "描述"` → `apply` → `verify` → `archive` |
 | 需要细化 | `stdd new change <name>` → `continue` → `apply` → … |
 | Bug 修复 | `stdd issue "描述"` → TDD 修复 → `verify` → `archive` |
-| 一键全流程 | `stdd turbo "描述"` 自动执行所有阶段 |
+| 一键生成全工件 | `stdd turbo "描述"` 一次生成提案+规格（实现由 apply 阶段的 AI 执行器完成） |
 
 ---
 
@@ -238,7 +238,7 @@ init → new → propose → clarify → confirm → spec → plan → apply →
 | `stdd archive <change>` | `/stdd:archive` | 归档合并 |
 | `stdd continue <change>` | `/stdd:continue` | 恢复中断工作 |
 | `stdd ff <desc>` | `/stdd:ff` | 快速生成（提案+规格+任务） |
-| `stdd turbo <desc>` | `/stdd:turbo` | 一键全流程自动执行 |
+| `stdd turbo <desc>` | `/stdd:turbo` | 一键生成提案+规格（变更级 rigor 记录；后续走 apply/verify/archive） |
 
 ### SDD 增强（规格驱动开发）
 

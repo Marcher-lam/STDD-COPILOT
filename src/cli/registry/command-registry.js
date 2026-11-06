@@ -665,7 +665,7 @@ const commandRegistry = [
     // Commander passes (action, change, options); ClarifyCommand.execute
     // takes (changeName, options). Without the mapper the options object
     // lands in an unused third parameter and every flag is silently dropped.
-    mapper: (action, change, options) => [change || action, options || {}],
+    mapper: (action, change, options) => [change || action, options || {}, change ? action : null],
     action: 'ClarifyCommand',
     helpText: `Actions: clarify, questions, edge-cases, constraints\n\nExamples:\n  stdd clarify add-user-auth\n  stdd clarify questions`,
   },
