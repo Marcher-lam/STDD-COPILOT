@@ -1,6 +1,16 @@
 # STDD Copilot 边际优化追踪
 
-> Last Updated: 2026-11-05 | Round 38 完成（v1.1.0）
+> Last Updated: 2026-11-09 | Round 43 完成（v1.2.7）
+
+### Round 43 — v1.2.7：实战测试报告缺陷修复（2026-11-09）
+
+外部实战报告（todo-md 全流程 + 路径 A/B 宿主集成）两项工具缺陷落地修复：
+F2 quick mutation 把 stdd init 自装的 agent hooks（.claude/ 等 engines.json 全部
+6 目录）计入源文件，覆盖比结构性失真、小项目门禁不可达（同项目 77 FAIL → 修复后
+100 PASS，名单由 engines.json 派生，未来引擎自动覆盖）；F1 round24 guard-audit
+lint 用例 mock 双重失效（spy 晚于模块加载期解构 + eslint 误配到命令名而非 args），
+静默真实执行 npx eslint 导致负载相关 flaky，改文件级 jest.mock（metrics-lint
+模式）。+2 回归测试，4412→4414 全绿。
 
 ### Round 42 — v1.2.6：OCR 评审第二轮全量修复（2026-11-06）
 

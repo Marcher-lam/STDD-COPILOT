@@ -2,6 +2,17 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.7] - 2026-11-09 — 实战测试报告缺陷修复（mutation 幽灵源文件 + flaky 测试）
+
+### Fixed
+- mutation: quick scan counted stdd-installed agent hook scripts (`.claude/hooks/*.js` et al.) as project source files — the coverage ratio was structurally depressed and the 80-point gate unreachable on small projects (identical repro project: 77 FAIL with `.claude/`, 100 PASS without). All agent dirs declared in engines.json are now excluded from the source/test scan.
+- tests: round24-guard-audit lint cases never intercepted spawnSync — guard.js destructures it at module load (spy landed after capture) and the mock matched `eslint` against the command name while guard invokes `spawnSync('npx', ['eslint', ...])`. Both cases silently ran a real `npx eslint` (network fetch + 10s timeout → load-dependent flakiness). Replaced with the file-level `jest.mock('child_process')` pattern (metrics-lint.test.js) and tightened assertions from membership checks to exact statuses.
+
+### Tests
+- +2 regression tests: agent-hook exclusion (default `.claude`) and the full engines.json directory set.
+
+Gates: 224 suites / 4414 tests; lint clean; docs consistency 9/9.
+
 ## [1.2.6] - 2026-11-06 — OCR 评审第二轮全量修复（11 high + 25 medium）
 
 ### Fixed (high)

@@ -35,7 +35,7 @@ FROM node:20-alpine
 
 LABEL org.opencontainers.image.title="STDD Copilot"
 LABEL org.opencontainers.image.description="Specification & Test-Driven Development Framework"
-LABEL org.opencontainers.image.version="1.2.6"
+LABEL org.opencontainers.image.version="1.2.7"
 LABEL org.opencontainers.image.licenses="MIT"
 
 WORKDIR /workspace
