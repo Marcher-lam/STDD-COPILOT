@@ -520,6 +520,47 @@ describe('MutationCommand unit tests', () => {
     });
   });
 
+  describe('_runQuick source scan', () => {
+    test('excludes stdd-installed agent hooks from source files (default .claude)', () => {
+      setupProject({
+        'src/code.js': 'module.exports = {};\n',
+        // Note: expect(1).toBe(1) is itself a placeholder pattern; use a real
+        // assertion so the score reflects coverage, not placeholder penalty.
+        'src/__tests__/code.test.js': "test('works', () => { expect(require('../code')).toEqual({}); });\n",
+        '.claude/hooks/pre-file-write.js': '// stdd init hook\n',
+        '.claude/hooks/post-file-write.js': '// stdd init hook\n',
+      });
+
+      const cmd = new MutationCommand(tmpDir);
+      const result = cmd._runQuick(80, null);
+
+      // Before the fix the two hook scripts counted as uncovered source
+      // files: sourceFiles=3, covered=1, ratio 0.333, score 77 -> FAIL.
+      expect(result.sourceFiles).toBe(1);
+      expect(result.coveredSourceFiles).toBe(1);
+      expect(result.testCoverageRatio).toBe(1);
+      expect(result.status).toBe('pass');
+    });
+
+    test('excludes every agent directory declared in engines.json', () => {
+      setupProject({
+        'src/code.js': 'module.exports = {};\n',
+        'src/__tests__/code.test.js': "test('works', () => { expect(require('../code')).toEqual({}); });\n",
+        '.opencode/hooks/pre-file-write.js': '// hook\n',
+        '.codex/hooks/pre-file-write.js': '// hook\n',
+        '.qwen/hooks/pre-file-write.js': '// hook\n',
+        '.kiro/hooks/pre-file-write.js': '// hook\n',
+        '.codebuddy/hooks/pre-file-write.js': '// hook\n',
+      });
+
+      const cmd = new MutationCommand(tmpDir);
+      const result = cmd._runQuick(80, null);
+
+      expect(result.sourceFiles).toBe(1);
+      expect(result.status).toBe('pass');
+    });
+  });
+
   describe('_saveEvidence with changeName', () => {
     test('saves evidence in change-specific directory', () => {
       setupProject({

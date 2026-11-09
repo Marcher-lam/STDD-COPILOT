@@ -7,7 +7,7 @@ const { resolveWorkspace } = require('../../utils/workspace-detector');
 const { resolveWorkspaceScope, evidenceMatchesWorkspace, normalizePath } = require('../../utils/workspace-scope');
 const { normalizeMutationResult } = require('../../runtime/mutation/normalizer');
 const { resolveChangeDir, ensureInsideDir } = require('../../utils/change-utils');
-const { walkFiles: _walkFiles } = require('../../utils/file-walker');
+const { walkFiles: _walkFiles, DEFAULT_SKIP_DIRS } = require('../../utils/file-walker');
 
 const TEST_FILE_PATTERNS = [
   /\.test\.(js|jsx|ts|tsx|py)$/,
@@ -15,6 +15,14 @@ const TEST_FILE_PATTERNS = [
   /^test_.*\.py$/,
   /_test\.py$/,
 ];
+
+// stdd init copies hook scripts into each selected agent directory (values
+// from src/config/engines.json). Those scripts are tool-owned and never ship
+// with tests, so counting them as project source files permanently depresses
+// the coverage ratio and structurally blocks the quick gate. Derive the list
+// from engines.json so future engines are covered automatically.
+const AGENT_TOOL_DIRS = require('../../config/engines.json').engines.map(engine => engine.value);
+const SCAN_SKIP_DIRS = new Set([...DEFAULT_SKIP_DIRS, ...AGENT_TOOL_DIRS]);
 
 const SOURCE_EXTENSIONS = /\.(js|jsx|ts|tsx|py)$/;
 
@@ -147,8 +155,14 @@ class MutationCommand {
 
   _runQuick(threshold, workspace) {
     const root = this._scanRoot(workspace);
-    const sourceFiles = _walkFiles(root, { predicate: filePath => SOURCE_EXTENSIONS.test(filePath) && !isTestFile(filePath) });
-    const testFiles = _walkFiles(root, { predicate: filePath => SOURCE_EXTENSIONS.test(filePath) && isTestFile(filePath) });
+    const sourceFiles = _walkFiles(root, {
+      predicate: filePath => SOURCE_EXTENSIONS.test(filePath) && !isTestFile(filePath),
+      skipDirs: SCAN_SKIP_DIRS,
+    });
+    const testFiles = _walkFiles(root, {
+      predicate: filePath => SOURCE_EXTENSIONS.test(filePath) && isTestFile(filePath),
+      skipDirs: SCAN_SKIP_DIRS,
+    });
 
     let assertions = 0;
     let placeholders = 0;
