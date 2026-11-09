@@ -6,6 +6,26 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+
+// GuardCommand destructures spawnSync at module load time
+// (const { spawnSync } = require('child_process')), so a per-test
+// jest.spyOn(require('child_process'), 'spawnSync') never intercepts the
+// lint subprocess call — the tests would silently run a real `npx eslint`
+// (network fetch + 10s timeout under load -> flaky). Mock the module before
+// requiring guard, following the pattern in metrics-lint.test.js. The
+// default result reports an error so unrelated spawn probes (constitution
+// checker's spawnExists) degrade to "not installed" instead of crashing.
+const defaultSpawnResult = () => ({
+  error: new Error('spawn disabled in unit test'),
+  status: null,
+  stdout: '',
+  stderr: '',
+});
+const mockSpawnSync = jest.fn(defaultSpawnResult);
+jest.mock('child_process', () => ({
+  spawnSync: (...args) => mockSpawnSync(...args),
+}));
+
 const { GuardCommand } = require('../src/cli/commands/guard');
 const { AuditCommand } = require('../src/cli/commands/audit');
 
@@ -75,6 +95,10 @@ describe('Round24 GuardCommand branch coverage', () => {
   beforeEach(() => {
     logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    // Reset both call history and implementation: earlier tests in this file
+    // trigger constitution spawnExists() probes that must not leak here.
+    mockSpawnSync.mockReset();
+    mockSpawnSync.mockImplementation(defaultSpawnResult);
   });
 
   afterEach(() => {
@@ -174,26 +198,26 @@ describe('Round24 GuardCommand branch coverage', () => {
     });
 
     const cmd = new GuardCommand(projectPath);
-    // Mock spawnSync to simulate eslint failure
-    const { spawnSync } = require('child_process');
-    const origSpawn = jest.requireActual('child_process').spawnSync;
-    const spawnMock = jest.spyOn(require('child_process'), 'spawnSync').mockImplementation((cmd, opts) => {
-      if (String(cmd).includes('eslint')) {
-        return {
-          error: null,
-          status: 1,
-          stdout: 'src/a.js: line 1, col 1 - Error\n',
-          stderr: '',
-        };
-      }
-      return origSpawn(cmd, opts);
-    });
+    // Simulate eslint reporting an issue via the module-level spawnSync mock.
+    mockSpawnSync.mockImplementation(() => ({
+      error: null,
+      status: 1,
+      stdout: 'src/a.js: line 1, col 1 - Error\n',
+      stderr: '',
+    }));
 
     const report = await cmd.execute({ constitution: false, strict: true });
 
+    // The lint subprocess call must go through the mock (guard invokes
+    // spawnSync('npx', ['eslint', ...], opts) — eslint lives in the args
+    // array, not the command name).
+    expect(mockSpawnSync).toHaveBeenCalledWith(
+      'npx',
+      expect.arrayContaining(['eslint']),
+      expect.objectContaining({ cwd: projectPath })
+    );
     // In strict mode, lint fail becomes fail
     expect(report.lint.status).toBe('fail');
-    spawnMock.mockRestore();
   });
 
   // --- Branch: coverage skip (no source files) ---
@@ -422,20 +446,13 @@ describe('Round24 GuardCommand branch coverage', () => {
       writeFile(p, '.eslintrc.json', { rules: {} });
     });
 
-    const { spawnSync } = require('child_process');
-    const spawnMock = jest.spyOn(require('child_process'), 'spawnSync').mockImplementation((cmd) => {
-      if (String(cmd).includes('eslint')) {
-        return { error: null, status: 0, stdout: '', stderr: '' };
-      }
-      return jest.requireActual('child_process').spawnSync(cmd);
-    });
+    mockSpawnSync.mockImplementation(() => ({ error: null, status: 0, stdout: '', stderr: '' }));
 
     const cmd = new GuardCommand(projectPath);
     const report = await cmd.execute({ constitution: false });
 
-    expect(['pass', 'warn']).toContain(report.lint.status);
-    const output = logSpy.mock.calls.map(c => String(c[0])).join('\n');
-    spawnMock.mockRestore();
+    expect(mockSpawnSync).toHaveBeenCalledTimes(1);
+    expect(report.lint.status).toBe('pass');
   });
 
   // --- Branch: lint spawnSync error ---
@@ -449,18 +466,19 @@ describe('Round24 GuardCommand branch coverage', () => {
       writeFile(p, '.eslintrc.json', { rules: {} });
     });
 
-    const spawnMock = jest.spyOn(require('child_process'), 'spawnSync').mockImplementation((cmd) => {
-      if (String(cmd).includes('eslint')) {
-        return { error: new Error('ENOENT - command not found') };
-      }
-      return jest.requireActual('child_process').spawnSync(cmd);
-    });
+    mockSpawnSync.mockImplementation(() => ({
+      error: new Error('ENOENT - command not found'),
+      status: null,
+      stdout: '',
+      stderr: '',
+    }));
 
     const cmd = new GuardCommand(projectPath);
     const report = await cmd.execute({ constitution: false });
 
-    expect(['skip', 'warn']).toContain(report.lint.status);
-    spawnMock.mockRestore();
+    expect(report.lint.status).toBe('skip');
+    expect(report.lint.details.available).toBe(false);
+    expect(report.lint.details.reason).toContain('command not found');
   });
 
   // --- Branch: lint with non-node tech stack ---
