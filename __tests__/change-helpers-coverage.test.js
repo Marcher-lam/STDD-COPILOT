@@ -61,8 +61,12 @@ describe('change-helpers', () => {
       expect(toSafeFilename('a///b')).toBe('a-b');
     });
 
-    it('handles Chinese characters', () => {
-      expect(toSafeFilename('你好')).toBe('');
+    it('preserves Chinese characters (spec filenames must not vanish)', () => {
+      // P0-3 regression: stripping CJK sanitized whole task descriptions to
+      // an empty filename and `stdd spec` silently skipped every such task.
+      expect(toSafeFilename('你好')).toBe('你好');
+      expect(toSafeFilename('环境准备与脚手架搭建')).toBe('环境准备与脚手架搭建');
+      expect(toSafeFilename('订单 100 元 折扣')).toBe('订单-100-元-折扣');
     });
   });
 

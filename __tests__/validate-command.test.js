@@ -44,14 +44,15 @@ describe('ValidateCommand', () => {
   });
 
   // --- leakage rules ---
-  it('exports 5 leakage rules', () => {
-    expect(LEAKAGE_RULES).toHaveLength(5);
+  it('exports 6 leakage rules', () => {
+    expect(LEAKAGE_RULES).toHaveLength(6);
     const ids = LEAKAGE_RULES.map(r => r.id);
     expect(ids).toContain('code-path');
     expect(ids).toContain('implementation-type');
     expect(ids).toContain('database-detail');
     expect(ids).toContain('api-detail');
     expect(ids).toContain('test-placeholder');
+    expect(ids).toContain('generic-placeholder-steps');
   });
 
   // --- passes on clean specs ---

@@ -50,6 +50,15 @@ const LEAKAGE_RULES = [
     pattern: /\b(TODO|TBD|FIXME|placeholder)\b/i,
     message: 'Spec contains unresolved placeholder language.',
   },
+  {
+    // SpecGenerator's default template steps (report finding P0-3): a spec
+    // whose only steps are these generic sentences carries no business
+    // semantics and must not pass validation or reach stdd/specs/.
+    id: 'generic-placeholder-steps',
+    severity: 'blocking',
+    pattern: /\b(the system is ready|the user performs the action|the result is expected)\b/i,
+    message: 'Spec uses generic placeholder steps with no business semantics.',
+  },
 ];
 
 function lineDiagnostics(filePath, cwd) {
@@ -454,6 +463,38 @@ class ValidateCommand {
       }
     }
     const taskReport = changeDir ? this.compareTasksToSpecs(changeDir, specFiles) : null;
+
+    // Structural gates (report finding P0-2): a change with tasks but zero
+    // spec files — or specs that cover none of its tasks — must not
+    // validate. Before this gate, status came only from per-file leakage
+    // diagnostics, so zero specs meant zero diagnostics meant "pass".
+    if (changeDir && taskReport && taskReport.total > 0) {
+      if (specFiles.length === 0) {
+        diagnostics.push({
+          file: '(change)',
+          line: 0,
+          rule: 'no-specs',
+          severity: 'blocking',
+          message: `Change has ${taskReport.total} task(s) but 0 spec files.`,
+          text: '',
+          suggestion: 'Write or generate specs for this change before implementation (see the spec command / templates).',
+        });
+      } else if (taskReport.covered === 0) {
+        diagnostics.push({
+          file: '(change)',
+          line: 0,
+          rule: 'zero-task-coverage',
+          // Warning, not blocking: coverage is a word-match heuristic and
+          // legit changes can phrase specs differently from task titles.
+          // Zero SPECS (deterministic) blocks; zero heuristic coverage warns.
+          severity: 'warning',
+          message: `Specs exist but cover 0 of ${taskReport.total} task(s).`,
+          text: '',
+          suggestion: 'Align spec scenario content with the task descriptions so the change is verifiable.',
+        });
+      }
+    }
+
     const blocking = diagnostics.filter(d => d.severity === 'blocking');
     const warning = diagnostics.filter(d => d.severity !== 'blocking');
 
@@ -489,13 +530,17 @@ class ValidateCommand {
     const evidencePath = capture.saveToFile(evidence, changeDir || stddDir, 'validate');
     report.evidence = path.relative(this.cwd, evidencePath).replace(/\\/g, '/');
 
+    // Exit code must agree with report status in BOTH output modes — the
+    // --json early return previously left failing validations at exit 0,
+    // so CI could never block on them (report finding P0-2).
+    if (report.status === 'fail') process.exitCode = 1;
+
     if (options.json) {
       console.log(JSON.stringify(report, null, 2));
       return report;
     }
 
     this.print(report);
-    if (report.status === 'fail') process.exitCode = 1;
     return report;
   }
 

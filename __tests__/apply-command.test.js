@@ -57,8 +57,10 @@ describe('apply CLI command', () => {
     expect(fs.existsSync(path.join(projectPath, 'stdd', 'changes', 'demo', 'apply.log'))).toBe(false);
   });
 
-  it('marks task as [x] and writes apply.log on test success', () => {
+  it('marks task as [x] and writes apply.log on test success (RED first, then GREEN)', () => {
     const projectPath = createTempProject('success-project');
+    // RED: record a failing run for TASK-001, then go green.
+    runCli(['apply', 'demo', '--test-command', 'false'], projectPath);
     const result = runCli(['apply', 'demo', '--test-command', 'true'], projectPath);
 
     expect(result.stdout).toContain('TASK-001');
@@ -68,11 +70,11 @@ describe('apply CLI command', () => {
     const tasksContent = fs.readFileSync(tasksPath, 'utf-8');
     expect(tasksContent).toContain('- [x] TASK-001');
 
-    const [logEntry] = fs.readFileSync(
+    const logLines = fs.readFileSync(
       path.join(projectPath, 'stdd', 'changes', 'demo', 'apply.log'),
       'utf-8'
     ).trim().split('\n');
-    const logPayload = JSON.parse(logEntry.replace(/^\[.*?\] /, ''));
+    const logPayload = JSON.parse(logLines[logLines.length - 1].replace(/^\[.*?\] /, ''));
     expect(logPayload.status).toBe('passed');
     expect(logPayload.change).toBe('demo');
   });
@@ -95,7 +97,7 @@ describe('apply CLI command', () => {
 
   it('selects specified task with --task flag', () => {
     const projectPath = createTempProject('task-select-project');
-    const result = runCli(['apply', 'demo', '--task', 'TASK-002', '--test-command', 'true'], projectPath);
+    const result = runCli(['apply', 'demo', '--task', 'TASK-002', '--test-command', 'true', '--allow-no-tests'], projectPath);
 
     expect(result.stdout).toContain('TASK-002');
     expect(result.stdout).toContain('Task passed tests');
@@ -114,7 +116,7 @@ describe('apply CLI command', () => {
       scripts: { test: 'node -e "require(\'fs\').writeFileSync(\'test-ran.txt\', process.cwd())"' },
     });
 
-    const result = runCli(['apply', 'demo'], projectPath);
+    const result = runCli(['apply', 'demo', '--allow-no-tests'], projectPath);
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('@demo/api');
@@ -137,7 +139,7 @@ describe('apply CLI command', () => {
       scripts: { test: 'node -e "require(\'fs\').writeFileSync(\'web-ran.txt\', process.cwd())"' },
     });
 
-    const result = runCli(['apply', 'demo', '--workspace', 'packages/api'], projectPath);
+    const result = runCli(['apply', 'demo', '--workspace', 'packages/api', '--allow-no-tests'], projectPath);
 
     expect(result.status).toBe(0);
     expect(fs.existsSync(path.join(projectPath, 'packages', 'api', 'api-ran.txt'))).toBe(true);
@@ -216,7 +218,7 @@ describe('apply CLI command', () => {
       scripts: { test: 'node -e "require(\'fs\').writeFileSync(\'workspace-ran.txt\', process.cwd())"' },
     });
 
-    const result = runCli(['apply', 'demo'], projectPath);
+    const result = runCli(['apply', 'demo', '--allow-no-tests'], projectPath);
 
     expect(result.status).toBe(0);
     expect(fs.existsSync(path.join(projectPath, 'root-ran.txt'))).toBe(true);

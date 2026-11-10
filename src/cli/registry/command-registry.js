@@ -513,6 +513,7 @@ const commandRegistry = [
       { flags: '--force', description: 'Force continue' },
       { flags: '--dry-run', description: 'Show what would be done' },
       { flags: '--test-command <cmd>', description: 'Test command to use' },
+      { flags: '--allow-no-tests', description: 'Complete the resumed task without RED evidence (non-code tasks)' },
     ],
     action: 'ContinueCommand',
   },

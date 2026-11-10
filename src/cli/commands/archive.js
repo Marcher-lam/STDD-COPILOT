@@ -483,10 +483,13 @@ class ArchiveCommand {
       verificationStatus = evidence.status === 'pass' ? 'PASS' : 'FAIL';
 
       if (evidence.results) {
-        // Constitution status from evidence
+        // Constitution status from evidence — PASS / SKIPPED / FAIL stay
+        // distinct so a skipped check is never summarized as a pass.
         if (evidence.results.constitution) {
           const constResult = evidence.results.constitution;
-          constitutionStatus = constResult.status === 'pass' ? 'PASS' : 'FAIL';
+          constitutionStatus = constResult.status === 'pass'
+            ? 'PASS'
+            : constResult.status === 'skipped' ? 'SKIPPED' : 'FAIL';
           if (constResult.score !== undefined) {
             constitutionScore = constResult.score;
           }

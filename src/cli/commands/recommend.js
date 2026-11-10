@@ -9,6 +9,7 @@ const chalk = require('chalk');
 const { findActiveChange, parseTasks } = require('../../utils/change-utils');
 const { resolveWorkspace } = require('../../utils/workspace-detector');
 const { walkFiles: walkShared } = require('../../utils/file-walker');
+const { hasSpecFiles } = require('../../utils/spec-discovery');
 const { createLogger } = require('../../utils/logger');
 const logger = createLogger('recommend');
 
@@ -110,13 +111,12 @@ class RecommendEngine {
   }
 
   /**
-   * Check if directory contains any .md files.
+   * Check if the directory tree contains any spec file (.feature / .md,
+   * recursive — shared discovery, agrees with `stdd spec` output).
    */
   hasAnyMarkdown(dir) {
     try {
-      if (!fs.existsSync(dir)) return false;
-      const files = fs.readdirSync(dir);
-      return files.some(f => f.endsWith('.md'));
+      return hasSpecFiles(dir);
     } catch (err) {
       logger.warn(err.message);
       return false;

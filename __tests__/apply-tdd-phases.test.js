@@ -514,7 +514,65 @@ describe('ApplyCommand TDD Phases', () => {
   });
 
   describe('legacy mode (no phase tags)', () => {
-    it('executes legacy mode for tasks without phase', async () => {
+    it('blocks a green suite when no RED evidence exists for the task (P0-1 anti fake-green)', async () => {
+      const root = setupTempProject(null, null);
+      const origCwd = process.cwd;
+      process.cwd = () => root;
+      resolveTestCommands.mockReturnValue([{
+        command: 'npm test', cwd: root, workspaceName: 'root', source: 'root',
+      }]);
+      runCommand.mockReturnValue({ status: 0 }); // old suite is green
+
+      try {
+        const cmd = new ApplyCommand();
+        await cmd.execute('test-change');
+        const tasksContent = fs.readFileSync(path.join(root, 'stdd', 'changes', 'test-change', 'tasks.md'), 'utf8');
+        // Task must stay pending: a green suite without a recorded RED
+        // proves nothing about unimplemented work.
+        expect(tasksContent).toContain('[ ]');
+        expect(tasksContent).not.toContain('[x]');
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Green without RED'));
+        expect(process.exitCode).toBe(1);
+        // The block is auditable in the apply log
+        const applyLog = fs.readFileSync(path.join(root, 'stdd', 'changes', 'test-change', 'apply.log'), 'utf8');
+        expect(applyLog).toContain('blocked-no-red-evidence');
+      } finally {
+        process.cwd = origCwd;
+        cleanup(root);
+        process.exitCode = 0;
+      }
+    });
+
+    it('completes the task once a failed run recorded RED evidence, then tests go green', async () => {
+      const root = setupTempProject(null, null);
+      const origCwd = process.cwd;
+      process.cwd = () => root;
+      resolveTestCommands.mockReturnValue([{
+        command: 'npm test', cwd: root, workspaceName: 'root', source: 'root',
+      }]);
+
+      try {
+        const cmd = new ApplyCommand();
+        // 1. RED: the new test fails against missing implementation —
+        //    recorded in the log (fix-packet flow), task reverts to pending.
+        runCommand.mockReturnValue({ status: 1 });
+        await cmd.execute('test-change');
+
+        // 2. GREEN: same task now passes and has prior RED evidence.
+        runCommand.mockReturnValue({ status: 0 });
+        await cmd.execute('test-change');
+
+        const tasksContent = fs.readFileSync(path.join(root, 'stdd', 'changes', 'test-change', 'tasks.md'), 'utf8');
+        expect(tasksContent).toContain('[x]');
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('passed tests'));
+      } finally {
+        process.cwd = origCwd;
+        cleanup(root);
+        process.exitCode = 0;
+      }
+    });
+
+    it('completes without RED evidence only via --allow-no-tests, recorded in the log', async () => {
       const root = setupTempProject(null, null);
       const origCwd = process.cwd;
       process.cwd = () => root;
@@ -525,13 +583,15 @@ describe('ApplyCommand TDD Phases', () => {
 
       try {
         const cmd = new ApplyCommand();
-        await cmd.execute('test-change');
+        await cmd.execute('test-change', { allowNoTests: true });
         const tasksContent = fs.readFileSync(path.join(root, 'stdd', 'changes', 'test-change', 'tasks.md'), 'utf8');
         expect(tasksContent).toContain('[x]');
-        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('passed tests'));
+        const applyLog = fs.readFileSync(path.join(root, 'stdd', 'changes', 'test-change', 'apply.log'), 'utf8');
+        expect(applyLog).toContain('--allow-no-tests');
       } finally {
         process.cwd = origCwd;
         cleanup(root);
+        process.exitCode = 0;
       }
     });
 

@@ -327,20 +327,25 @@ describe('StatusCommand.getDetailedStatus non-silent errors', () => {
     fs.mkdirSync(path.join(dir, 'specs'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'specs', 'test.md'), '');
 
-    const fsPromises = require('fs').promises;
-    const origReaddir = fsPromises.readdir;
-    fsPromises.readdir = jest.fn().mockRejectedValue(
-      Object.assign(new Error('read dir error'), { code: 'EACCES' })
-    );
+    // Spec discovery walks with fs.readdirSync (file-walker); simulate an
+    // unreadable specs/ directory on that path. Restore in finally so a
+    // failed assertion cannot leak the mock into later tests.
+    const fsCore = require('fs');
+    const origReaddirSync = fsCore.readdirSync;
+    fsCore.readdirSync = jest.fn(() => {
+      throw Object.assign(new Error('read dir error'), { code: 'EACCES' });
+    });
 
-    const status = await cmd.getDetailedStatus(dir, { silent: false });
+    try {
+      const status = await cmd.getDetailedStatus(dir, { silent: false });
 
-    expect(status.hasSpecs).toBe(false);
-    // EACCES now logs a warning via structured logger (guard removed)
-    expect(errorSpy).toHaveBeenCalled();
-
-    fsPromises.readdir = origReaddir;
-    fs.rmSync(root, { recursive: true, force: true });
+      expect(status.hasSpecs).toBe(false);
+      // EACCES now logs a warning via structured logger (guard removed)
+      expect(errorSpy).toHaveBeenCalled();
+    } finally {
+      fsCore.readdirSync = origReaddirSync;
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('does not log warnings in silent mode for ENOENT errors', async () => {

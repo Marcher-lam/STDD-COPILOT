@@ -149,6 +149,18 @@ class ConstitutionChecker {
       path.join(srcDir, dirName, `${baseName}.test.ts`),
     ];
 
+    // Conventional top-level test dirs (Jest community default `test/`,
+    // Go-style `tests/`) — two field reports hit this wall: a project with
+    // perfectly running tests in test/ was reported as "Missing test file".
+    for (const root of ['test', 'tests', '__tests__']) {
+      candidates.push(
+        path.join(this.cwd, root, `${baseName}.test${ext}`),
+        path.join(this.cwd, root, `${baseName}.spec${ext}`),
+        path.join(this.cwd, root, `${baseName}.test.js`),
+        path.join(this.cwd, root, `${baseName}.test.ts`)
+      );
+    }
+
     for (const c of candidates) {
       if (fs.existsSync(c)) return c;
     }

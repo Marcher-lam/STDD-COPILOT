@@ -50,7 +50,7 @@ describe('continue CLI command', () => {
       tasksContent: '- [x] TASK-001 Setup\n- [~] TASK-002 Implement feature\n- [ ] TASK-003 Write tests\n',
     });
 
-    const result = runCli(['continue', 'demo', '--test-command', 'true'], projectPath);
+    const result = runCli(['continue', 'demo', '--test-command', 'true', '--allow-no-tests'], projectPath);
 
     expect(result.stdout).toContain('Continuing change: demo');
     expect(result.stdout).toContain('TASK-002');
@@ -74,7 +74,7 @@ describe('continue CLI command', () => {
       applyLog: failedLogLine,
     });
 
-    const result = runCli(['continue', 'demo', '--test-command', 'true'], projectPath);
+    const result = runCli(['continue', 'demo', '--test-command', 'true', '--allow-no-tests'], projectPath);
 
     expect(result.stdout).toContain('Previous failure detected');
     expect(result.stdout).toContain('TASK-002 Implement feature');
@@ -121,7 +121,7 @@ describe('continue CLI command', () => {
       applyLog: logLine,
     });
 
-    const result = runCli(['continue', 'demo', '--force', '--test-command', 'true'], projectPath);
+    const result = runCli(['continue', 'demo', '--force', '--test-command', 'true', '--allow-no-tests'], projectPath);
 
     expect(result.stdout).toContain('Continuing change: demo');
     expect(result.stdout).toContain('TASK-002');
@@ -168,7 +168,7 @@ describe('continue CLI command', () => {
       tasksContent: '- [ ] TASK-001 First task\n- [ ] TASK-002 Second task\n',
     });
 
-    const result = runCli(['continue', 'demo', '--test-command', 'true'], projectPath);
+    const result = runCli(['continue', 'demo', '--test-command', 'true', '--allow-no-tests'], projectPath);
 
     expect(result.stdout).toContain('TASK-001');
     expect(result.stdout).toContain('Task passed tests');

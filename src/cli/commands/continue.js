@@ -212,6 +212,7 @@ class ContinueCommand {
       task: selectedTask.description,
       testCommand: options.testCommand,
       dryRun: options.dryRun,
+      allowNoTests: options.allowNoTests,
     });
   }
 }

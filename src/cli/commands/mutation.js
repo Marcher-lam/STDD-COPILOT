@@ -359,10 +359,14 @@ class MutationCommand {
   _printResult(evidence) {
     const scoreLabel = evidence.score === null ? 'n/a' : `${evidence.score}%`;
     const statusColor = evidence.status === 'pass' ? chalk.green : evidence.status === 'fail' ? chalk.red : chalk.yellow;
+    const isQuick = evidence.mode === 'quick';
     console.log(chalk.bold('\nMutation Gate'));
-    console.log(`  Mode:        ${evidence.mode}${evidence.mode === 'quick' ? chalk.dim(' (heuristic — not real mutation testing)') : ''}`);
+    console.log(`  Mode:        ${evidence.mode}${isQuick ? chalk.dim(' (heuristic — not real mutation testing)') : ''}`);
     if (evidence.workspace) console.log(`  Workspace:   ${evidence.workspace.path}`);
-    console.log(`  Score:       ${scoreLabel} (threshold ${evidence.threshold}%)`);
+    // Quick mode is a static test-health heuristic: no mutants are run and
+    // killed/survived stay null. Labeling its result "Score" invited
+    // readers to read it as a real mutation score (report finding P1-1).
+    console.log(`  ${isQuick ? 'Heuristic Score:' : 'Score:       '} ${scoreLabel} (threshold ${evidence.threshold}%)`);
     console.log(`  Assertions:  ${evidence.assertions}`);
     console.log(`  Placeholders:${evidence.placeholders}`);
     if (evidence.results.reason) console.log(`  Reason:      ${evidence.results.reason}`);

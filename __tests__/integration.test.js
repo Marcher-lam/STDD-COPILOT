@@ -24,7 +24,8 @@ describe('Integration Tests - Core Workflow', () => {
     expect(newResult.status).toBe(0);
     expect(fs.existsSync(path.join(projectPath, 'stdd', 'changes', 'add-feature'))).toBe(true);
 
-    // Step 3: Apply the change (with test command)
+    // Step 3: Apply the change — record RED first, then GREEN (anti fake-green)
+    runCli(['apply', 'add-feature', '--test-command', 'false'], projectPath);
     const applyResult = runCli(['apply', 'add-feature', '--test-command', 'true'], projectPath);
     expect(applyResult.status).toBe(0);
     expect(applyResult.stdout).toContain('Task passed tests');

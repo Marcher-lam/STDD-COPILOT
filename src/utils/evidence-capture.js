@@ -158,10 +158,19 @@ class EvidenceCapture {
    */
   _determineStatus(results, type) {
     if (!results) return 'unknown';
+    if (type === 'validate') {
+      // The validate report already carries a derived status; mirror it so
+      // evidence, terminal output, and exit code tell the same story
+      // (report finding P0-2: top-level used to fall through to 'unknown').
+      return results && results.status === 'pass' ? 'pass' : 'fail';
+    }
     if (type === 'verify') {
       const tasksOk = results.tasks && results.tasks.allDone;
       const testsOk = results.tests && (results.tests.passed === true || results.tests.passed === null);
-      const constOk = results.constitution && results.constitution.status === 'pass';
+      // An explicitly skipped constitution check (--no-constitution) is a
+      // recorded skip, not a failure of the verification itself.
+      const constOk = results.constitution
+        && (results.constitution.status === 'pass' || results.constitution.status === 'skipped');
       const lintOk = results.lint === null || (results.lint && results.lint.passed !== false);
       if (tasksOk && testsOk && constOk && lintOk) return 'pass';
       return 'fail';

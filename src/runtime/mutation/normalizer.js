@@ -16,6 +16,10 @@ function normalizeMutationResult(input = {}, context = {}) {
     unixTimestamp,
     tool,
     mode: context.mode || input.mode || tool,
+    // Quick mode never runs mutants (killed/survived/timeout stay null);
+    // mark the score kind so evidence readers cannot mistake the heuristic
+    // health score for a real mutation score (report finding P1-1).
+    scoreKind: (context.mode || input.mode || tool) === 'quick' ? 'heuristic' : 'mutation',
     status,
     score: mutationScore,
     mutationScore,

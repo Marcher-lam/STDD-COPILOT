@@ -332,6 +332,21 @@ class ApplyCommand {
     }
   }
 
+  /**
+   * Anti fake-green evidence (report finding P0-1): a legacy-mode task may
+   * only be marked done when the apply log holds RED evidence for it —
+   * either a recorded failed run (tests observed failing, the existing
+   * fix-packet flow) or an explicit RED-phase pass from the phase machine.
+   * "Old tests already green" no longer completes a task.
+   */
+  _hasRedEvidence(changeDir, taskDescription) {
+    const entries = readApplyLog(changeDir);
+    return entries.some(entry => entry.task === taskDescription && (
+      entry.status === 'failed'
+      || (entry.phase === 'red' && entry.status === 'passed')
+    ));
+  }
+
   async _executeLegacyMode(changeDir, changeName, tasksPath, task, options, workspace) {
     const cwd = process.cwd();
     const testCommands = resolveTestCommands(cwd, {
@@ -410,6 +425,33 @@ class ApplyCommand {
     }
 
     if (resultStatus === 'passed') {
+      // P0-1: green alone is not completion evidence. Without a recorded
+      // RED for this task, the green may just be the pre-existing suite.
+      if (!options.allowNoTests && !this._hasRedEvidence(changeDir, task.description)) {
+        console.log(chalk.red(`\n🛑 Green without RED: no failing-test evidence recorded for this task.`));
+        console.log(chalk.yellow(`  A passing suite proves nothing about unimplemented work — old tests`));
+        console.log(chalk.yellow(`  stay green while this task's behavior is missing.`));
+        console.log(chalk.yellow(`  1. Write the failing test(s) for this task, then re-run apply —`));
+        console.log(chalk.yellow(`     the failure is recorded as RED evidence (a fix packet is generated).`));
+        console.log(chalk.yellow(`  2. Implement, then re-run apply to complete the task.`));
+        console.log(chalk.dim(`  Non-code task (config/docs)? Re-run with --allow-no-tests (recorded).`));
+        updateTaskLine(tasksPath, task, ' '); // keep pending
+        const blockedEntry = {
+          change: changeName,
+          task: task.description,
+          command: testCommands.map(tc => tc.command).join(' && '),
+          workspaces: testResults,
+          status: 'blocked-no-red-evidence',
+          reason: 'suite green but no RED recorded for this task (anti fake-green)',
+        };
+        if (e2eEvidence) blockedEntry.e2e = e2eEvidence;
+        writeLog(changeDir, blockedEntry);
+        process.exitCode = 1;
+        return;
+      }
+      if (options.allowNoTests) {
+        console.log(chalk.dim(`  Completed without RED evidence (--allow-no-tests, recorded in log).`));
+      }
       updateTaskLine(tasksPath, task, 'x');
       console.log(chalk.green(`\n✅ Task passed tests`));
     } else if (resultStatus === 'failed') {
@@ -433,6 +475,9 @@ class ApplyCommand {
       workspaces: testResults,
       status: resultStatus,
     };
+    if (resultStatus === 'passed' && options.allowNoTests) {
+      logEntry.redEvidenceWaived = '--allow-no-tests';
+    }
     if (workspace) logEntry.workspace = workspace;
     else if (workspaceResults.length === 1) logEntry.workspace = workspaceResults[0];
     else if (workspaceResults.length > 1) logEntry.workspaceScopes = workspaceResults;

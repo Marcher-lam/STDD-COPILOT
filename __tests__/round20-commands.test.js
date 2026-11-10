@@ -87,7 +87,7 @@ describe('round20 — apply.js branches', () => {
 
       try {
         const cmd = new ApplyCommand();
-        await cmd.execute('test-change', { e2eCommand: 'npx cypress run' });
+        await cmd.execute('test-change', { e2eCommand: 'npx cypress run', allowNoTests: true });
         // Should have created e2e evidence dir
         const evidenceDir = path.join(root, 'stdd', 'changes', 'test-change', 'evidence');
         expect(fs.existsSync(evidenceDir)).toBe(true);
@@ -115,7 +115,7 @@ describe('round20 — apply.js branches', () => {
 
       try {
         const cmd = new ApplyCommand();
-        await cmd.execute('test-change', { e2eCommand: 'false' });
+        await cmd.execute('test-change', { e2eCommand: 'false', allowNoTests: true });
         const logContent = fs.readFileSync(
           path.join(root, 'stdd', 'changes', 'test-change', 'apply.log'), 'utf8'
         );
@@ -169,7 +169,7 @@ describe('round20 — apply.js branches', () => {
 
       try {
         const cmd = new ApplyCommand();
-        await cmd.execute('test-change');
+        await cmd.execute('test-change', { allowNoTests: true });
         const logContent = fs.readFileSync(
           path.join(root, 'stdd', 'changes', 'test-change', 'apply.log'), 'utf8'
         );
@@ -195,7 +195,7 @@ describe('round20 — apply.js branches', () => {
 
       try {
         const cmd = new ApplyCommand();
-        await cmd.execute('test-change');
+        await cmd.execute('test-change', { allowNoTests: true });
         const logContent = fs.readFileSync(
           path.join(root, 'stdd', 'changes', 'test-change', 'apply.log'), 'utf8'
         );

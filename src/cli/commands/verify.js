@@ -250,7 +250,14 @@ class VerifyCommand {
       }
     } else {
       console.log(`\n  ${chalk.dim('Constitution: skipped (use --no-constitution)')}`);
-      report.constitution = { status: 'pass', issues: { blocking: [], warning: [], info: [], skipped: [] } };
+      // An explicitly skipped check is NOT a pass — PASS/SKIPPED have
+      // different audit meanings (report finding P1-3). Consumers
+      // (evidence, archive summary) must render SKIPPED, not PASS.
+      report.constitution = {
+        status: 'skipped',
+        reason: '--no-constitution',
+        issues: { blocking: [], warning: [], info: [], skipped: [] },
+      };
     }
 
     const mutationEvidence = findLatestMutationEvidence(cwd, {
@@ -327,7 +334,10 @@ class VerifyCommand {
     } else {
       console.log(`  Tests:       ${chalk.yellow('SKIP')}`);
     }
-    console.log(`  Constitution: ${report.constitution.status === 'pass' ? chalk.green('PASS') : chalk.red('FAIL')}`);
+    const constitutionLabel = report.constitution.status === 'pass'
+      ? chalk.green('PASS')
+      : report.constitution.status === 'skipped' ? chalk.yellow('SKIPPED') : chalk.red('FAIL');
+    console.log(`  Constitution: ${constitutionLabel}`);
     if (report.lint !== null) {
       console.log(`  Lint:        ${report.lint.passed ? chalk.green('PASS') : chalk.red('FAIL')}`);
     }
