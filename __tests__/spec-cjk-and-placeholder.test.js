@@ -118,4 +118,26 @@ describe('P0-3b: placeholder-only specs fail validation', () => {
     const report = JSON.parse(out.stdout);
     expect(report.diagnostics.some(d => d.rule === 'generic-placeholder-steps')).toBe(false);
   });
+
+  test('near-miss phrasings extending the template sentence are NOT flagged (anchored rule)', () => {
+    const root = makeProject((p) => {
+      const change = path.join(p, 'stdd', 'changes', 'demo');
+      fs.mkdirSync(path.join(change, 'specs'), { recursive: true });
+      fs.writeFileSync(
+        path.join(change, 'specs', 'near-miss.feature'),
+        [
+          'Feature: Checkout',
+          '  Scenario: system readiness with real business content',
+          '    Given the system is ready for checkout',
+          '    When the user performs the action of adding a 100 yuan order',
+          '    Then the result is expected to match the approved quote',
+          '',
+        ].join('\n')
+      );
+    });
+
+    const out = runCli(['validate', 'demo', '--json'], root);
+    const report = JSON.parse(out.stdout);
+    expect(report.diagnostics.some(d => d.rule === 'generic-placeholder-steps')).toBe(false);
+  });
 });

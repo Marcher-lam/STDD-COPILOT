@@ -572,6 +572,44 @@ describe('ApplyCommand TDD Phases', () => {
       }
     });
 
+    it('a no-test-command config failure does NOT count as RED evidence (OCR high finding)', async () => {
+      const root = setupTempProject(null, null);
+      const origCwd = process.cwd;
+      process.cwd = () => root;
+
+      try {
+        const changeDir = path.join(root, 'stdd', 'changes', 'test-change');
+        // Simulate the legacy no-test-command failure entry verbatim:
+        // status failed, command '(none)', error set — never ran a test.
+        fs.writeFileSync(path.join(changeDir, 'apply.log'),
+          `[${new Date().toISOString()}] ${JSON.stringify({
+            change: 'test-change',
+            task: 'TASK-001 Test task',
+            command: '(none)',
+            workspaces: [],
+            status: 'failed',
+            error: 'No test command configured. TDD requires tests to run.',
+          })}\n`);
+
+        resolveTestCommands.mockReturnValue([{
+          command: 'npm test', cwd: root, workspaceName: 'root', source: 'root',
+        }]);
+        runCommand.mockReturnValue({ status: 0 }); // suite green
+
+        const cmd = new ApplyCommand();
+        await cmd.execute('test-change');
+        const tasksContent = fs.readFileSync(path.join(changeDir, 'tasks.md'), 'utf8');
+        // The config failure must not unlock completion — still blocked.
+        expect(tasksContent).toContain('[ ]');
+        expect(tasksContent).not.toContain('[x]');
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Green without RED'));
+      } finally {
+        process.cwd = origCwd;
+        cleanup(root);
+        process.exitCode = 0;
+      }
+    });
+
     it('completes without RED evidence only via --allow-no-tests, recorded in the log', async () => {
       const root = setupTempProject(null, null);
       const origCwd = process.cwd;

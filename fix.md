@@ -15,6 +15,12 @@ spec-discovery（递归 .feature/.md，status/recommend 共用）；P1-2 Article
 支持顶层 test/ tests/ __tests__/；P1-1 quick 模式改打 Heuristic Score +
 scoreKind 字段。另修蓝军发现的独立缺陷：validate --json 永不设非零退出码。
 +29 回归测试，4414→4443；端到端重放报告 13 场景全部翻转。
+发布前 AI 评审（OCR 23 条发现）当日清偿 8 条关键项：apply 配置错误条目
+冒充 RED 证据（high，假绿灯借尸还魂路径）、evidence 漏 TDD 门、
+graph-history 二元渲染 SKIPPED 成 FAIL、占位规则未锚定误伤近邻句、
+verify skip 归因（rigor 降级 vs 显式旗标）、spec-discovery 误剪
+build/reports 域目录、toSafeFilename 长度上限+CJK 扩展 A、lockfile
+版本 4 个版本未同步。+9 测试，4443→4452。
 
 ### Round 43 — v1.2.7：实战测试报告缺陷修复（2026-11-09）
 

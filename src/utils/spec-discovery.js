@@ -14,7 +14,14 @@ const SPEC_FILE_RE = /\.(feature|md)$/i;
 
 /** Recursively find all spec files (.feature / .md) under a directory. */
 function findSpecFiles(dir) {
-  return walkFiles(dir, { predicate: file => SPEC_FILE_RE.test(file) });
+  // specs/ is a curated STDD tree, not an arbitrary project tree: the
+  // walker's build-artifact skip list (build/dist/reports/...) would prune
+  // legitimate domain subdirectories like specs/build/spec.md and make
+  // their specs invisible (OCR finding on the P1-4 fix).
+  return walkFiles(dir, {
+    predicate: file => SPEC_FILE_RE.test(file),
+    skipDirs: new Set(['.git', 'node_modules']),
+  });
 }
 
 /** Whether a directory tree contains at least one spec file. */

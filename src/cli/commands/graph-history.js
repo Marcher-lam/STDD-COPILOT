@@ -275,7 +275,13 @@ class GraphHistoryCommand {
     }
     if (results.constitution) {
       const c = results.constitution;
-      console.log('  Constitution: ' + (c.status === 'pass' ? chalk.green('pass') : chalk.red('fail')));
+      // Three-way render: a skipped check (e.g. --no-constitution) must not
+      // replay as a red failure — PASS/SKIPPED/FAIL carry different audit
+      // meanings (OCR finding on the P1-3 fix).
+      const label = c.status === 'pass'
+        ? chalk.green('pass')
+        : c.status === 'skipped' ? chalk.yellow('skipped') : chalk.red('fail');
+      console.log('  Constitution: ' + label);
       if (c.issues && c.issues.blocking && c.issues.blocking.length > 0) {
         for (let i = 0; i < c.issues.blocking.length; i++) {
           const b = c.issues.blocking[i];

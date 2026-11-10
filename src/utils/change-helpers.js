@@ -33,10 +33,15 @@ function generateChangeName(prefix = 'change') {
  * @returns {string}
  */
 function toSafeFilename(str) {
-  return String(str || '')
+  const safe = String(str || '')
     .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
+    // \u3400-\u9fff covers CJK Extension A + the Unified block incl. newer
+    // URO code points (bare \u4e00-\u9fa5 misses pre-Unicode-4.1 additions).
+    .replace(/[^a-z0-9\u3400-\u9fff]+/g, '-')
     .replace(/^-|-$/g, '');
+  // CJK is 3 bytes/char in UTF-8; cap so long descriptions cannot exceed
+  // the 255-byte filename limit (ext4/APFS) and crash `stdd spec`.
+  return safe.length > 60 ? safe.slice(0, 60).replace(/-+$/, '') : safe;
 }
 
 /**

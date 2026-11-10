@@ -54,9 +54,11 @@ const LEAKAGE_RULES = [
     // SpecGenerator's default template steps (report finding P0-3): a spec
     // whose only steps are these generic sentences carries no business
     // semantics and must not pass validation or reach stdd/specs/.
+    // Anchored to the FULL step line so near-miss legitimate phrasings
+    // ("Given the system is ready for checkout") are not false-flagged.
     id: 'generic-placeholder-steps',
     severity: 'blocking',
-    pattern: /\b(the system is ready|the user performs the action|the result is expected)\b/i,
+    pattern: /^\s*(?:Given\s+the system is ready|When\s+the user performs the action|Then\s+the result is expected)\s*$/i,
     message: 'Spec uses generic placeholder steps with no business semantics.',
   },
 ];

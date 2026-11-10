@@ -211,6 +211,29 @@ describe('GraphHistoryCommand unit supplement', () => {
       expect(output).toContain('warn');
       spy.mockRestore();
     });
+
+    test('renders a skipped constitution as skipped, not fail (OCR finding)', () => {
+      const spy = jest.spyOn(console, 'log').mockImplementation();
+      writeEvidence('verify-001.json', {
+        id: 'verify-001',
+        type: 'verify',
+        timestamp: '2026-01-01T00:00:00Z',
+        status: 'pass',
+        results: {
+          tasks: { done: 1, total: 1, allDone: true },
+          tests: { passed: true },
+          constitution: { status: 'skipped', reason: '--no-constitution' },
+        },
+      });
+
+      const cmd = new GraphHistoryCommand(tmpDir);
+      cmd.replay('verify-001');
+      const output = spy.mock.calls.map(c => c[0]).join('\n');
+      expect(output).toContain('Constitution: skipped');
+      // A skip must not replay as a red failure
+      expect(output).not.toContain('Constitution: fail');
+      spy.mockRestore();
+    });
   });
 
   describe('workspaceFromPath (via extractWorkspacesFromEvidence)', () => {

@@ -338,11 +338,14 @@ class ApplyCommand {
    * either a recorded failed run (tests observed failing, the existing
    * fix-packet flow) or an explicit RED-phase pass from the phase machine.
    * "Old tests already green" no longer completes a task.
+   * Config failures never count: the no-test-command entry writes
+   * status 'failed' with command '(none)' without ever running a test —
+   * treating it as RED would let the fake green resurface (OCR finding).
    */
   _hasRedEvidence(changeDir, taskDescription) {
     const entries = readApplyLog(changeDir);
     return entries.some(entry => entry.task === taskDescription && (
-      entry.status === 'failed'
+      (entry.status === 'failed' && entry.command !== '(none)' && !entry.error)
       || (entry.phase === 'red' && entry.status === 'passed')
     ));
   }
@@ -424,10 +427,12 @@ class ApplyCommand {
       resultStatus = testResults.every(result => result.passed) ? 'passed' : 'failed';
     }
 
+    let hasRedEvidence = false;
     if (resultStatus === 'passed') {
       // P0-1: green alone is not completion evidence. Without a recorded
       // RED for this task, the green may just be the pre-existing suite.
-      if (!options.allowNoTests && !this._hasRedEvidence(changeDir, task.description)) {
+      hasRedEvidence = this._hasRedEvidence(changeDir, task.description);
+      if (!options.allowNoTests && !hasRedEvidence) {
         console.log(chalk.red(`\n🛑 Green without RED: no failing-test evidence recorded for this task.`));
         console.log(chalk.yellow(`  A passing suite proves nothing about unimplemented work — old tests`));
         console.log(chalk.yellow(`  stay green while this task's behavior is missing.`));
@@ -449,7 +454,7 @@ class ApplyCommand {
         process.exitCode = 1;
         return;
       }
-      if (options.allowNoTests) {
+      if (options.allowNoTests && !hasRedEvidence) {
         console.log(chalk.dim(`  Completed without RED evidence (--allow-no-tests, recorded in log).`));
       }
       updateTaskLine(tasksPath, task, 'x');
@@ -475,7 +480,7 @@ class ApplyCommand {
       workspaces: testResults,
       status: resultStatus,
     };
-    if (resultStatus === 'passed' && options.allowNoTests) {
+    if (resultStatus === 'passed' && options.allowNoTests && !hasRedEvidence) {
       logEntry.redEvidenceWaived = '--allow-no-tests';
     }
     if (workspace) logEntry.workspace = workspace;

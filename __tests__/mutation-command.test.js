@@ -119,11 +119,27 @@ describe('mutation CLI command', () => {
       schemaVersion: 1,
       tool: 'quick',
       mode: 'quick',
+      // Quick is a heuristic health check, not real mutation testing —
+      // scoreKind is the durable marker of that distinction (P1-1).
+      scoreKind: 'heuristic',
+      killed: null,
+      survived: null,
       threshold: 80,
       assertions: expect.any(Number),
       placeholders: expect.any(Number),
       status: 'pass',
     }));
+  });
+
+  it('labels the quick score as Heuristic Score in text output (P1-1)', () => {
+    const projectPath = createProject();
+    writeFile(projectPath, 'src/math.js', 'exports.add = (a, b) => a + b;\n');
+    writeFile(projectPath, 'src/__tests__/math.test.js', `test('adds', () => { expect(1 + 2).toBe(3); });\n`);
+
+    const result = runCli(['mutation'], projectPath);
+
+    expect(result.stdout).toContain('Heuristic Score:');
+    expect(result.stdout).not.toMatch(/^  Score:/m);
   });
 
   it('rejects path traversal change names without writing evidence outside changes', () => {

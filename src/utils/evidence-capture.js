@@ -162,7 +162,7 @@ class EvidenceCapture {
       // The validate report already carries a derived status; mirror it so
       // evidence, terminal output, and exit code tell the same story
       // (report finding P0-2: top-level used to fall through to 'unknown').
-      return results && results.status === 'pass' ? 'pass' : 'fail';
+      return results.status === 'pass' ? 'pass' : 'fail';
     }
     if (type === 'verify') {
       const tasksOk = results.tasks && results.tasks.allDone;
@@ -172,7 +172,13 @@ class EvidenceCapture {
       const constOk = results.constitution
         && (results.constitution.status === 'pass' || results.constitution.status === 'skipped');
       const lintOk = results.lint === null || (results.lint && results.lint.passed !== false);
-      if (tasksOk && testsOk && constOk && lintOk) return 'pass';
+      // The TDD RED-evidence gate sets healthy=false in verify when tasks
+      // reached GREEN without RED — evidence must agree with that exit
+      // code (OCR finding: this gate was missing from the conjunction).
+      const tddOk = !results.tdd
+        || results.tdd.available !== true
+        || (results.tdd.missingRed || []).length === 0;
+      if (tasksOk && testsOk && constOk && lintOk && tddOk) return 'pass';
       return 'fail';
     }
     if (type === 'guard') {

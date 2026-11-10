@@ -60,6 +60,16 @@ describe('spec-discovery util', () => {
     expect(hasSpecFiles(path.join(root, 'specs'))).toBe(true);
   });
 
+  test('domain dirs named like build artifacts are NOT pruned (OCR finding)', () => {
+    const root = makeProject((p) => {
+      fs.mkdirSync(path.join(p, 'specs', 'build'), { recursive: true });
+      fs.mkdirSync(path.join(p, 'specs', 'reports'), { recursive: true });
+      fs.writeFileSync(path.join(p, 'specs', 'build', 'spec.md'), '# spec\n');
+      fs.writeFileSync(path.join(p, 'specs', 'reports', 'x.feature'), 'Feature: x\n');
+    });
+    expect(findSpecFiles(path.join(root, 'specs')).length).toBe(2);
+  });
+
   test('empty / missing directory has no specs', () => {
     const root = makeProject((p) => {
       fs.mkdirSync(path.join(p, 'specs'), { recursive: true });

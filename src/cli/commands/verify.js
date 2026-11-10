@@ -114,7 +114,12 @@ class VerifyCommand {
       const rigorOptions = rigorNodeOptions('stdd-verify', changeRigor);
       // Commander's negatable --no-constitution defaults to true when absent,
       // so `=== true` means "user did not explicitly disable it".
-      if (options.constitution === true && rigorOptions.constitution === false) options.constitution = false;
+      if (options.constitution === true && rigorOptions.constitution === false) {
+        options.constitution = false;
+        // Record WHY the check is off: rigor downgrade vs explicit flag are
+        // different audit facts (OCR finding on the P1-3 fix).
+        options.constitutionSkipReason = `change rigor: ${changeRigor}`;
+      }
       // --no-lint is the explicit escape from a strict change's lint default.
       if (options.lint === undefined && !options.noLint && rigorOptions.lint) options.lint = true;
       console.log(chalk.dim(`  Rigor: ${changeRigor} (from change state) — override with explicit flags`));
@@ -255,7 +260,7 @@ class VerifyCommand {
       // (evidence, archive summary) must render SKIPPED, not PASS.
       report.constitution = {
         status: 'skipped',
-        reason: '--no-constitution',
+        reason: options.constitutionSkipReason || '--no-constitution',
         issues: { blocking: [], warning: [], info: [], skipped: [] },
       };
     }

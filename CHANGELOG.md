@@ -18,7 +18,17 @@ All notable changes to STDD Copilot will be documented in this file.
 ### Tests
 - +29 regression tests across 6 new suites (spec-discovery, skipped-status, spec CJK+placeholder, constitution test-dirs, validate structural gates, apply anti-fake-green); legacy-green contract tests rewritten to RED→GREEN.
 
-Gates: 229 suites / 4443 tests; lint clean; docs consistency 9/9; 13/13 report scenarios flipped in end-to-end replay.
+### Fixed (post-release AI review, same day)
+- apply: a no-test-command config failure (`command: '(none)'` + error, never ran a test) counted as RED evidence and could re-unlock the fake green — excluded. `--allow-no-tests` no longer logs a waiver when RED evidence actually exists.
+- evidence: the verify status derivation missed the TDD RED-evidence gate — a run failing solely on missing-RED persisted evidence `status: 'pass'`; the gate now joins the conjunction.
+- graph-history: replay rendered constitution binary pass/fail; a SKIPPED check replayed as a red failure — now three-way.
+- validate: the generic-placeholder rule was unanchored and matched legitimate near-miss phrasings ("Given the system is ready for checkout") — anchored to the full default-template step line.
+- verify: the skip reason is now attributed correctly when change rigor (not the --no-constitution flag) disabled the check.
+- spec-discovery: specs under domain dirs named like build artifacts (specs/build/, specs/reports/) were pruned by the walker's project-tree skip list — specs/ uses a minimal skip set now.
+- change-helpers: toSafeFilename caps length at 60 chars (CJK is 3 bytes/char; long descriptions hit ENAMETOOLONG) and covers CJK Extension A (\u3400-\u9fff).
+- package-lock.json root version resynced (was stale at 1.2.4 for four releases).
+
+Gates: 229 suites / 4452 tests; lint clean; docs consistency 9/9; 13/13 report scenarios flipped in end-to-end replay.
 
 ## [1.2.7] - 2026-11-09 — 实战测试报告缺陷修复（mutation 幽灵源文件 + flaky 测试）
 

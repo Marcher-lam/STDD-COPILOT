@@ -56,6 +56,25 @@ describe('EvidenceCapture._determineStatus with skipped constitution', () => {
     const status = capture._determineStatus({ ...base, constitution: { status: 'fail' } }, 'verify');
     expect(status).toBe('fail');
   });
+
+  test('TDD missing-RED evidence fails the verify evidence (OCR finding)', () => {
+    const status = capture._determineStatus({
+      ...base,
+      tdd: { available: true, tasksWithPhaseEvidence: 1, withRedEvidence: 0, missingRed: ['TASK-002'], legacyTasks: 0 },
+    }, 'verify');
+    expect(status).toBe('fail');
+  });
+
+  test('TDD gate satisfied or absent still passes', () => {
+    const passing = { ...base, constitution: { status: 'pass' } };
+    const okTdd = capture._determineStatus({
+      ...passing,
+      tdd: { available: true, tasksWithPhaseEvidence: 1, withRedEvidence: 1, missingRed: [], legacyTasks: 0 },
+    }, 'verify');
+    expect(okTdd).toBe('pass');
+    const noTdd = capture._determineStatus({ ...passing }, 'verify');
+    expect(noTdd).toBe('pass');
+  });
 });
 
 describe('verify --no-constitution records SKIPPED end to end', () => {

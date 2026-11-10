@@ -68,6 +68,16 @@ describe('change-helpers', () => {
       expect(toSafeFilename('环境准备与脚手架搭建')).toBe('环境准备与脚手架搭建');
       expect(toSafeFilename('订单 100 元 折扣')).toBe('订单-100-元-折扣');
     });
+
+    it('caps length so CJK filenames stay under byte limits', () => {
+      const long = '订单'.repeat(80); // 160 CJK chars = 480 bytes raw
+      const result = toSafeFilename(long);
+      expect(result.length).toBeLessThanOrEqual(60);
+    });
+
+    it('keeps CJK Extension A characters (\u3400-\u4dbf)', () => {
+      expect(toSafeFilename('㐀㐁')).toBe('㐀㐁');
+    });
   });
 
   describe('toTitleCase', () => {
