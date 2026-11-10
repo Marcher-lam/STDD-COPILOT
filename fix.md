@@ -1,6 +1,20 @@
 # STDD Copilot 边际优化追踪
 
-> Last Updated: 2026-11-09 | Round 43 完成（v1.2.7）
+> Last Updated: 2026-11-10 | Round 44 完成（v1.2.8）
+
+### Round 44 — v1.2.8：真实项目实测报告修复 3×P0 + 5×P1（2026-11-10）
+
+第二轮外部实测（stdd-evaluation-demo 订单阶梯折扣）11 项发现中的 8 项代码级
+修复：P0-1 apply 假绿灯（legacy 全绿即勾任务 → 现要求 apply.log 内有该任务
+RED 证据，`--allow-no-tests` 为非代码任务记录豁免，continue 转发该旗标）；
+P0-2 validate 零规格返回 pass（新增 no-specs blocking + `--json` 退出码对齐 +
+evidence validate 分支）；P0-3 中文任务规格生成率为零（toSafeFilename 保留
+CJK）+ 占位 Gherkin 三连句进 blocking 泄漏规则；P1-3 `--no-constitution`
+记 pass → SKIPPED 全链路（终端/evidence/归档摘要）；P1-4 规格探测统一
+spec-discovery（递归 .feature/.md，status/recommend 共用）；P1-2 Article 2
+支持顶层 test/ tests/ __tests__/；P1-1 quick 模式改打 Heuristic Score +
+scoreKind 字段。另修蓝军发现的独立缺陷：validate --json 永不设非零退出码。
++29 回归测试，4414→4443；端到端重放报告 13 场景全部翻转。
 
 ### Round 43 — v1.2.7：实战测试报告缺陷修复（2026-11-09）
 

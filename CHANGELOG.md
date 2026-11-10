@@ -2,6 +2,24 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.8] - 2026-11-10 — 真实项目实测报告修复（3×P0 + 5×P1）
+
+### Fixed (P0)
+- apply (P0-1): legacy mode completed a task whenever the whole suite was green — old tests passing marked unimplemented work as done. A task may now only complete with RED evidence in the apply log (a prior failed run, or a RED-phase pass); green-without-RED is blocked (`blocked-no-red-evidence`), stays pending, exits 1. `--allow-no-tests` records an explicit waiver for non-code tasks; `continue` forwards the flag.
+- validate (P0-2): zero spec files + zero covered tasks still returned `pass` with exit 0, and `--json` never set a non-zero exit at all. Now: tasks>0 with 0 specs → blocking `no-specs`; `--json` exit code agrees with report status; evidence `_determineStatus` gained a `validate` branch (top level was always `unknown`). Heuristic zero-coverage surfaces as a loud warning, not blocking (word-match can false-positive).
+- spec (P0-3): `toSafeFilename` stripped all CJK, so pure-Chinese task descriptions sanitized to empty filenames and `stdd spec` silently skipped every task; CJK is now preserved. Placeholder-only Gherkin steps (the SpecGenerator default template's three generic lines) are a new blocking `generic-placeholder-steps` leakage rule.
+
+### Fixed (P1)
+- verify (P1-3): `--no-constitution` recorded `status: 'pass'`; now records `skipped` + reason through the whole chain (terminal SKIPPED, evidence, archive summary) — PASS/SKIPPED/FAIL stay distinct.
+- status (P1-4): spec detection only matched top-level `.md`; now shared recursive `.feature`/`.md` discovery (`src/utils/spec-discovery.js`), also adopted by recommend — `hasSpecs` and phase agree with what `stdd spec` writes.
+- constitution (P1-2, prior F3): Article 2 now recognizes conventional top-level `test/`, `tests/`, `__tests__/` layouts in `findTestFileForSource`.
+- mutation (P1-1): quick mode prints "Heuristic Score" and evidence carries `scoreKind: heuristic|mutation`, so a static health check can no longer masquerade as a real mutation score.
+
+### Tests
+- +29 regression tests across 6 new suites (spec-discovery, skipped-status, spec CJK+placeholder, constitution test-dirs, validate structural gates, apply anti-fake-green); legacy-green contract tests rewritten to RED→GREEN.
+
+Gates: 229 suites / 4443 tests; lint clean; docs consistency 9/9; 13/13 report scenarios flipped in end-to-end replay.
+
 ## [1.2.7] - 2026-11-09 — 实战测试报告缺陷修复（mutation 幽灵源文件 + flaky 测试）
 
 ### Fixed
