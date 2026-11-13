@@ -352,4 +352,69 @@ No tasks here.
       .rejects
       .toThrow("Workspace 'packages/api' not found.");
   });
+
+  // D03 regression (REPORT.md 终测): every tasks.md writer format must be
+  // parseable — plain `TASK-NNN:` (canonical), the colon-less `new` template
+  // (pre-fix change dirs on disk), plan's historical bold form, and lines
+  // carrying [phase:*] markers from apply runs.
+  it('parses the colon-less legacy new-template form', async () => {
+    const projectPath = createTempProject('no-colon-project');
+    process.chdir(projectPath);
+
+    createTasksFile(projectPath, 'no-colon-change', `# Tasks
+
+- [ ] TASK-001 Setup project structure
+`);
+
+    const generator = new SpecGenerator();
+    const result = await generator.generateFromTasks('no-colon-change');
+
+    expect(result.generated.length).toBe(1);
+    const featurePath = path.join(projectPath, 'stdd', 'changes', 'no-colon-change', 'specs', 'setup-project-structure.feature');
+    const content = fs.readFileSync(featurePath, 'utf8');
+    expect(content).toContain('# Task: TASK-001 - Setup project structure');
+    expect(content).toContain('@task-001');
+  });
+
+  it('parses plan legacy bold-id form', async () => {
+    const projectPath = createTempProject('bold-project');
+    process.chdir(projectPath);
+
+    createTasksFile(projectPath, 'bold-change', `# Tasks
+
+- [ ] **TASK-001**: Add CSV export
+`);
+
+    const generator = new SpecGenerator();
+    const result = await generator.generateFromTasks('bold-change');
+
+    expect(result.generated.length).toBe(1);
+    const featurePath = path.join(projectPath, 'stdd', 'changes', 'bold-change', 'specs', 'add-csv-export.feature');
+    const content = fs.readFileSync(featurePath, 'utf8');
+    expect(content).toContain('# Task: TASK-001 - Add CSV export');
+    expect(content).toContain('@task-001');
+  });
+
+  it('parses lines with [phase:*] markers and strips them from descriptions', async () => {
+    const projectPath = createTempProject('phase-marker-project');
+    process.chdir(projectPath);
+
+    createTasksFile(projectPath, 'phase-marker-change', `# Tasks
+
+- [x] [phase:done] TASK-001: Build the task board
+- [ ] TASK-002: Filter by priority [phase:red]
+`);
+
+    const generator = new SpecGenerator();
+    const result = await generator.generateFromTasks('phase-marker-change');
+
+    expect(result.generated.length).toBe(2);
+    const specsDir = path.join(projectPath, 'stdd', 'changes', 'phase-marker-change', 'specs');
+    const board = fs.readFileSync(path.join(specsDir, 'build-the-task-board.feature'), 'utf8');
+    expect(board).toContain('# Task: TASK-001 - Build the task board');
+    expect(board).not.toContain('[phase:done]');
+    const filter = fs.readFileSync(path.join(specsDir, 'filter-by-priority.feature'), 'utf8');
+    expect(filter).toContain('# Task: TASK-002 - Filter by priority');
+    expect(filter).not.toContain('[phase:red]');
+  });
 });

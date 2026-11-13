@@ -204,7 +204,7 @@ init → new → propose → clarify → confirm → spec → plan → apply →
 | **Plan** | `stdd plan <change>` | `tasks.md`, `design.md`, ADR | 5-6 micro-tasks + architecture decision records |
 | **Apply** | `stdd apply <change>` | Implementation code | Ralph Loop: Red → Check → Green → Mutation → Refactor |
 | **Verify** | `stdd verify <change>` | Verification report | 5-dimension verification + Constitution + evidence |
-| **Archive** | `stdd archive <change>` | Archive | ⚠️ Final confirmation gate, merge Delta Specs |
+| **Archive** | `stdd archive <change>` | Archive | ⚠️ Final confirmation gate: blocks on a failed latest verify (`--force` archives explicitly); merges Delta Specs |
 
 ### Fast Tracks
 

@@ -57,6 +57,26 @@ describe('ListCommand', () => {
       expect(output).toContain('No active changes found');
     });
 
+    it('outputs [] with --json on an empty workspace (N03)', async () => {
+      const root = makeTmp();
+      makeStdd(root);
+
+      await cmd.listChanges(path.join(root, 'stdd'), { json: true });
+
+      const output = logSpy.mock.calls.map(c => c.join('')).join('\n');
+      expect(JSON.parse(output)).toEqual([]);
+    });
+
+    it('outputs empty active/archived object with --json --archived on an empty workspace', async () => {
+      const root = makeTmp();
+      makeStdd(root);
+
+      await cmd.listChanges(path.join(root, 'stdd'), { json: true, archived: true });
+
+      const output = logSpy.mock.calls.map(c => c.join('')).join('\n');
+      expect(JSON.parse(output)).toEqual({ active: [], archived: [] });
+    });
+
     it('lists active changes', async () => {
       const root = makeTmp();
       const stdd = makeStdd(root);
@@ -131,6 +151,16 @@ describe('ListCommand', () => {
 
       const output = logSpy.mock.calls.map(c => c.join('')).join('\n');
       expect(output).toContain('No specs found');
+    });
+
+    it('outputs [] with --json when no specs exist (N03)', async () => {
+      const root = makeTmp();
+      makeStdd(root);
+
+      await cmd.listSpecs(path.join(root, 'stdd'), { json: true });
+
+      const output = logSpy.mock.calls.map(c => c.join('')).join('\n');
+      expect(JSON.parse(output)).toEqual([]);
     });
 
     it('lists spec domains', async () => {

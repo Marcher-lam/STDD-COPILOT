@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
-const { findActiveChange, checkTasksCompletion } = require('../../utils/change-utils');
+const { findActiveChange, checkTasksCompletion, taskKey } = require('../../utils/change-utils');
 const { ConstitutionChecker } = require('./constitution-checker');
 const EvidenceCapture = require('../../utils/evidence-capture');
 const { injectReporter } = require('../../utils/reporter-injector');
@@ -44,10 +44,14 @@ class VerifyCommand {
     const byTask = new Map();
     for (const entry of entries) {
       if (!entry.task) continue;
-      if (!byTask.has(entry.task)) {
-        byTask.set(entry.task, { hasRed: false, hasGreen: false, isLegacy: true });
+      // Phase transitions rewrite tasks.md lines with [phase:*] markers, so
+      // the same task logs different text per phase. Key on the stable
+      // TASK-### id (phase markers stripped) to correlate the evidence.
+      const key = taskKey(entry.task);
+      if (!byTask.has(key)) {
+        byTask.set(key, { hasRed: false, hasGreen: false, isLegacy: true });
       }
-      const state = byTask.get(entry.task);
+      const state = byTask.get(key);
       if (entry.phase === 'red' && entry.status === 'passed') state.hasRed = true;
       if (entry.phase === 'green' && entry.status === 'passed') state.hasGreen = true;
       if (entry.phase) state.isLegacy = false;

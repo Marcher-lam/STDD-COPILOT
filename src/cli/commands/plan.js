@@ -405,7 +405,9 @@ class PlanCommand {
     content += `## Tasks\n\n`;
 
     for (const task of tasks) {
-      content += `- [ ] **${task.id}**: ${task.title}\n`;
+      // Canonical `TASK-NNN: title` form (no bold) so every consumer —
+      // including the strict spec-generator parser — can read the line.
+      content += `- [ ] ${task.id}: ${task.title}\n`;
       content += `  - Estimated: ${task.estimatedMinutes} minutes\n`;
       if (task.dependencies.length > 0) {
         content += `  - Dependencies: ${task.dependencies.join(', ')}\n`;

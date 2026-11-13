@@ -159,6 +159,7 @@ const commandRegistry = [
     description: 'Archive completed change',
     options: [
       { flags: '--skip-strict', description: 'Skip the pre-archive strict spec validation gate' },
+      { flags: '--force', description: 'Force archive even if the latest verification evidence failed (records the rejection)' },
     ],
     action: 'ArchiveCommand',
   },
@@ -681,6 +682,13 @@ const commandRegistry = [
       { flags: '--dry-run', description: 'Show proposal without saving' },
       { flags: '--json', description: 'JSON output' },
     ],
+    // Commander passes (action, name, options); ProposeCommand.execute takes
+    // (requirement, options). Without the mapper the documented two-positional
+    // form (`stdd propose draft add-user-auth --description ...`) created a
+    // change named after the action keyword and silently dropped every flag.
+    mapper: (action, name, options) => name
+      ? [(options && options.description) || name, { ...(options || {}), name }]
+      : [action, options || {}],
     action: 'ProposeCommand',
     helpText: `Actions: draft, show, refine, validate, split\n\nExamples:\n  stdd propose draft add-user-auth\n  stdd propose show\n  stdd propose validate`,
   },

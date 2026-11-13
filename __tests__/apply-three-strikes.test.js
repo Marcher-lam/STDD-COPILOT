@@ -114,4 +114,27 @@ describe('apply 3-strikes escalation', () => {
     const freshFail = fail('node -e process.exit(1)');
     expect(freshFail.stdout).not.toContain('3 consecutive failures');
   });
+
+  it('keeps the streak across a phase-marker change (taskKey correlation)', () => {
+    // The same task logs different text per TDD phase ([phase:*] markers);
+    // the streak must be counted on the stable TASK id, not the raw text.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'stdd-threestrikes-phase-'));
+    roots.push(root);
+    const projectPath = path.join(root, 'phase');
+    const changeDir = path.join(projectPath, 'stdd', 'changes', 'flaky');
+    fs.mkdirSync(changeDir, { recursive: true });
+    fs.writeFileSync(path.join(changeDir, 'tasks.md'), '- [ ] [phase:green] TASK-001 Stubborn feature\n', 'utf8');
+    const redFailed = ts =>
+      `[${ts}] ${JSON.stringify({ change: 'flaky', task: '[phase:red] TASK-001 Stubborn feature', phase: 'red', status: 'failed' })}`;
+    fs.writeFileSync(
+      path.join(changeDir, 'apply.log'),
+      [redFailed('2026-11-05T10:00:00.000Z'), redFailed('2026-11-05T10:01:00.000Z')].join('\n') + '\n',
+      'utf8'
+    );
+
+    const third = applyOnce(projectPath);
+
+    expect(third.status).not.toBe(0);
+    expect(third.stdout).toContain('3 consecutive failures');
+  });
 });

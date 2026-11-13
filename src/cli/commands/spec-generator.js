@@ -7,7 +7,7 @@ const fs = require('fs').promises;
 const fsSync = require('fs');
 const path = require('path');
 const { resolveWorkspace } = require('../../utils/workspace-detector');
-const { resolveChangeDir } = require('../../utils/change-utils');
+const { resolveChangeDir, stripPhaseMarkers } = require('../../utils/change-utils');
 const { toSafeFilename: _toSafe, toTitleCase: _toTitle, workspaceContext: _wsCtx } = require('../../utils/change-helpers');
 
 class SpecGenerator {
@@ -76,12 +76,19 @@ class SpecGenerator {
     const tasks = [];
     const lines = content.split('\n');
 
+    // Canonical form: `- [ ] TASK-001: title`. Tolerated for backwards
+    // compatibility: bold ids (`**TASK-001**:`), a missing colon, and
+    // `[phase:*]` markers (prefix form written by apply, suffix form from
+    // the agent templates). Residual markers are stripped from the
+    // description so they never leak into generated specs.
+    const TASK_LINE = /- \[[ xX]\]\s*(?:\[phase:\w+\]\s*)?\**\s*(TASK-\d+)\s*\**\s*:?\s+(.+)/;
+
     for (const line of lines) {
-      const match = line.match(/- \[[ xX]\]\s*(TASK-\d+):\s*(.+)/);
+      const match = line.match(TASK_LINE);
       if (match) {
         tasks.push({
           id: match[1],
-          description: match[2].trim()
+          description: stripPhaseMarkers(match[2].trim())
         });
       }
     }

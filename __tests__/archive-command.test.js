@@ -274,7 +274,7 @@ describe('archive CLI command', () => {
     expect(content).toContain('packages/api: PASS');
   });
 
-  it('summary.md shows Verification Failed when evidence status is fail', () => {
+  it('refuses to archive when the latest verify evidence failed (verification gate)', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'stdd-archive-summary-fail-'));
     const projectPath = path.join(root, 'fail-project');
     const changeDir = path.join(projectPath, 'stdd', 'changes', 'failing-change');
@@ -314,6 +314,56 @@ describe('archive CLI command', () => {
 
     const result = runCli(['archive', 'failing-change'], projectPath);
 
+    expect(result.status).not.toBe(0);
+    expect(result.stdout).toContain('NOT archived');
+    expect(result.stdout).toContain('stdd verify failing-change');
+    expect(result.stdout).toContain('--force');
+
+    // Nothing moved: the change stays active and no archive entry appears.
+    expect(fs.existsSync(changeDir)).toBe(true);
+    expect(fs.existsSync(path.join(projectPath, 'stdd', 'changes', 'archive'))).toBe(false);
+  });
+
+  it('summary.md shows Verification Failed when --force archives past a failed verify', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'stdd-archive-summary-fail-force-'));
+    const projectPath = path.join(root, 'fail-force-project');
+    const changeDir = path.join(projectPath, 'stdd', 'changes', 'failing-change');
+    fs.mkdirSync(changeDir, { recursive: true });
+
+    fs.writeFileSync(
+      path.join(changeDir, 'proposal.md'),
+      '# Bug: Fix crash on login\n\nCrash happens\n'
+    );
+
+    fs.writeFileSync(
+      path.join(changeDir, 'tasks.md'),
+      '- [x] TASK-001 Fix the bug\n'
+    );
+
+    const evidenceDir = path.join(changeDir, 'evidence');
+    fs.mkdirSync(evidenceDir, { recursive: true });
+
+    const evidenceData = {
+      type: 'verify',
+      id: 'def456',
+      timestamp: '2026-02-01T00:00:00.000Z',
+      unixTimestamp: 1738368000000,
+      status: 'fail',
+      results: {
+        tasks: { allDone: true, done: 1, total: 1 },
+        tests: { passed: false },
+        constitution: { status: 'fail' },
+      },
+      metadata: {},
+    };
+
+    fs.writeFileSync(
+      path.join(evidenceDir, 'verify-1000000002.json'),
+      JSON.stringify(evidenceData, null, 2)
+    );
+
+    const result = runCli(['archive', 'failing-change', '--force'], projectPath);
+
     expect(result.status).toBe(0);
 
     const archiveDir = path.join(projectPath, 'stdd', 'changes', 'archive');
@@ -322,6 +372,7 @@ describe('archive CLI command', () => {
 
     const content = fs.readFileSync(summaryPath, 'utf-8');
     expect(content).toContain('Verification Failed');
+    expect(content).toContain('Verdict: rejected');
   });
 
   it('summary.md includes spec files when present', () => {

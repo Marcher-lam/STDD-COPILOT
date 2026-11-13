@@ -6,7 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
-const { findActiveChange, parseTasks } = require('../../utils/change-utils');
+const { findActiveChange, parseTasks, taskKey } = require('../../utils/change-utils');
 const { ApplyCommand } = require('./apply');
 const { createLogger } = require('../../utils/logger');
 const logger = createLogger('continue');
@@ -90,7 +90,9 @@ class ContinueCommand {
         try {
           const payload = JSON.parse(lastLog.replace(/^\[.*?\] /, ''));
           if (payload && payload.task) {
-            const match = tasks.find(t => t.description === payload.task);
+            // taskKey comparison tolerates [phase:*] markers that apply
+            // rewrites into the task text between phases.
+            const match = tasks.find(t => taskKey(t.description) === taskKey(payload.task));
             if (match) return match;
           }
         } catch (err) {
@@ -112,8 +114,9 @@ class ContinueCommand {
       try {
         const payload = JSON.parse(lastLog.replace(/^\[.*?\] /, ''));
         if (payload && payload.status === 'failed' && payload.task) {
-          // Look for a pending task matching the failed one
-          const match = tasks.find(t => !t.isDone && t.description === payload.task);
+          // Look for a pending task matching the failed one (taskKey
+          // comparison tolerates [phase:*] markers between phases).
+          const match = tasks.find(t => !t.isDone && taskKey(t.description) === taskKey(payload.task));
           if (match) return match;
         }
       } catch (err) {

@@ -139,7 +139,7 @@ describe('mutation CLI command', () => {
     const result = runCli(['mutation'], projectPath);
 
     expect(result.stdout).toContain('Heuristic Score:');
-    expect(result.stdout).not.toMatch(/^  Score:/m);
+    expect(result.stdout).not.toMatch(/^ {2}Score:/m);
   });
 
   it('rejects path traversal change names without writing evidence outside changes', () => {

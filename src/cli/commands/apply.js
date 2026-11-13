@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
 const { spawnSync } = require('child_process');
-const { findActiveChange, parseTasks } = require('../../utils/change-utils');
+const { findActiveChange, parseTasks, taskKey } = require('../../utils/change-utils');
 const { injectReporter } = require('../../utils/reporter-injector');
 const { resolveTestCommands, getConfigTestCommand } = require('../../utils/test-command-resolver');
 const { commandToWorkspaceScope, resolveWorkspaceScope } = require('../../utils/workspace-scope');
@@ -118,9 +118,13 @@ function writeEvidence(changeDir, name, data) {
 function countConsecutiveTaskFailures(changeDir, taskDescription) {
   const entries = readApplyLog(changeDir);
   let count = 0;
+  // Compare via taskKey: the same task logs different text per TDD phase
+  // ([phase:*] markers), and a verbatim comparison resets the streak
+  // whenever the phase marker changes.
+  const key = taskKey(taskDescription);
   for (let i = entries.length - 1; i >= 0; i--) {
     const entry = entries[i];
-    if (entry.task !== taskDescription) continue;
+    if (!entry.task || taskKey(entry.task) !== key) continue;
     if (entry.status === 'failed') count++;
     else break;
   }

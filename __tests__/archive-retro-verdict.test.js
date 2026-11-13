@@ -3,8 +3,9 @@
  * (BMAD retrospective: accepted / accepted-with-open-items / rejected).
  *
  * The archived change's summary.md carries an explicit verdict computed
- * from the evidence: failed verification => rejected, open deferred items
- * => accepted-with-open-items, otherwise => accepted.
+ * from the evidence: failed verification => archive refused (rejected
+ * verdict only reachable via the explicit --force escape hatch), open
+ * deferred items => accepted-with-open-items, otherwise => accepted.
  */
 
 const fs = require('fs');
@@ -74,12 +75,20 @@ describe('archive retrospective verdict', () => {
     expect(summary).toContain('Verdict: accepted-with-open-items');
   });
 
-  it('marks a change with failed verification evidence as rejected', () => {
-    const { projectPath } = createTempProject('retro-failed', { verifyStatus: 'fail' });
+  it('refuses to archive failed verification; --force records the rejection', () => {
+    const { projectPath, changeDir } = createTempProject('retro-failed', { verifyStatus: 'fail' });
 
-    const result = runCli(['archive', 'demo'], projectPath);
+    const refused = runCli(['archive', 'demo'], projectPath);
 
-    expect(result.status).toBe(0);
+    expect(refused.status).not.toBe(0);
+    expect(refused.stdout).toContain('NOT archived');
+    expect(refused.stdout).toContain('--force');
+    // The change must still be active — the gate fired before any move.
+    expect(fs.existsSync(changeDir)).toBe(true);
+
+    const forced = runCli(['archive', 'demo', '--force'], projectPath);
+
+    expect(forced.status).toBe(0);
     const summary = archivedSummary(projectPath);
     expect(summary).toContain('Verdict: rejected');
   });

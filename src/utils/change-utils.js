@@ -126,6 +126,28 @@ function checkTasksCompletion(changeDir) {
   };
 }
 
+/**
+ * Strip TDD phase markers (`[phase:red]` etc.) from a task description.
+ * apply writes the marker either right after the checkbox or as a
+ * description suffix, so every occurrence is removed.
+ */
+function stripPhaseMarkers(text) {
+  return String(text).replace(/\s*\[phase:\w+\]/g, '').trim();
+}
+
+/**
+ * Stable identity for a task across TDD phases. Prefers the canonical
+ * TASK-### id embedded in the description; falls back to the description
+ * with phase markers stripped. Phase transitions rewrite tasks.md lines,
+ * so the raw text differs between RED/GREEN/REFACTOR log entries and must
+ * never be compared verbatim across phases.
+ */
+function taskKey(text) {
+  const id = String(text).match(/TASK-\d+/);
+  if (id) return id[0];
+  return stripPhaseMarkers(text);
+}
+
 module.exports = {
   validateChangeName,
   ensureInsideDir,
@@ -134,4 +156,6 @@ module.exports = {
   parseTasks,
   detectTestCommand,
   checkTasksCompletion,
+  stripPhaseMarkers,
+  taskKey,
 };

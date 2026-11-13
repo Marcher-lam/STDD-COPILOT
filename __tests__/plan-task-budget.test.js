@@ -84,7 +84,7 @@ describe('plan adaptive task budget', () => {
 
     expect(result.status).toBe(0);
     const tasks = fs.readFileSync(path.join(changeDir, 'tasks.md'), 'utf8');
-    const taskCount = (tasks.match(/- \[ \] \*\*TASK-/g) || []).length;
+    const taskCount = (tasks.match(/- \[ \] TASK-/g) || []).length;
     expect(taskCount).toBeLessThanOrEqual(4);
     expect(result.stdout).toMatch(/Task Budget:\s*\d+/);
   });
@@ -110,7 +110,7 @@ describe('plan adaptive task budget', () => {
     expect(result.status).toBe(0);
     expect(budgetFrom(result.stdout)).toBe(3);
     const tasks = fs.readFileSync(path.join(changeDir, 'tasks.md'), 'utf8');
-    expect((tasks.match(/- \[ \] \*\*TASK-/g) || []).length).toBe(3);
+    expect((tasks.match(/- \[ \] TASK-/g) || []).length).toBe(3);
   });
 
   it('derives task content from the proposal scope (not a fixed template)', () => {

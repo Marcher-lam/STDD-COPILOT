@@ -206,7 +206,7 @@ init → new → propose → clarify → confirm → spec → plan → apply →
 | **Plan** | `stdd plan <change>` | `tasks.md`、`design.md`、ADR | 5-6 个微任务 + 架构决策记录 |
 | **Apply** | `stdd apply <change>` | 实现代码 | Ralph Loop: 红灯 → 检查 → 绿灯 → 变异 → 重构 |
 | **Verify** | `stdd verify <change>` | 验证报告 | 测试 + Constitution + 证据 |
-| **Archive** | `stdd archive <change>` | 归档 | ⚠️ 最终确认门，合并 Delta Spec |
+| **Archive** | `stdd archive <change>` | 归档 | ⚠️ 最终确认门：最新 verify 失败即阻断（`--force` 显式归档），合并 Delta Spec |
 
 ### 快速通道
 

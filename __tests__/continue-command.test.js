@@ -318,6 +318,23 @@ describe('ContinueCommand — pickContinueTask()', () => {
     expect(picked.description).toBe('Task Beta');
   });
 
+  it('matches the failed task across [phase:*] markers (taskKey correlation)', () => {
+    const tasksFile = path.join(tmpDir, 'tasks.md');
+    // TASK-002 is first: a verbatim fallback would pick it, the taskKey
+    // match must pick TASK-001 despite its phase marker.
+    fs.writeFileSync(tasksFile, '- [ ] TASK-002 Other\n- [ ] [phase:green] TASK-001 Build feature\n');
+
+    fs.writeFileSync(
+      path.join(tmpDir, 'apply.log'),
+      '[2026-01-01T00:00:00.000Z] {"change":"c1","task":"[phase:red] TASK-001 Build feature","command":"npm test","status":"failed"}\n',
+    );
+
+    const tasks = parseTasks(tasksFile);
+    const cmd = new ContinueCommand();
+    const picked = cmd.pickContinueTask(tasks, tmpDir);
+    expect(picked.description).toContain('TASK-001');
+  });
+
   it('falls back to first pending task when no log entry matches', () => {
     const tasksFile = path.join(tmpDir, 'tasks.md');
     fs.writeFileSync(tasksFile, '- [ ] First\n- [ ] Second\n');
@@ -350,6 +367,23 @@ describe('ContinueCommand — pickContinueTask()', () => {
     const cmd = new ContinueCommand();
     const picked = cmd.pickContinueTask(tasks, tmpDir, { force: true });
     expect(picked.description).toBe('Done B');
+  });
+
+  it('in force mode, matches the last log entry across [phase:*] markers', () => {
+    const tasksFile = path.join(tmpDir, 'tasks.md');
+    // Verbatim matching would miss and fall back to the last done task
+    // (TASK-002); the taskKey match must pick TASK-001.
+    fs.writeFileSync(tasksFile, '- [x] [phase:done] TASK-001 Build feature\n- [x] TASK-002 Other done\n');
+
+    fs.writeFileSync(
+      path.join(tmpDir, 'apply.log'),
+      '[2026-01-01T00:00:00.000Z] {"change":"c1","task":"TASK-001: Build feature [phase:green]","command":"npm test","status":"passed"}\n',
+    );
+
+    const tasks = parseTasks(tasksFile);
+    const cmd = new ContinueCommand();
+    const picked = cmd.pickContinueTask(tasks, tmpDir, { force: true });
+    expect(picked.description).toContain('TASK-001');
   });
 
   it('in force mode, picks last done task when no log exists', () => {

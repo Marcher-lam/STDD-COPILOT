@@ -55,13 +55,14 @@ class NewCommand {
     // Create empty specs directory
     await fs.mkdir(path.join(changeDir, 'specs'), { recursive: true });
 
-    // Create empty tasks.md with a sample task
+    // Create empty tasks.md with a sample task. The `TASK-NNN:` colon form
+    // is the canonical format understood by the spec generator.
     const tasksContent = `# Tasks: ${name}
 
-- [ ] TASK-001 Setup project structure
-- [ ] TASK-002 Implement core functionality
-- [ ] TASK-003 Add tests
-- [ ] TASK-004 Update documentation
+- [ ] TASK-001: Setup project structure
+- [ ] TASK-002: Implement core functionality
+- [ ] TASK-003: Add tests
+- [ ] TASK-004: Update documentation
 `;
     await fs.writeFile(path.join(changeDir, 'tasks.md'), tasksContent);
 

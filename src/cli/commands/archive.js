@@ -59,7 +59,31 @@ function findLatestEvidence(changeDir) {
   if (files.length === 0) return null;
   const filePath = path.join(evidenceDir, files[0]);
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (err) {
+    logger.warn(err.message);
+    return null;
+  }
+}
+
+/**
+ * Latest `stdd verify` evidence only (unlike findLatestEvidence, guard-*
+ * files never mask a failed verify run here).
+ */
+function findLatestVerifyEvidence(changeDir) {
+  const evidenceDir = path.join(changeDir, 'evidence');
+  if (!fs.existsSync(evidenceDir)) return null;
+  const files = fs.readdirSync(evidenceDir)
+    .filter(f => /^verify-\d+\.json$/.test(f))
+    .sort((a, b) => {
+      const ta = parseInt(a.match(/-(\d+)\.json$/)[1], 10);
+      const tb = parseInt(b.match(/-(\d+)\.json$/)[1], 10);
+      return tb - ta;
+    });
+  if (files.length === 0) return null;
+  const filePath = path.join(evidenceDir, files[0]);
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (err) {
     logger.warn(err.message);
     return null;
@@ -280,6 +304,22 @@ class ArchiveCommand {
       process.exitCode = 1;
       if (options.throwOnFailure) throw new Error(`archive refused: incomplete tasks in ${changeNameActual}`);
       return;
+    }
+
+    // Verification gate: the latest `stdd verify` evidence must not be a
+    // failure. Archiving a change whose newest verification failed would
+    // advance the delivery state past a red gate; --force is the explicit
+    // escape hatch and still records the rejection in summary.md.
+    if (!options.force) {
+      const latestVerify = findLatestVerifyEvidence(changeDir);
+      if (latestVerify && latestVerify.status === 'fail') {
+        console.log(chalk.red(`\n✗ Latest verification evidence for '${changeNameActual}' FAILED — change NOT archived:`));
+        console.log(chalk.yellow(`\n  Fix the failures and re-run ${chalk.cyan(`stdd verify ${changeNameActual}`)}.`));
+        console.log(chalk.dim(`  Escape hatch: stdd archive ${changeNameActual} --force`));
+        process.exitCode = 1;
+        if (options.throwOnFailure) throw new Error(`archive refused: latest verification failed for ${changeNameActual}`);
+        return;
+      }
     }
 
     // Pre-archive strict validation gate (OpenSpec-style): blocking delta

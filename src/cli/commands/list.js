@@ -38,6 +38,11 @@ class ListCommand {
       const hasAnyChanges = activeChanges.length > 0 || archivedChanges.length > 0;
 
       if (!hasAnyChanges) {
+        // --json must stay machine-parseable even on an empty workspace.
+        if (options.json) {
+          console.log(JSON.stringify(options.archived ? { active: [], archived: [] } : [], null, 2));
+          return;
+        }
         console.log(chalk.yellow('No active changes found.'));
         console.log(chalk.dim('Create one with: /stdd:new <description>'));
         return;
@@ -121,6 +126,10 @@ class ListCommand {
         .sort();
 
       if (domains.length === 0) {
+        if (options.json) {
+          console.log(JSON.stringify([], null, 2));
+          return;
+        }
         console.log(chalk.yellow('No specs found.'));
         console.log(chalk.dim('Specs are created through the /stdd:new workflow.'));
         return;
