@@ -2,6 +2,23 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.9] - 2026-11-13 — 终测实测报告修复（4×P0 + 2×P1）
+
+### Fixed (P0)
+- verify (D01): the TDD RED-evidence gate grouped apply.log entries by the raw task text; apply rewrites tasks.md with `[phase:*]` markers per phase, so one task's RED/GREEN/REFACTOR evidence split into three grouping keys and every real TDD flow failed verify ("RED evidence 7/21"). Evidence is now correlated on the stable TASK-### id (`taskKey()` in change-utils; falls back to phase-stripped text for unnamed tasks). Same root cause hardened in apply's 3-strikes streak counter and continue's task matching.
+- archive (D02): a change whose latest `stdd verify` evidence failed could still be archived with exit 0 (the summary honestly recorded "rejected" but nothing blocked the move). Archive now refuses (exit 1) when the newest `verify-*.json` has `status: 'fail'`; `--force` is the explicit escape hatch and still records `Verdict: rejected`. Honors the `throwOnFailure` orchestration contract used by graph-run.
+- spec/tasks (D03): three task-line formats were written by different commands (`new` without colon, `plan` bold `**TASK-001**:`, ff/issue with colon) while the spec generator only parsed plain `TASK-NNN:` — so `stdd new` / `stdd plan` followed by `stdd spec` always failed with "No tasks found in tasks.md". Writers now emit the canonical `TASK-NNN: title`; the parser tolerates legacy bold / colon-less / `[phase:*]`-marked lines and strips residual markers from descriptions.
+- lint (D04): `npm run lint` failed on `__tests__/mutation-command.test.js` (no-regex-spaces, introduced by the previous commit's new assertion) — the regex literal is rewritten to `/^ {2}Score:/m`.
+
+### Fixed (P1)
+- list (N03): `stdd list --json` on an empty workspace printed plain text ("No active changes found.") instead of JSON; now prints `[]` (or `{"active":[],"archived":[]}` with `--archived`); empty `--specs --json` likewise prints `[]`.
+- propose (N17): the documented two-positional form `stdd propose draft <change> --description ...` created a change named after the action keyword and silently dropped every flag (Commander's second positional landed in the options slot). A registry mapper (same pattern as `clarify`) routes it to (description, { name }); the one-positional README form is unchanged.
+
+### Tests
+- +25 regression tests across 3 new suites (change-utils task-key, new/plan→spec chain, propose mapper) and 8 extended suites; two legacy archive-verdict tests rewritten to the new gate contract.
+
+Gates: 232 suites / 4477 tests; lint clean (0 errors / 0 warnings); docs consistency 9/9.
+
 ## [1.2.8] - 2026-11-10 — 真实项目实测报告修复（3×P0 + 5×P1）
 
 ### Fixed (P0)

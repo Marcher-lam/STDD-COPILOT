@@ -1,6 +1,28 @@
 # STDD Copilot 边际优化追踪
 
-> Last Updated: 2026-11-10 | Round 44 完成（v1.2.8）
+> Last Updated: 2026-11-13 | Round 45 完成（v1.2.9）
+
+### Round 45 — v1.2.9：终测实测报告修复 4×P0 + 2×P1（2026-11-13）
+
+第三方终测（v1.2.8 源码快照 + 隔离安装 CLI + 真实任务看板项目）判 FAIL，
+4 项交付阻断全部修复：D01 verify TDD 证据门按 apply.log 全文 task 分组，
+apply 每阶段把 [phase:*] 写回任务行使 7 任务裂成 21 键 → 现按稳定 TASK-ID
+关联（change-utils 新增 stripPhaseMarkers/taskKey，无 ID 任务退化为去
+marker 文本匹配），同族修复 3-strikes 连败计数与 continue 任务匹配；
+D02 最新 verify 失败仍可普通归档 → archive 新增验证门禁（仅认
+verify-*.json，fail 即 exit 1；--force 显式归档且摘要如实记 rejected；
+throwOnFailure 契约对齐 graph-run）；D03 new/plan 生成的任务行与 spec
+解析器不兼容（无冒号 / **bold** vs 仅认 TASK-NNN:）→ 写入方统一规范
+冒号格式，解析器容错 bold/无冒号/前导 phase marker 并剥离描述 marker，
+new→spec、plan→spec 端到端打通；D04 终测 lint 门禁 no-regex-spaces
+（588e81e 自引入）。另修报告 N 类缺陷：N03 空工作区 list --json 输出
+普通文本 → 输出 []（--archived 空对象；空 specs 同修）；N17 propose
+文档双位置形式创建名为 action 关键字的变更且旗标全丢 → 注册 mapper
+（双位置形式变更名取第二参数、需求取 --description，单位置形式不变）。
++25 回归测试，4452→4477；lint 0 错误 0 警告、docs 9/9、全量 232 套件
+通过。已知边界：taskKey 对无 TASK-ID 且跨阶段改写的任务文本按去 marker
+文本匹配；propose 的 show/refine/validate/split 动作仍未实现
+（helpText 宣传项，超出本次范围）。
 
 ### Round 44 — v1.2.8：真实项目实测报告修复 3×P0 + 5×P1（2026-11-10）
 
