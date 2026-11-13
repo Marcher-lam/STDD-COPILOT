@@ -1,6 +1,26 @@
 # STDD Copilot 边际优化追踪
 
-> Last Updated: 2026-11-13 | Round 46 完成（v1.2.10）
+> Last Updated: 2026-11-13 | Round 47 完成（v1.2.11）
+
+### Round 47 — v1.2.11：终测复验新发现 F1 插值接线（2026-11-13）
+
+v1.2.10 复验（RE-REPORT）发现的 P1：init 在技术栈探测失败时写入声明式
+${VAR:-default} 占位符（TEST_COMMAND/LANGUAGE/PROJECT_TYPE 同族三处），
+框架已有 env-interpolate.js（engines.yaml 路径在用）但 config.yaml 的
+消费方从未接线——verify/apply 把字面 '${TEST_COMMAND:-npm test}' 直接
+spawn（ENOENT），新项目首次 verify 的 Tests 项误判失败需手工修正。
+修复：getConfigTestCommand（verify/apply 共用咽喉）读取后
+interpolateString，存量带占位符 config 就地治愈，模板环境覆盖语义保留；
+同族 product-proposal 对 config 整体 interpolateObject（project.type/
+language 不再字面泄漏进生成文档，config 缺失仍 null 保 coverage 语义，
+蓝军自查发现的回归已修）。F2 备注归档：grep 证实框架零产出
+'node --test <目录>'，系本机 Node 22.23(Homebrew) 构建差异，项目侧
+glob 规避即可。+6 回归测试（含 init→verify 开箱 e2e：占位符落盘零
+手工修正、Tests: PASS 无 ENOENT），4494→4500；lint 0/0、docs 9/9、
+全量 233 套件通过；v1.2.11 tgz 隔离复跑 F1 场景通过（见复验目录
+f1-recheck-v1.2.11.log）。
+
+### Round 46 — v1.2.10：终测报告剩余 N 类缺陷 + propose 动作补全（2026-11-13）
 
 ### Round 46 — v1.2.10：终测报告剩余 N 类缺陷 + propose 动作补全（2026-11-13）
 

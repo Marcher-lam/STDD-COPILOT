@@ -2,6 +2,20 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.11] - 2026-11-13 — 终测复验新发现修复（config 占位符插值）
+
+### Fixed (P1)
+- verify/apply (复验 F1): `stdd init` writes declarative `${VAR:-default}` placeholders into stdd/config.yaml when tech-stack detection fails (fresh projects without a package.json). The framework's env-interpolate utility existed but was never wired to the config consumers, so verify/apply spawned the literal `${TEST_COMMAND:-npm test}` string (`spawnSync … ENOENT`) — a fresh project's first `stdd verify` reported Tests FAIL until the config was edited by hand. `getConfigTestCommand` now interpolates the value before use (single choke point shared by verify/apply); existing on-disk configs carrying the placeholder are healed in place, and the template's env-override semantics (`TEST_COMMAND=… stdd verify`) are preserved.
+- product-proposal (同族): the whole config.yaml artifact is now passed through `interpolateObject`, so `project.type`/`project.language` placeholders never leak literally into generated proposal text. A missing config still resolves to `null` — artifact-coverage booleans keep their meaning.
+
+### Notes
+- F2 (环境备注, no code change): the framework emits no `node --test <directory>` command anywhere (grep-verified). The re-verification observed that Homebrew Node 22.23 treats a directory argument as a module path (`MODULE_NOT_FOUND`); projects should use the `tests/*.test.js` glob form.
+
+### Tests
+- +6 regression tests in a new suite: unit interpolation (default / env override / passthrough), the verify call chain, product-proposal artifact interpolation, and an end-to-end `init → verify` on a fresh project (placeholder on disk, zero manual edits, `Tests: PASS`, no ENOENT).
+
+Gates: 233 suites / 4500 tests; lint clean (0 errors / 0 warnings); docs consistency 9/9.
+
 ## [1.2.10] - 2026-11-13 — 终测报告剩余 N 类缺陷 + propose 动作补全
 
 ### Fixed (P1)
