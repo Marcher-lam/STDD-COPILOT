@@ -1,6 +1,29 @@
 # STDD Copilot 边际优化追踪
 
-> Last Updated: 2026-11-13 | Round 45 完成（v1.2.9）
+> Last Updated: 2026-11-13 | Round 46 完成（v1.2.10）
+
+### Round 46 — v1.2.10：终测报告剩余 N 类缺陷 + propose 动作补全（2026-11-13）
+
+Round 45 后报告遗留项清偿：N-graph graph-run 证据状态恒 unknown（
+_determineStatus 无 graph-run 分支，所有 run 皆中招）→ 按 steps/failedAt
+推导 fail/skipped/pass（--skip-apply 记 skipped，与 PASS 审计语义区分）；
+N-design design reverse 扫不到 public/style.css 且强制语义前缀 → 目录加
+public/ static/，捕获全部自定义属性按名称分类、展示名剥前缀，role 增补
+border/shadow；N-confirm 非 TTY 自动确认（不构成人工确认证据）→ 无旗标
+拒绝 exit 1 不写状态，--yes 显式非交互确认并照 risk-triggered 先例写
+confirm-decision.json（--skip 同样记录），另修 confirm extractSection
+下划线节名捕获组遮蔽（success_criteria 永远提取为空——正是报告"提示缺少
+success_criteria"的根源）与 H1 标题识别（消除框架自身模板的永久 missing
+title 噪声）；propose 四动作补全——draft 加 --force 覆盖保护（修复
+propose show <name> 静默覆盖 proposal.md 的破坏性 bug）、show 只读打印、
+validate 复用 ConfirmCommand.validateProposal（缺节 exit 1）、refine 按
+提案现状确定性重生成澄清问题、split 将 scope 条目 ≤3 切分为
+split-plan.md + 子变更脚手架（--dry-run 不写）；mapper 照 clarify 先例
+透传 action。+17 回归测试，4477→4494；lint 0/0、docs 9/9、全量 232
+套件通过。已知边界：propose refine/split 为确定性清单/计划生成器（非 AI
+改写）；confirm --json 为注册但未实现的死旗标（未在本次范围内）。
+
+### Round 45 — v1.2.9：终测实测报告修复 4×P0 + 2×P1（2026-11-13）
 
 ### Round 45 — v1.2.9：终测实测报告修复 4×P0 + 2×P1（2026-11-13）
 

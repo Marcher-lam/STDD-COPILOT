@@ -2,6 +2,19 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [1.2.10] - 2026-11-13 — 终测报告剩余 N 类缺陷 + propose 动作补全
+
+### Fixed (P1)
+- graph (N-graph): every graph-run evidence file persisted `status: "unknown"` because `_determineStatus` had no `graph-run` branch — `graph history` showed unknown even for fully successful runs. Status is now derived from the recorded steps: any failed step/`failedAt` → `fail`; any skipped step (`--skip-apply`) → `skipped` (SKIPPED and PASS carry different audit meanings); otherwise `pass`.
+- design (N-design): `stdd design reverse` never scanned `public/` (or `static/`) and required `--(color|font|spacing|radius)-` prefixed custom properties, so a plain hand-written `public/style.css` with `--bg`/`--card` was rejected with exit 1. All custom properties are now captured and classified by name (fonts/radius/spacing/tokens), display tokens strip the semantic prefix, and `suggestRole` learned border/shadow roles.
+- confirm (N-confirm): a piped (non-TTY) `stdd confirm` auto-confirmed — recorded `confirmed` indistinguishably from a human decision. Non-interactive runs without a flag now refuse (exit 1, nothing recorded); `--yes` records an explicit non-interactive confirmation and `--skip`/`--yes` both write a `confirm-decision.json` manual-override record (mirroring the risk-triggered gate) with `basis.interactive` for audits. Also fixed two `extractSection` defects: underscored section names (success_criteria) had their content shadowed by a capturing separator group (perpetual "missing success_criteria" hint), and the H1 `# Proposal:` line is now recognized as the title section (removes the framework template's permanent missing-title noise).
+- propose (report boundary item): the advertised `show/refine/validate/split` actions are now implemented via a clarify-style action dispatch — and the pre-existing destructive bug is fixed: `stdd propose show <name>` used to run the draft flow and silently overwrite that change's proposal.md (and `propose show` created a junk change named "show"). `draft` now honors `--force` and refuses to overwrite without it; `show` prints read-only; `validate` reuses the proposal completeness check (exit 1 on missing sections); `refine` deterministically regenerates the Clarifying Questions section from the proposal's current state (checklist generator, not an AI rewrite); `split` chunks concrete scope items (≤3 per sub-change) into `split-plan.md` and scaffolds sub-change draft proposals (`--dry-run` prints only, existing sub-changes never overwritten).
+
+### Tests
+- +17 regression tests across evidence-capture, graph-run, design-reverse, confirm (legacy non-TTY auto-confirm test rewritten to the refuse+--yes contract), and propose action dispatch.
+
+Gates: 232 suites / 4494 tests; lint clean (0 errors / 0 warnings); docs consistency 9/9.
+
 ## [1.2.9] - 2026-11-13 — 终测实测报告修复（4×P0 + 2×P1）
 
 ### Fixed (P0)
