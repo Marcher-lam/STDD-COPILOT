@@ -3,6 +3,7 @@ const path = require('path');
 const yaml = require('js-yaml');
 const { detectWorkspaces, resolveWorkspace } = require('./workspace-detector');
 const { createLogger } = require('./logger');
+const { interpolateString } = require('./env-interpolate');
 const logger = createLogger('test-command-resolver');
 
 function readPackageJson(root) {
@@ -54,7 +55,11 @@ function getConfigTestCommand(cwd) {
   }
   try {
     const config = yaml.load(fs.readFileSync(configPath, 'utf-8'));
-    return (config && config.test && config.test.command) || null;
+    const raw = (config && config.test && config.test.command) || null;
+    // init writes declarative `${VAR:-default}` placeholders when tech-stack
+    // detection fails; interpolate them here so the command is actually
+    // runnable (终测复验 F1: the literal was spawned as-is → ENOENT).
+    return raw ? interpolateString(raw) : null;
   } catch (err) {
     if (err.code !== 'ENOENT' && err.code !== 'EACCES') logger.warn(err.message);
     return null;

@@ -4,6 +4,7 @@ const yaml = require('js-yaml');
 const chalk = require('chalk');
 const { walkFiles } = require('../../utils/file-walker');
 const { createLogger } = require('../../utils/logger');
+const { interpolateObject } = require('../../utils/env-interpolate');
 const logger = createLogger('product-proposal');
 
 const SECTIONS = [
@@ -62,9 +63,14 @@ class ProductProposalCommand {
   }
 
   scanArtifacts() {
+    const rawConfig = this.readYaml(path.join(this.stddDir, 'config.yaml'));
     this.artifacts = {
       vision: this.readFile(path.join(this.stddDir, 'vision.md')),
-      config: this.readYaml(path.join(this.stddDir, 'config.yaml')),
+      // init writes `${VAR:-default}` placeholders when tech-stack detection
+      // fails; interpolate so project.type/language never leak literally
+      // into generated proposal text (same family as 终测复验 F1). A missing
+      // config stays null — coverage booleans depend on that.
+      config: rawConfig ? interpolateObject(rawConfig) : null,
       proposals: this.scanChanges('proposal.md'),
       specs: this.scanSpecs(),
       designs: this.scanChanges('design.md'),
