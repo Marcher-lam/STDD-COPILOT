@@ -36,6 +36,13 @@ function createTempProject(name, changeName) {
   const changeDir = path.join(projectPath, 'stdd', 'changes', changeName);
   fs.mkdirSync(changeDir, { recursive: true });
   fs.writeFileSync(path.join(changeDir, 'tasks.md'), '- [x] TASK-001 Done\n', 'utf8');
+  // D02: archive requires fresh passing verify evidence.
+  const evidenceDir = path.join(changeDir, 'evidence');
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(evidenceDir, 'verify-1000000000.json'),
+    JSON.stringify({ type: 'verify', status: 'pass', results: {}, metadata: {} })
+  );
   return { projectPath, changeDir };
 }
 

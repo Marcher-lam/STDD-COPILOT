@@ -1,6 +1,66 @@
 # STDD Copilot 边际优化追踪
 
-> Last Updated: 2026-11-13 | Round 47 完成（v1.2.11）
+> Last Updated: 2026-11-14 | Round 48 完成（验收报告 D01-D12 清偿）
+
+### Round 48 — v1.2.11 后：终测验收报告 D01-D12 全面清偿（2026-11-14）
+
+D01（execute 假完成）：execute 五阶段函数只打印提示即 return success，
+失败测试脚本也宣告全过——整命令重写为真实门禁：RED 要求套件真实失败
+（CHECK 按 lint 存在性执行或显式标注 skip，GREEN/MUTATION/REFACTOR 全部
+以命令结果判定，MUTATION 调用真实 quick 门禁），阶段通过写 apply.log
+证据（red/green/refactor 与 verify TDD 门共享账本），全循环对已有证据
+阶段自动续跑（修掉"实现后重跑 RED 又违规"的死锁），失败设 exitCode=1。
+D04（--phase 越阶）：executeStage 前置校验早前阶段均有 recorded pass，
+直接 `--phase green` 被拒。D02（归档证据缺口）：archive 三道新门禁——
+必须存在 status=pass 的 verify 证据（此前只拒已存在的 fail）、空/缺失
+任务列表拒绝（total=0 独立判定，修掉嵌在 !allDone 下的死代码路径——
+checkTasksCompletion 对空任务返回 allDone=true）、证据必须新鲜
+（mtime 晚于 change 工件）且 verify 现记录 project-fingerprint
+（package.json/config/测试目录/*.test.* 哈希，archive 重算比对），
+E013"verify 后改测试脚本为失败"场景被指纹拦截；--force 逃生口保留。
+D03（基础设施失败≠RED）：command-runner 新增 isInfraFailure（spawn
+error/npm ENOENT/Missing script/Could not read package.json/ERR_MODULE_
+NOT_FOUND/缺失 test 入口），RED 阶段遇 infra 失败阻断且写 error:
+infrastructure-failure（_hasRedEvidence 的 !entry.error 守卫天然排除），
+legacy 路径同样标注；真实断言失败的 RED 不受影响（复验双向证明）。
+D05（契约假成功）：contract verify 有 violation 时 process.exitCode=1。
+D06（生成器与门禁口径不一）：spec-generator 移除通用占位三句，fallback
+步骤携带任务描述语义（strict validate 对新生成物直接通过）；archive
+runStrictGate 补跑 lineDiagnostics（此前 .feature 完全绕过泄漏/占位
+规则），与 `validate --strict` 同口径，E020 占位 spec 归档被拦截。
+D07（parallel 崩溃）：parallel.js 解构不存在的 DynamicRouter、以
+{(adapter,options)} 调 ParallelExecutor 默认导出且调用不存在的
+execute/plan/buildLayers——全部改为 graph.js 同款正确 API（含
+HeterogeneousAdapter 默认导出陷阱），run 重定义为诚实 PLANNING 入口并
+指向 graph run。D08（mock 参数映射）：MockCommand.execute 按 commander
+(action,target,options) 展开归一（旧代码把 target 字符串当 args 数组，
+args[0] 取到首字符）；修复 this.cwd 从未赋值（父类无构造器——"path
+argument Received undefined"真根因）、嵌套路径目标建目录、--methods
+逗号串拆分。D09（模板/CLI 口径）：ff 补 --include-design/--skip-design
+（design.md 默认生成骨架）/--output（change id 别名）并生成含
+Scenario+SHALL 的 delta spec 骨架与 [phase:red] 任务标记（D12 同步：
+plan 任务同样带 phase 标记进入 TDD 状态机默认路径）；plan 实现
+show/estimate/dependencies 三动作（修复 fs.promises 无 existsSync 的
+命名空间错误）；execute 实现 status/evidence 动作；story convert/to-bdd
+别名；ci 新增 gitlab(.gitlab-ci.yml)/jenkins(Jenkinsfile) 真实生成器；
+starters 修复 commander 尾参含 Command 实例的 options 识别并注册
+--type；start 向导建议命令改为 `stdd new change <name>`（含 HELP_TEXT）。
+D10（--json 假入口）：start --json 输出纯 JSON 不再进 inquirer；
+depcheck 修复 [path] 位置参数吞掉 options 对象的问题（--json 真正生效
+且退出码与文本模式一致）、node: 前缀内建模块不再误报缺失、安全清单补
+stdd/@marcher-lam/stdd-copilot。D11（progress 丢参数）：cli.js parse
+包装器解析真实 argv（位置参数+旗标值）写入 args.positionals/opts，
+progress 恢复提示跨旗标名与位置参数回退定位 change/workspace/intent。
+测试：受新门禁影响的旧测试按新验收更新（archive 家族补 verify 证据
+夹具/零任务用例翻转为拒绝/占位步骤夹具换真实语义，ci gitlab 改用
+travis 作为不支持示例），全量 233 套件 4500 测试通过，lint 0/0、
+docs 9/9；报告原始场景复现 19 组全部通过（execute 假完成/越阶、
+归档无证据/过期指纹/空任务、npm ENOENT 与缺失执行器不算 RED、契约
+violation 退出码、parallel layers、mock generate、ff 旗标、plan 三
+动作、story convert、ci 三平台、starters --type、start/depcheck JSON、
+progress 参数）。
+
+### Round 47 — v1.2.11：终测复验新发现 F1 插值接线（2026-11-13）
 
 ### Round 47 — v1.2.11：终测复验新发现 F1 插值接线（2026-11-13）
 

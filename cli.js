@@ -483,12 +483,53 @@ const { progress: getProgress, installSignals, active, setActive, clearActive } 
 installSignals();
 
 // Wrap parse to auto-track command start/end in progress.jsonl
+// 终测复验 D11: record the REAL command arguments (positionals + option
+// values), not an empty object — resume hints for apply/verify/graph need
+// the change name / workspace / intent to be useful.
+function extractProgressArgs(rawArgs) {
+  const positionals = [];
+  const opts = {};
+  for (let i = 0; i < rawArgs.length; i++) {
+    const token = rawArgs[i];
+    if (token === '--') { positionals.push(...rawArgs.slice(i + 1)); break; }
+    if (token.startsWith('--')) {
+      const eq = token.indexOf('=');
+      if (eq !== -1) {
+        opts[token.slice(2, eq)] = token.slice(eq + 1);
+      } else {
+        const next = rawArgs[i + 1];
+        if (next !== undefined && !next.startsWith('-')) {
+          opts[token.slice(2)] = next;
+          i++;
+        } else {
+          opts[token.slice(2)] = true;
+        }
+      }
+    } else if (token.startsWith('-') && token.length > 1) {
+      const next = rawArgs[i + 1];
+      if (next !== undefined && !next.startsWith('-')) {
+        opts[token.slice(1)] = next;
+        i++;
+      } else {
+        opts[token.slice(1)] = true;
+      }
+    } else {
+      positionals.push(token);
+    }
+  }
+  return { positionals, opts };
+}
+
 const _originalParse = program.parse.bind(program);
 program.parse = function (argv) {
-  const cmdParts = (argv || process.argv).slice(2).filter(p => !p.startsWith('-'));
-  const cmdName = cmdParts.length > 0 ? cmdParts[0] : '';
+  const rawArgs = (argv || process.argv).slice(2);
+  const { positionals, opts } = extractProgressArgs(rawArgs);
+  const cmdName = positionals.length > 0 ? positionals[0] : '';
   if (cmdName && cmdName !== 'progress' && cmdName !== 'help') {
-    const entry = getProgress().start(cmdName);
+    const entry = getProgress().start(cmdName, {
+      ...opts,
+      positionals: positionals.slice(1),
+    });
     setActive(entry);
   }
   return _originalParse(argv);

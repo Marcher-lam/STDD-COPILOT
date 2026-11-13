@@ -60,7 +60,29 @@ function createTempProject(options = {}) {
     fs.writeFileSync(path.join(changeDir, 'proposal.md'), options.proposalContent);
   }
 
+  writeVerifyPass(changeDir);
+
   return { projectPath, changeDir, changeName, tmpRoot };
+}
+
+
+/**
+ * D02: the archive gate requires fresh passing verify evidence. Unit
+ * fixtures that expect a successful archive must record it AFTER the last
+ * change-artifact write so the evidence stays fresh.
+ */
+function writeVerifyPass(changeDir, name = 'verify-1000000000') {
+  const evidenceDir = path.join(changeDir, 'evidence');
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(evidenceDir, `${name}.json`),
+    JSON.stringify({ type: 'verify', status: 'pass', results: {}, metadata: {} })
+  );
+}
+
+
+function callsOf(spy) {
+  return spy.mock.calls.map(args => args.join(' ')).join('\n');
 }
 
 function cleanupTemp(tmpRoot) {
@@ -525,6 +547,7 @@ describe('ArchiveCommand (unit)', () => {
       const specsDir = path.join(tmp.changeDir, 'specs');
       fs.mkdirSync(specsDir, { recursive: true });
       fs.writeFileSync(path.join(specsDir, 'feature.md'), '## ADDED\n\nNew feature\n');
+      writeVerifyPass(tmp.changeDir, 'verify-2000000000');
 
       mockFindActiveChange.mockReturnValue(tmp.changeDir);
 
@@ -635,7 +658,7 @@ describe('ArchiveCommand (unit)', () => {
       process.exitCode = undefined;
     });
 
-    it('allows archive when tasks file has zero tasks (allDone=true)', async () => {
+    it('refuses to archive when tasks file has zero tasks (nothing verified)', async () => {
       mockFindActiveChange.mockReturnValue(tmp.changeDir);
       mockCheckTasksCompletion.mockReturnValue({
         allDone: true,
@@ -644,12 +667,18 @@ describe('ArchiveCommand (unit)', () => {
         pending: [],
       });
 
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
       await cmd.execute('demo');
+      const output = callsOf(consoleSpy);
+      consoleSpy.mockRestore();
 
-      // Should have been archived
-      expect(fs.existsSync(tmp.changeDir)).toBe(false);
+      // D02: 0/0 tasks must not masquerade as a verified change.
+      expect(process.exitCode).toBe(1);
+      expect(output).toContain('no tasks to verify');
+      expect(fs.existsSync(tmp.changeDir)).toBe(true);
       const archiveDir = path.join(projectPath, 'stdd', 'changes', 'archive');
-      expect(fs.existsSync(archiveDir)).toBe(true);
+      expect(fs.existsSync(archiveDir)).toBe(false);
+      process.exitCode = undefined;
     });
 
     // ---- 4f. options.change passthrough ----
@@ -707,6 +736,7 @@ describe('ArchiveCommand (unit)', () => {
         path.join(specsDir, 'api.feature'),
         '# Workspace: packages/api\nFeature: API\n'
       );
+      writeVerifyPass(tmp.changeDir, 'verify-2000000000');
 
       mockFindActiveChange.mockReturnValue(tmp.changeDir);
       mockDetectWorkspaces.mockReturnValue([
@@ -1217,12 +1247,17 @@ describe('ArchiveCommand (unit)', () => {
       mockDetectWorkspaces.mockReturnValue([]);
 
       const c = new ArchiveCommand();
-      // The task check returns allDone=false but total=0, so it passes the check
-      // because the condition is: !taskCheck.allDone && taskCheck.total > 0
-      // With total=0, it should proceed to archive
+      // D02: total=0 (no tasks.md) is now refused — an empty change has
+      // nothing verified and must not be archived as if it were.
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
       await c.execute('notasks');
+      const output = callsOf(consoleSpy);
+      consoleSpy.mockRestore();
 
-      expect(fs.existsSync(changeDir)).toBe(false);
+      expect(process.exitCode).toBe(1);
+      expect(output).toContain('no tasks to verify');
+      expect(fs.existsSync(changeDir)).toBe(true);
+      process.exitCode = undefined;
 
       cleanupTemp(tmpRoot);
     });
@@ -1327,6 +1362,7 @@ describe('ArchiveCommand (unit)', () => {
 
       fs.writeFileSync(path.join(changeDir, 'proposal.md'), '# Proposal: Full Feature\n');
       fs.writeFileSync(path.join(changeDir, 'tasks.md'), '- [x] TASK-001 Done\n- [x] TASK-002 Done\n');
+      fs.writeFileSync(path.join(changeDir, 'specs', 'login.feature'), 'Feature: Login\n');
       fs.writeFileSync(
         path.join(changeDir, 'evidence', 'verify-1000.json'),
         JSON.stringify({
@@ -1339,7 +1375,6 @@ describe('ArchiveCommand (unit)', () => {
           metadata: { testRunner: 'jest' },
         })
       );
-      fs.writeFileSync(path.join(changeDir, 'specs', 'login.feature'), 'Feature: Login\n');
 
       process.cwd = () => projectPath;
       mockFindActiveChange.mockReturnValue(changeDir);
@@ -1382,6 +1417,8 @@ describe('ArchiveCommand (unit)', () => {
       fs.mkdirSync(changeDir2, { recursive: true });
       fs.writeFileSync(path.join(changeDir1, 'tasks.md'), '- [x] Done\n');
       fs.writeFileSync(path.join(changeDir2, 'tasks.md'), '- [x] Done\n');
+      writeVerifyPass(changeDir1);
+      writeVerifyPass(changeDir2);
 
       process.cwd = () => projectPath;
       mockCheckTasksCompletion.mockReturnValue({ allDone: true, total: 1, done: 1, pending: [] });

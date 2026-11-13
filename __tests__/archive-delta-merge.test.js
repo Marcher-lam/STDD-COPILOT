@@ -34,6 +34,18 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
     return { projectPath, changeDir };
   }
 
+
+  // D02: the archive gate requires fresh passing verify evidence; write it
+  // as the LAST fixture step so it stays newer than the delta specs.
+  function writeVerifyPass(projectPath, changeName) {
+    const evidenceDir = path.join(projectPath, 'stdd', 'changes', changeName, 'evidence');
+    fs.mkdirSync(evidenceDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(evidenceDir, 'verify-1000000000.json'),
+      JSON.stringify({ type: 'verify', status: 'pass', results: {}, metadata: {} })
+    );
+  }
+
   afterEach(() => {
     for (const root of roots) fs.rmSync(root, { recursive: true, force: true });
     roots.length = 0;
@@ -80,6 +92,7 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
       '- **THEN** the system grants a session',
     ].join('\n'));
 
+    writeVerifyPass(projectPath, path.basename(changeDir));
     const result = runCli(['archive', 'login-mfa'], projectPath);
 
     expect(result.status).toBe(0);
@@ -105,6 +118,7 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
       '(Deprecated because passkeys replace passwords.)',
     ].join('\n'));
 
+    writeVerifyPass(projectPath, path.basename(changeDir));
     const result = runCli(['archive', 'drop-login'], projectPath);
 
     expect(result.status).toBe(0);
@@ -123,6 +137,7 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
       '- TO: `### Requirement: Login flow`',
     ].join('\n'));
 
+    writeVerifyPass(projectPath, path.basename(changeDir));
     const result = runCli(['archive', 'rename-login'], projectPath);
 
     expect(result.status).toBe(0);
@@ -148,6 +163,7 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
 
     // --skip-strict keeps this test focused on the merge engine's conflict
     // path (the strict gate would also flag the missing target first).
+    writeVerifyPass(projectPath, path.basename(changeDir));
     const result = runCli(['archive', 'bad-delta', '--skip-strict'], projectPath);
 
     expect(result.status).not.toBe(0);
@@ -180,6 +196,7 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
       '- **THEN** the system issues an invoice',
     ].join('\n'));
 
+    writeVerifyPass(projectPath, path.basename(changeDir));
     const result = runCli(['archive', 'fresh-capability'], projectPath);
 
     expect(result.status).toBe(0);
@@ -205,6 +222,7 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
     ].join('\n');
     writeDeltaSpec(changeDir, 'auth/auth.md', delta);
 
+    writeVerifyPass(projectPath, path.basename(changeDir));
     expect(runCli(['archive', 'add-oauth'], projectPath).status).toBe(0);
     const afterFirst = fs.readFileSync(mainSpec, 'utf8');
     expect(afterFirst).toContain('### Requirement: OAuth login');
@@ -215,6 +233,7 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
     fs.writeFileSync(path.join(changeDir2, 'tasks.md'), '- [x] TASK-001 Done\n', 'utf8');
     fs.writeFileSync(path.join(changeDir2, 'specs', 'auth', 'auth.md'), delta, 'utf8');
 
+    writeVerifyPass(projectPath, path.basename(changeDir2));
     const result = runCli(['archive', 'add-oauth-again'], projectPath);
 
     expect(result.status).toBe(0);
@@ -233,6 +252,7 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
       'The system SHALL issue invoices.',
     ].join('\n'));
 
+    writeVerifyPass(projectPath, path.basename(changeDir));
     const result = runCli(['archive', 'spec-no-scenario'], projectPath);
 
     expect(result.status).not.toBe(0);
@@ -256,6 +276,7 @@ describe('archive delta spec merging (OpenSpec semantics)', () => {
       'The system SHALL issue invoices.',
     ].join('\n'));
 
+    writeVerifyPass(projectPath, path.basename(changeDir));
     const result = runCli(['archive', 'spec-skip-strict', '--skip-strict'], projectPath);
 
     expect(result.status).toBe(0);

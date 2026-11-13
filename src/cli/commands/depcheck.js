@@ -30,7 +30,7 @@ const DEFAULT_SAFE_LIST = [
   'cross-env',
   'dotenv', 'dotenv-*',
   'npm-run-all', 'concurrently', 'wait-on',
-  'stdd-copilot',
+  'stdd-copilot', '@marcher-lam/stdd-copilot', 'stdd',
   'playwright',
 ];
 
@@ -51,8 +51,19 @@ class DepcheckCommand {
     this.cwd = cwd || process.cwd();
   }
 
-  async execute(options = {}) {
-    const targetPath = options.path ? path.resolve(this.cwd, options.path) : this.cwd;
+  /**
+   * 终测复验 D10: the registry wires `depcheck [path]` positionally, so the
+   * first argument arrives as the path string — normalize (path, options)
+   * vs (options) callers. --json must also be real JSON on stdout with the
+   * same exit-code semantics as the text mode.
+   */
+  async execute(pathArg, maybeOptions = {}) {
+    const options = (pathArg && typeof pathArg === 'object' && !Array.isArray(pathArg))
+      ? pathArg
+      : maybeOptions;
+    const pathValue = (pathArg && typeof pathArg === 'string') ? pathArg : options.path;
+
+    const targetPath = pathValue ? path.resolve(this.cwd, pathValue) : this.cwd;
     const extraSafeList = options.safeList
       ? options.safeList.split(',').map(s => s.trim()).filter(Boolean)
       : [];
@@ -68,6 +79,9 @@ class DepcheckCommand {
     if (options.json) {
       console.log(JSON.stringify(results, null, 2));
       this._saveEvidence(results);
+      if (results.unused && results.unused.length > 0) {
+        process.exitCode = 1;
+      }
       return results;
     }
 
@@ -296,6 +310,10 @@ class DepcheckCommand {
   }
 
   _isBuiltinModule(modName) {
+    // Node builtin modules can be imported with or without the 'node:'
+    // prefix — 'node:fs' was previously reported as a missing dependency
+    // (终测复验 D09/U077).
+    const bare = String(modName).replace(/^node:/, '');
     const builtins = new Set([
       'fs', 'path', 'os', 'crypto', 'http', 'https',
       'url', 'util', 'stream', 'events', 'buffer',
@@ -305,8 +323,9 @@ class DepcheckCommand {
       'constants', 'module', 'process', 'querystring',
       'string_decoder', 'timers', 'worker_threads',
       'perf_hooks', 'async_hooks', 'inspector',
+      'test', 'diagnostics_channel', 'trace_events',
     ]);
-    return builtins.has(modName);
+    return builtins.has(bare);
   }
 
   _saveEvidence(results) {

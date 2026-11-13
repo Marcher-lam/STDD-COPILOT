@@ -16,11 +16,22 @@ class StartersCommand {
     this.spinner = spinner || { text: '', start() {}, stop() {}, succeed() {}, fail() {} };
   }
 
-  async execute(subcommand, ...args) {
+  /**
+   * Commander dispatch for `starters <subcommand> [args...]` spreads
+   * (subcommand, positionalArgs[], options, command) — normalize the tail
+   * so both CLI and programmatic (name, options) calls work. The options
+   * object is identified as the plain object in the tail: the trailing
+   * commander Command instance must not be mistaken for it (终测复验 D09).
+   */
+  async execute(subcommand, ...rest) {
+    const isPlainObject = v => v !== null && typeof v === 'object' && !Array.isArray(v) && v.constructor === Object;
+    const options = rest.find(isPlainObject) || {};
+    const positionals = rest.flatMap(a => (Array.isArray(a) ? a : [a]))
+      .filter(a => typeof a === 'string');
     if (subcommand === 'list') return this.printList();
     if (subcommand === 'create') {
-      const [name, options] = args;
-      const type = (options && options.type) || (args[1] && args[1].type) || 'default';
+      const name = positionals[0];
+      const type = (options && options.type) || 'default';
       return this.create(name, type, options || {});
     }
     return this.printList();

@@ -9,9 +9,9 @@ description: Fast-forward generation of all artifacts in one step (language-agno
 stdd ff "需求描述" --change-name <change-id>   # Fast-forward mode
 stdd ff "需求描述"                             # Auto-generate change name
 stdd ff "需求描述" --workspace packages/api    # Workspace scope
-stdd ff "需求描述" --include-design            # Include design doc
+stdd ff "需求描述" --include-design            # Include design doc (default)
 stdd ff "需求描述" --skip-design               # Skip design doc
-stdd ff "需求描述" --output custom/path        # Custom output path
+stdd ff "需求描述" --output <change-id>        # Custom change id (alias of --change-name)
 ```
 
 ## Description

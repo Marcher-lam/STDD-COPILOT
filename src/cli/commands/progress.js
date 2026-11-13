@@ -67,21 +67,26 @@ class ProgressCommand {
   _resumeHint(ctx) {
     const command = ctx.start.cmd;
     const args = ctx.start.args || {};
-    const change = args.change || args.changeName;
+    // 终测复验 D11: cli.js now records real positionals and option values;
+    // fall back across flag names and positional order so resume hints can
+    // locate the original change/workspace context.
+    const positionals = Array.isArray(args.positionals) ? args.positionals : [];
+    const change = args.change || args.changeName || args['change-name'] || positionals[0];
     if (['apply', 'verify', 'archive', 'continue'].includes(command)) {
       return `stdd continue${change ? ` ${change}` : ''}`;
     }
     if (command === 'graph') {
       return `stdd graph run --intent ${args.intent || 'feature'}${change ? ` --change-name ${change}` : ''}`;
     }
-    if (command === 'constitution' && args.action === 'check') {
+    if (command === 'constitution' && (args.action || positionals[0]) === 'check') {
       return 'stdd constitution check';
     }
-    if (command === 'constitution' && args.action === 'fix') {
+    if (command === 'constitution' && (args.action || positionals[0]) === 'fix') {
       return `stdd constitution fix${args.article ? ` --article ${args.article}` : ''}`;
     }
     if (command === 'new') {
-      return `stdd new change ${change || '<name>'}`;
+      const name = positionals[1] || change;
+      return `stdd new change ${name || '<name>'}`;
     }
     if (command === 'ff') {
       return `stdd ff ${change || '<description>'}`;
@@ -101,7 +106,8 @@ class ProgressCommand {
     const icons = { start: chalk.cyan('▶'), complete: chalk.green('✓'), fail: chalk.red('✗'), interrupt: chalk.yellow('⚡'), cp: chalk.blue('◆') };
     for (const e of entries) {
       const t = (e.ts || '').replace('T', ' ').replace(/\.\d+Z$/, '');
-      const ch = e.args?.change || e.args?.changeName || '';
+      const positionals = Array.isArray(e.args?.positionals) ? e.args.positionals : [];
+      const ch = e.args?.change || e.args?.changeName || e.args?.['change-name'] || positionals[0] || '';
       const err = e.err ? chalk.red(` → ${e.err}`) : '';
       console.log(`  ${icons[e.ev] || '·'} ${chalk.dim(t)} ${e.cmd || ''}${ch ? ` [${ch}]` : ''}${err}`);
     }

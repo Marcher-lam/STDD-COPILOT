@@ -469,7 +469,7 @@ describe('cli.js round21 inline branch coverage', () => {
 
       program.parse(['node', 'cli', 'status', '--json']);
 
-      expect(sessionProgress._progressInstance.start).toHaveBeenCalledWith('status');
+      expect(sessionProgress._progressInstance.start).toHaveBeenCalledWith('status', expect.objectContaining({ positionals: [], json: true }));
       expect(sessionProgress.setActive).toHaveBeenCalledWith({ id: 'progress-entry' });
       expect(commander._parseMock).toHaveBeenCalledWith(['node', 'cli', 'status', '--json']);
     });

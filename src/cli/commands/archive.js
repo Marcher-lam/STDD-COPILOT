@@ -12,7 +12,8 @@ const { createLogger } = require('../../utils/logger');
 const { applyDelta, parseDeltaSections } = require('../../utils/delta-spec');
 const { readDeferred, DEFERRED_FILENAME } = require('../../utils/deferred-work');
 const { readChangeRigor, rigorNodeOptions } = require('../../utils/rigor');
-const { ValidateCommand } = require('./validate');
+const { computeProjectTestFingerprint } = require('../../utils/project-fingerprint');
+const { ValidateCommand, lineDiagnostics } = require('./validate');
 const logger = createLogger('archive');
 
 function extractProposalTitle(content) {
@@ -71,6 +72,16 @@ function findLatestEvidence(changeDir) {
  * files never mask a failed verify run here).
  */
 function findLatestVerifyEvidence(changeDir) {
+  const latest = findLatestVerifyEvidenceFile(changeDir);
+  return latest ? latest.data : null;
+}
+
+/**
+ * Latest `stdd verify` evidence with its file identity (path + mtime), used
+ * by the archive gate to prove the evidence is both a pass and FRESH —
+ * newer than any change artifact it is supposed to cover (终测复验 D02).
+ */
+function findLatestVerifyEvidenceFile(changeDir) {
   const evidenceDir = path.join(changeDir, 'evidence');
   if (!fs.existsSync(evidenceDir)) return null;
   const files = fs.readdirSync(evidenceDir)
@@ -83,11 +94,32 @@ function findLatestVerifyEvidence(changeDir) {
   if (files.length === 0) return null;
   const filePath = path.join(evidenceDir, files[0]);
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    return { data, file: filePath, mtime: fs.statSync(filePath).mtimeMs };
   } catch (err) {
     logger.warn(err.message);
     return null;
   }
+}
+
+/**
+ * Newest modification time across the artifacts a verification is supposed
+ * to cover: tasks, proposal/design, delta specs, and the apply ledger.
+ * Evidence files themselves are excluded (they are written by verify).
+ */
+function findNewestArtifactMtime(changeDir) {
+  let newest = 0;
+  const consider = (filePath) => {
+    try {
+      const mtime = fs.statSync(filePath).mtimeMs;
+      if (mtime > newest) newest = mtime;
+    } catch { /* unreadable artifact — nothing to compare */ }
+  };
+  for (const rel of ['tasks.md', 'proposal.md', 'design.md', 'apply.log', '.state.yaml']) {
+    consider(path.join(changeDir, rel));
+  }
+  for (const file of walkSpecFiles(path.join(changeDir, 'specs'))) consider(file);
+  return newest;
 }
 
 function workspaceIndex(cwd) {
@@ -295,7 +327,19 @@ class ArchiveCommand {
 
     // Pre-check: ensure all tasks are done
     const taskCheck = checkTasksCompletion(changeDir);
-    if (!taskCheck.allDone && taskCheck.total > 0) {
+    // 终测复验 D02: an empty (or missing) task list has nothing verified —
+    // "0/0 completed" must not masquerade as a verified change. This check
+    // is deliberately NOT nested under !allDone: checkTasksCompletion
+    // reports empty task files as allDone=true, total=0.
+    if (taskCheck.total === 0) {
+      console.log(chalk.red(`\n✗ Change '${changeNameActual}' has no tasks to verify (tasks.md missing or empty) — change NOT archived:`));
+      console.log(chalk.yellow(`\n  Add tasks (\`stdd plan ${changeNameActual}\`), complete them, then verify.`));
+      console.log(chalk.dim(`  Escape hatch: stdd archive ${changeNameActual} --force`));
+      process.exitCode = 1;
+      if (options.throwOnFailure) throw new Error(`archive refused: no tasks in ${changeNameActual}`);
+      return;
+    }
+    if (!taskCheck.allDone) {
       console.log(chalk.red(`\n✗ Change '${changeNameActual}' has incomplete tasks:`));
       taskCheck.pending.forEach(d => {
         console.log(`    ${chalk.red('–')} ${d}`);
@@ -306,19 +350,62 @@ class ArchiveCommand {
       return;
     }
 
-    // Verification gate: the latest `stdd verify` evidence must not be a
-    // failure. Archiving a change whose newest verification failed would
-    // advance the delivery state past a red gate; --force is the explicit
-    // escape hatch and still records the rejection in summary.md.
+    // Verification gate (终测复验 D02): archiving requires verification
+    // evidence that (1) exists, (2) is a pass, and (3) is FRESH — newer
+    // than every change artifact it covers. Previously only "an existing
+    // failed verify" blocked; a never-verified change, an empty task list,
+    // or tests edited to fail after a green verify all slipped through.
+    // --force is the explicit escape hatch and still records the rejection
+    // in summary.md.
     if (!options.force) {
-      const latestVerify = findLatestVerifyEvidence(changeDir);
-      if (latestVerify && latestVerify.status === 'fail') {
-        console.log(chalk.red(`\n✗ Latest verification evidence for '${changeNameActual}' FAILED — change NOT archived:`));
-        console.log(chalk.yellow(`\n  Fix the failures and re-run ${chalk.cyan(`stdd verify ${changeNameActual}`)}.`));
+      const latest = findLatestVerifyEvidenceFile(changeDir);
+      const refuse = (lines) => {
+        console.log(chalk.red(`\n✗ Verification gate for '${changeNameActual}' — change NOT archived:`));
+        lines.forEach(l => console.log(l));
+        console.log(chalk.yellow(`\n  Run ${chalk.cyan(`stdd verify ${changeNameActual}`)} and archive while the evidence is fresh.`));
         console.log(chalk.dim(`  Escape hatch: stdd archive ${changeNameActual} --force`));
         process.exitCode = 1;
-        if (options.throwOnFailure) throw new Error(`archive refused: latest verification failed for ${changeNameActual}`);
+        if (options.throwOnFailure) throw new Error(`archive refused: verification gate for ${changeNameActual}`);
+      };
+
+      if (!latest) {
+        refuse([
+          chalk.yellow('  No verification evidence found — the change was never verified.'),
+        ]);
         return;
+      }
+      if (latest.data.status === 'fail') {
+        refuse([
+          chalk.yellow(`  Latest verification evidence FAILED (${path.basename(latest.file)}).`),
+        ]);
+        return;
+      }
+      if (latest.data.status !== 'pass') {
+        refuse([
+          chalk.yellow(`  Latest verification evidence status is '${latest.data.status}', not a pass.`),
+        ]);
+        return;
+      }
+      const newestArtifact = findNewestArtifactMtime(changeDir);
+      if (newestArtifact > latest.mtime) {
+        refuse([
+          chalk.yellow('  Verification evidence is STALE: change artifacts were modified after the last passing verify.'),
+          chalk.dim('  Edit tests/code, then re-run stdd verify before archiving.'),
+        ]);
+        return;
+      }
+      // Stale green via PROJECT edits (test scripts / test files live
+      // outside the change dir): compare the fingerprint verify recorded.
+      const recorded = latest.data.metadata && latest.data.metadata.projectFingerprint;
+      if (recorded) {
+        const current = computeProjectTestFingerprint(cwd);
+        if (current !== recorded) {
+          refuse([
+            chalk.yellow('  Verification evidence is STALE: the project\'s tests or test scripts changed since the last passing verify.'),
+            chalk.dim('  Re-run stdd verify against the current test suite before archiving.'),
+          ]);
+          return;
+        }
       }
     }
 
@@ -471,11 +558,19 @@ class ArchiveCommand {
     if (files.length === 0) return { ok: true };
     const validator = new ValidateCommand(cwd);
     const diagnostics = validator.strictDiagnostics(changeDir, files);
+    // 终测复验 D06: `stdd validate --strict` also runs the per-line
+    // leakage/shape rules over .feature files, but strictDiagnostics skips
+    // them — so placeholder specs that failed strict validation still
+    // archived. Run the same line rules here so the two gates agree.
+    for (const file of files) {
+      diagnostics.push(...lineDiagnostics(file, cwd));
+    }
     // Structure rules only. Stateful delta-vs-main rules (target-missing,
     // added-conflict, ...) reflect merge state: after a conflict-aborted
     // partial merge they fire on already-applied entries and would block the
     // idempotent re-run. The merge engine reports those states itself as
-    // conflicts/warnings.
+    // conflicts/warnings. Line rules that are warnings for validate stay
+    // warnings here; only blocking severities gate.
     const STATEFUL_RULES = new Set([
       'removed-target-missing', 'renamed-source-missing', 'modified-target-missing',
       'added-conflict', 'renamed-target-exists',

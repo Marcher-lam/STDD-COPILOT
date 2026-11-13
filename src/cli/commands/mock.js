@@ -13,15 +13,35 @@ const logger = createLogger('mock');
 class MockCommand extends MockGenCommand {
   constructor(cwd = process.cwd()) {
     super(cwd);
+    // MockGenCommand has no constructor of its own, so `this.cwd` was never
+    // set — every path.relative(this.cwd, ...) call crashed with "path
+    // argument Received undefined" (终测复验 D08).
+    this.cwd = cwd;
     this.mocksDir = path.join(cwd, 'src', '__mocks__');
   }
 
-  execute(action = 'generate', args = [], options = {}) {
-    switch (action) {
+  /**
+   * 终测复验 D08: the registry wires `mock [action] [target]`, so commander
+   * spreads positionals as (action, target, options). The old signature
+   * treated the target STRING as an args array — args[0] was the first
+   * character of the target and full invocations fell apart. Accept both
+   * the CLI spread and a programmatic args array.
+   */
+  execute(action, targetOrArgs, options = {}) {
+    let action_ = action;
+    let target;
+    if (Array.isArray(targetOrArgs)) {
+      target = targetOrArgs[0];
+    } else {
+      target = targetOrArgs;
+    }
+    if (action_ === undefined || action_ === null) action_ = 'list';
+
+    switch (action_) {
       case 'generate':
       case 'create':
       case 'new':
-        return this.generate(args[0], options);
+        return this.generate(target, options);
       case 'list':
       case 'ls':
         return this.list(options);
@@ -30,14 +50,14 @@ class MockCommand extends MockGenCommand {
       case 'init':
         return this.init(options);
       case 'module':
-        return this.generateModuleMock(args[0], options);
+        return this.generateModuleMock(target, options);
       case 'function':
-        return this.generateFunctionMock(args[0], options);
+        return this.generateFunctionMock(target, options);
       case 'api':
-        return this.generateApiMock(args[0], options);
+        return this.generateApiMock(target, options);
       default:
-        if (args[0]) return this.generate(action, options);
-        return this.list(options);
+        // `stdd mock <target>` — the action slot holds the target.
+        return this.generate(action_, options);
     }
   }
 
@@ -70,13 +90,17 @@ class MockCommand extends MockGenCommand {
       throw new Error('Target is required. Usage: stdd mock generate <module|function|api>');
     }
 
-    const mockPath = path.join(this.mocksDir, `${target}.js`);
+    // Path-like targets keep their directory shape under src/__mocks__
+    // (mkdir the parents instead of crashing on a missing directory).
+    const safeTarget = String(target).replace(/^\.?\//, '');
+    const mockPath = path.join(this.mocksDir, `${safeTarget}.js`);
     const content = this.generateMockContent(target, options);
 
     if (fs.existsSync(mockPath) && !options.force) {
       throw new Error(`Mock already exists at ${mockPath}. Use --force to overwrite.`);
     }
 
+    fs.mkdirSync(path.dirname(mockPath), { recursive: true });
     fs.writeFileSync(mockPath, content, 'utf8');
 
     if (options.json) {
@@ -148,7 +172,11 @@ module.exports = { ${functionName} };
   }
 
   generateApiMockContent(apiName, options = {}) {
-    const methods = options.methods || ['get', 'post', 'put', 'delete'];
+    // --methods arrives from the CLI as a comma-separated string.
+    const rawMethods = options.methods || ['get', 'post', 'put', 'delete'];
+    const methods = Array.isArray(rawMethods)
+      ? rawMethods
+      : String(rawMethods).split(',').map(m => m.trim()).filter(Boolean);
 
     return `/**
  * API mock for ${apiName}

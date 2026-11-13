@@ -14,6 +14,19 @@ describe('archive CLI command', () => {
     });
   }
 
+
+  // D02: the archive gate now requires fresh passing verify evidence —
+  // fixtures that expect a successful archive must record it (last write,
+  // so the evidence stays newer than the artifacts it covers).
+  function writeVerifyPass(projectPath, changeDirName, name = 'verify-1000000000') {
+    const evidenceDir = path.join(projectPath, 'stdd', 'changes', changeDirName, 'evidence');
+    fs.mkdirSync(evidenceDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(evidenceDir, `${name}.json`),
+      JSON.stringify({ type: 'verify', status: 'pass', results: {}, metadata: {} })
+    );
+  }
+
   function createTempProject(name, options = {}) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'stdd-archive-test-'));
     const projectPath = path.join(root, name);
@@ -25,6 +38,8 @@ describe('archive CLI command', () => {
       path.join(projectPath, 'stdd', 'changes', changeDir, 'tasks.md'),
       tasksContent
     );
+
+    writeVerifyPass(projectPath, changeDir);
 
     return projectPath;
   }
@@ -79,6 +94,7 @@ describe('archive CLI command', () => {
       path.join(projectPath, 'stdd', 'changes', 'beta', 'tasks.md'),
       '- [x] TASK-B Done\n'
     );
+    writeVerifyPass(projectPath, 'beta');
 
     const result = runCli(['archive'], projectPath);
 
@@ -121,6 +137,7 @@ describe('archive CLI command', () => {
       path.join(projectPath, 'stdd', 'specs', 'demo-feature', 'spec.md'),
       '# Spec\n'
     );
+    writeVerifyPass(projectPath, 'demo');
 
     const result = runCli(['archive', 'demo'], projectPath);
 
@@ -390,6 +407,7 @@ describe('archive CLI command', () => {
     fs.mkdirSync(specsDir, { recursive: true });
     fs.writeFileSync(path.join(specsDir, 'login.feature'), 'Feature: Login\n');
     fs.writeFileSync(path.join(specsDir, 'auth.md'), '# Auth Spec\n');
+    writeVerifyPass(projectPath, 'specs-change');
 
     const result = runCli(['archive', 'specs-change'], projectPath);
 
@@ -423,9 +441,12 @@ describe('archive CLI command', () => {
 Feature: User Login
   @task-001 @workspace:packages-api
   Scenario: User Login
-    Given the system is ready
+    Given a registered user on the packages/api workspace
+    When the user submits valid credentials
+    Then access is granted
 `);
 
+    writeVerifyPass(projectPath, 'spec-workspace-change');
     const result = runCli(['archive', 'spec-workspace-change'], projectPath);
 
     expect(result.status).toBe(0);

@@ -88,8 +88,11 @@ const commandRegistry = [
     description: 'Fast-forward: create change with pre-populated tasks',
     options: [
       { flags: '--change-name <name>', description: 'Custom change name' },
+      { flags: '--output <name>', description: 'Custom change id (alias of --change-name)' },
       { flags: '--workspace <workspace>', description: 'Scope to workspace' },
       { flags: '--rigor <level>', description: 'Rigor level: light, standard, strict (default: auto — risky text escalates to strict)' },
+      { flags: '--include-design', description: 'Include design.md skeleton (default)' },
+      { flags: '--skip-design', description: 'Skip design.md generation' },
     ],
     action: 'FFCommand',
     spinner: 'Fast-forwarding',
@@ -358,7 +361,12 @@ const commandRegistry = [
   {
     name: 'starters <subcommand> [args...]',
     description: 'Manage project starters',
+    options: [
+      { flags: '--type <type>', description: 'Starter template type (see starters list: javascript, typescript, python, go, rust)' },
+      { flags: '--no-stdd', description: 'Skip STDD initialization in the new project' },
+    ],
     action: 'StartersCommand',
+    helpText: `Examples:\n  stdd starters list\n  stdd starters create my-app --type javascript`,
   },
   {
     name: 'extensions [action] [args...]',
@@ -736,12 +744,15 @@ const commandRegistry = [
     name: 'execute [action] [change]',
     description: 'Run Ralph Loop TDD closed-loop execution',
     options: [
-      { flags: '--phase <phase>', description: 'Specific phase: red, green, refactor' },
+      { flags: '--phase <phase>', description: 'Run one stage: red, check, green, mutation, refactor (earlier stages must have recorded passes)' },
       { flags: '--max-tasks <n>', description: 'Maximum tasks to execute' },
+      { flags: '--test-command <cmd>', description: 'Test command override' },
+      { flags: '--lint-command <cmd>', description: 'CHECK stage lint command override' },
+      { flags: '--task <fragment>', description: 'Target a specific task by title fragment' },
       { flags: '--json', description: 'JSON output' },
     ],
     action: 'ExecuteCommand',
-    helpText: `Actions: run, status, evidence, retry\n\nLoop: RED → CHECK → GREEN → MUTATION → REFACTOR\n\nExamples:\n  stdd execute run\n  stdd execute status`,
+    helpText: `Actions: run (default), status, evidence\n\nLoop: RED → CHECK → GREEN → MUTATION → REFACTOR (each stage gates on real command results)\n\nExamples:\n  stdd execute run\n  stdd execute status\n  stdd execute <change> --phase green`,
   },
   {
     name: 'final-doc [change]',

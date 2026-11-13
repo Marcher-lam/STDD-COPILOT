@@ -20,6 +20,7 @@ const { runCommand: runParsedCommand } = require('../../utils/command-runner');
 const { readDeferred, appendDeferred, resolveDeferred, DEFERRED_FILENAME } = require('../../utils/deferred-work');
 const { readChangeRigor, rigorNodeOptions } = require('../../utils/rigor');
 const { readApplyLog } = require('../../utils/apply-log');
+const { computeProjectTestFingerprint } = require('../../utils/project-fingerprint');
 
 // getConfigTestCommand is now imported from test-command-resolver
 
@@ -368,6 +369,10 @@ class VerifyCommand {
       os: process.platform,
       nodeVersion: process.version,
       cwd,
+      // 终测复验 D02: snapshot of the project's test-relevant inputs. The
+      // archive gate recomputes this and refuses to reuse the evidence
+      // after tests or test scripts were edited (stale green).
+      projectFingerprint: computeProjectTestFingerprint(cwd),
     };
     const evidenceWorkspaceResults = report.tests && Array.isArray(report.tests.workspaces)
       ? report.tests.workspaces.map(result => result.workspace).filter(Boolean)

@@ -12,7 +12,10 @@ const { findActiveChange, parseTasks, taskKey } = require('../../utils/change-ut
 const { injectReporter } = require('../../utils/reporter-injector');
 const { resolveTestCommands, getConfigTestCommand } = require('../../utils/test-command-resolver');
 const { commandToWorkspaceScope, resolveWorkspaceScope } = require('../../utils/workspace-scope');
-const { runCommand: runParsedCommand } = require('../../utils/command-runner');
+const { runCommand: runParsedCommand, isInfraFailure: _isInfraFailure } = require('../../utils/command-runner');
+// Defensive resolution: partial mocks of command-runner (older test doubles)
+// may not export the classifier — fall back to "not infra" rather than crash.
+const isInfraFailure = typeof _isInfraFailure === 'function' ? _isInfraFailure : () => false;
 const { appendRuling, RULINGS_FILENAME } = require('../../utils/ruling-ledger');
 const { recordInterruption } = require('../../utils/interruption');
 const { readApplyLog } = require('../../utils/apply-log');
@@ -98,7 +101,14 @@ function updateTaskPhase(filePath, taskIndex, newPhase) {
 
 function runCommand(cmd, cwd, additionalEnv) {
   const env = additionalEnv ? { ...process.env, ...additionalEnv } : undefined;
-  return runParsedCommand(cmd, { cwd, stdio: 'inherit', env });
+  // stdio 'pipe' + echo: the output must be captured so infrastructure
+  // failures (missing package.json / executor, 终测复验 D03) can be told
+  // apart from real assertion failures; echoing keeps the live UX.
+  const result = runParsedCommand(cmd, { cwd, stdio: 'pipe', env });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (result.error) console.error(`  ${chalk.red(`Command error: ${result.error.message}`)}`);
+  return result;
 }
 
 function writeLog(changeDir, entry) {
@@ -484,6 +494,12 @@ class ApplyCommand {
       workspaces: testResults,
       status: resultStatus,
     };
+    // 终测复验 D03: an infrastructure failure must never become RED
+    // evidence via the legacy path either — _hasRedEvidence ignores
+    // entries carrying an error field.
+    if (resultStatus === 'failed' && testResults.some(r => !r.passed && r.infra)) {
+      logEntry.error = 'infrastructure-failure';
+    }
     if (resultStatus === 'passed' && options.allowNoTests && !hasRedEvidence) {
       logEntry.redEvidenceWaived = '--allow-no-tests';
     }
@@ -538,6 +554,30 @@ class ApplyCommand {
 
     // Run tests - they MUST fail in RED phase
     const testResults = await this._runTests(testCommands, cwd);
+    const infraFailures = testResults.filter(r => r.infra);
+
+    // 终测复验 D03: an infrastructure failure (npm ENOENT, missing executor,
+    // missing test script) is NOT a failing suite. Treating it as RED would
+    // fabricate RED evidence for a suite that never ran.
+    if (infraFailures.length > 0) {
+      console.log(chalk.red(`\n❌ RED Phase blocked: test infrastructure failure in ${infraFailures.length} command(s).`));
+      infraFailures.forEach(r => {
+        console.log(chalk.yellow(`  ${r.workspaceName}: "${r.command}" never ran as a test suite (missing executor/package/test script).`));
+      });
+      console.log(chalk.yellow('  Fix the test setup, then re-run apply. This is not RED evidence.'));
+      writeLog(changeDir, {
+        change: changeName,
+        task: task.description,
+        phase: TDD_PHASES.RED,
+        command: testCommands.map(tc => tc.command).join(' && '),
+        workspaces: testResults,
+        status: 'failed',
+        error: 'infrastructure-failure',
+      });
+      process.exitCode = 1;
+      return;
+    }
+
     const allFailed = testResults.every(r => !r.passed);
 
     if (!allFailed) {
@@ -739,6 +779,9 @@ class ApplyCommand {
         cwd: testCommand.cwd,
         command: testCommand.command,
         passed: result.status === 0,
+        // Infrastructure failure (runner never executed) — must never be
+        // mistaken for a failing suite, especially in the RED phase.
+        infra: !result.error && result.status !== 0 ? isInfraFailure(result) : Boolean(result.error),
         workspace: commandToWorkspaceScope(cwd, testCommand),
       });
     }

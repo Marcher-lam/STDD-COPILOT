@@ -88,12 +88,67 @@ ${workspaceRow}
     const workspaceHeader = workspace ? `
 > Workspace: ${workspace.path}
 ` : '';
+    // [phase:red] markers put ff tasks on the TDD state machine's default
+    // path — apply enforces RED → GREEN → REFACTOR evidence (终测复验 D12).
     return `# Tasks
 ${workspaceHeader}
 
-- [ ] TASK-001: 环境准备与脚手架搭建
-- [ ] TASK-002: ${description} 核心逻辑实现
-- [ ] TASK-003: 单元测试编写与验证
+- [ ] TASK-001: 环境准备与脚手架搭建 [phase:red]
+- [ ] TASK-002: ${description} 核心逻辑实现 [phase:red]
+- [ ] TASK-003: 单元测试编写与验证 [phase:red]
+`;
+  }
+
+  /**
+   * Design skeleton (终测复验 D12): ff promises a design document. The
+   * generator cannot invent architecture decisions — it scaffolds the
+   * decision ledger with the requirement filled in and clearly labeled
+   * open slots for the implementer.
+   */
+  generateDesign(description, workspace = null) {
+    const workspaceSection = workspace ? `\n## Workspace\n\n- Path: ${workspace.path}\n- Package: ${workspace.name}\n` : '';
+    return `# Design: ${description}
+
+## Context
+
+> 需求：${description}
+
+## Decision Ledger
+
+### AD-1: implementation approach for "${description}"
+
+Status: OPEN — 由实现者在 apply 前填写（决策格式：决定 — 理由 — 出错了的代价）。
+
+## Risks
+
+- [ ] 待实现者评估（性能 / 安全 / 兼容性）
+${workspaceSection}
+`;
+  }
+
+  /**
+   * Delta spec skeleton for ff: an ADDED requirement with a real Scenario
+   * block derived from the description, so the change's specs pass the same
+   * strict gate (`stdd validate --strict` / archive) instead of shipping an
+   * empty specs/ directory (终测复验 D12).
+   */
+  generateDeltaSpec(description) {
+    const title = description
+      .trim()
+      .replace(/[-_]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+    return `## ADDED Requirements
+
+### Requirement: ${title}
+
+The system SHALL support: ${description}.
+
+#### Scenario: ${title}
+
+- **GIVEN** the current system state
+- **WHEN** the user attempts to ${description}
+- **THEN** "${description}" is delivered as specified
 `;
   }
 
@@ -111,7 +166,10 @@ ${workspaceHeader}
     }
     const workspaceMeta = _wsCtx(workspace);
 
-    const changeName = options.changeName || _genChangeName('ff');
+    const changeName = options.changeName || options.output || _genChangeName('ff');
+    // --output is the template-documented alias for the change id (a custom
+    // output location under stdd/changes/). It is a change NAME: the rest
+    // of the tool addresses changes by single-segment ids.
     validateChangeName(changeName);
     const changeDir = path.join(changesDir, changeName);
 
@@ -128,6 +186,14 @@ ${workspaceHeader}
 
     await fs.writeFile(path.join(changeDir, 'proposal.md'), this.generateProposal(description, workspaceMeta));
     await fs.writeFile(path.join(changeDir, 'tasks.md'), this.generateTasks(description, workspaceMeta));
+    await fs.writeFile(path.join(changeDir, 'specs', 'spec.md'), this.generateDeltaSpec(description));
+    // design.md ships by default (--skip-design omits it; --include-design
+    // is the explicit form of the default).
+    const includeDesign = options.includeDesign === true
+      || (options.includeDesign === undefined && options.skipDesign !== true);
+    if (includeDesign) {
+      await fs.writeFile(path.join(changeDir, 'design.md'), this.generateDesign(description, workspaceMeta));
+    }
 
     // Rigor is a property of the change: recorded once at creation, honored
     // by verify/archive unless explicitly overridden there.
@@ -135,6 +201,7 @@ ${workspaceHeader}
 
     console.log(chalk.green(`\n✅ Fast-forward change '${changeName}' created at stdd/changes/${changeName}/\n`));
     console.log(chalk.dim(`  Rigor: ${rigor.level} (${rigor.basis}) — verify/archive will follow it`));
+    console.log(chalk.dim(`  Artifacts: proposal.md, tasks.md (TDD phases), specs/spec.md${includeDesign ? ', design.md' : ''}`));
     if (workspaceMeta) {
       console.log(chalk.cyan(`Workspace: ${workspaceMeta.path}`));
     }

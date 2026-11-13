@@ -13,18 +13,6 @@ const { toSafeFilename: _toSafe, toTitleCase: _toTitle, workspaceContext: _wsCtx
 class SpecGenerator {
   constructor() {
     this.keywordTemplates = this._loadTemplates();
-    this.defaultTemplate = {
-      feature: 'Feature',
-      given: [
-        'Given the system is ready'
-      ],
-      when: [
-        'When the user performs the action'
-      ],
-      then: [
-        'Then the result is expected'
-      ]
-    };
   }
 
   _loadTemplates() {
@@ -130,9 +118,14 @@ class SpecGenerator {
       whenSteps = template.when;
       thenSteps = template.then;
     } else {
-      givenSteps = this.defaultTemplate.given;
-      whenSteps = this.defaultTemplate.when;
-      thenSteps = this.defaultTemplate.then;
+      // 终测复验 D06: no more generic placeholder sentences — the fallback
+      // steps carry the task's own description so the generated spec has
+      // business semantics and passes the same strict gate `stdd validate
+      // --strict` and archive enforce.
+      const description = task.description.replace(/\s+/g, ' ').trim();
+      givenSteps = [`Given the current system state before "${description}"`];
+      whenSteps = [`When the user attempts to ${description}`];
+      thenSteps = [`Then "${description}" is delivered as specified for ${task.id}`];
     }
 
     const stripKeyword = (s) => s.replace(/^(Given|When|Then|And)\s+/, '');

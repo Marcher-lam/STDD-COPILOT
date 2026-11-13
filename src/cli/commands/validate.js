@@ -609,4 +609,4 @@ class ValidateCommand {
   }
 }
 
-module.exports = { ValidateCommand, LEAKAGE_RULES };
+module.exports = { ValidateCommand, LEAKAGE_RULES, lineDiagnostics };

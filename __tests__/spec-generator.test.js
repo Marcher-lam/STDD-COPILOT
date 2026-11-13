@@ -173,9 +173,11 @@ describe('SpecGenerator', () => {
     const featurePath = path.join(projectPath, 'stdd', 'changes', 'default-change', 'specs', 'setup-development-environment.feature');
     const content = fs.readFileSync(featurePath, 'utf8');
 
-    expect(content).toContain('Given the system is ready');
-    expect(content).toContain('When the user performs the action');
-    expect(content).toContain('Then the result is expected');
+    // D06: the fallback steps carry the task's own description — no more
+    // generic placeholder sentences that strict validation blocks.
+    expect(content).toContain('Given the current system state before "Setup Development Environment"');
+    expect(content).toContain('When the user attempts to Setup Development Environment');
+    expect(content).toContain('is delivered as specified for TASK-001');
   });
 
   it('should skip existing .feature files', async () => {

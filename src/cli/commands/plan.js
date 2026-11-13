@@ -4,6 +4,7 @@
  */
 
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const chalk = require('chalk');
 const yaml = require('js-yaml');
@@ -106,7 +107,29 @@ class PlanCommand {
     return count;
   }
 
-  async execute(changeName, options = {}) {
+  /**
+   * 终测复验 D09/D12: the registry wires `plan [action] [change]`, so the
+   * first positional is the action when it is one of show/estimate/
+   * dependencies/generate; anything else is a change name (default action:
+   * generate). Programmatic callers keep (changeName, options).
+   */
+  async execute(firstArg, secondArg, thirdArg) {
+    const KNOWN_ACTIONS = new Set(['generate', 'show', 'estimate', 'dependencies']);
+    let action = 'generate';
+    let changeName = null;
+    let options = {};
+    if (secondArg !== null && typeof secondArg === 'object' && !Array.isArray(secondArg)) {
+      options = secondArg;
+      changeName = firstArg || null;
+    } else if (firstArg && KNOWN_ACTIONS.has(String(firstArg))) {
+      action = String(firstArg);
+      changeName = secondArg || null;
+      options = (thirdArg && typeof thirdArg === 'object') ? thirdArg : {};
+    } else {
+      changeName = firstArg || null;
+      options = (secondArg && typeof secondArg === 'object') ? secondArg : ((thirdArg && typeof thirdArg === 'object') ? thirdArg : {});
+    }
+
     const stddDir = path.join(process.cwd(), 'stdd');
     const changesDir = path.join(stddDir, 'changes');
     const changeDir = changeName
@@ -116,6 +139,10 @@ class PlanCommand {
     if (!changeDir) {
       throw new Error('No active change found. Use `stdd new change <name>` first.');
     }
+
+    if (action === 'show') return this.showTasks(changeDir, options);
+    if (action === 'estimate') return this.showEstimates(changeDir, options);
+    if (action === 'dependencies') return this.showDependencies(changeDir, options);
 
     const proposalPath = path.join(changeDir, 'proposal.md');
     const proposalExists = await this.fileExists(proposalPath);
@@ -407,7 +434,10 @@ class PlanCommand {
     for (const task of tasks) {
       // Canonical `TASK-NNN: title` form (no bold) so every consumer —
       // including the strict spec-generator parser — can read the line.
-      content += `- [ ] ${task.id}: ${task.title}\n`;
+      // The `[phase:red]` marker puts the task on the TDD state machine's
+      // default path: apply enforces RED → GREEN → REFACTOR with recorded
+      // evidence instead of falling back to legacy mark-done (终测复验 D12).
+      content += `- [ ] ${task.id}: ${task.title} [phase:red]\n`;
       content += `  - Estimated: ${task.estimatedMinutes} minutes\n`;
       if (task.dependencies.length > 0) {
         content += `  - Dependencies: ${task.dependencies.join(', ')}\n`;
@@ -424,6 +454,107 @@ class PlanCommand {
     content += `- Mark tasks as completed when done\n\n`;
 
     return content;
+  }
+
+  /** `stdd plan show <change>`: read-only view of the current task list. */
+  showTasks(changeDir, options = {}) {
+    const tasksPath = path.join(changeDir, 'tasks.md');
+    if (!fsSync.existsSync(tasksPath)) {
+      throw new Error(`No tasks.md found in ${path.basename(changeDir)}. Run \`stdd plan ${path.basename(changeDir)}\` first.`);
+    }
+    const content = fsSync.readFileSync(tasksPath, 'utf-8');
+    const tasks = [];
+    for (const line of content.split('\n')) {
+      const m = line.match(/^(\s*- )\[([ ~x])\]\s*(.+)$/);
+      if (m) {
+        const phase = (m[3].match(/\[phase:(\w+)\]/) || [])[1] || null;
+        tasks.push({
+          status: m[2] === 'x' ? 'done' : m[2] === '~' ? 'in-progress' : 'pending',
+          phase,
+          title: m[3].replace(/\s*\[phase:\w+\]/g, '').trim(),
+        });
+      }
+    }
+    if (options.json) {
+      console.log(JSON.stringify({ change: path.basename(changeDir), tasks }, null, 2));
+      return tasks;
+    }
+    console.log(chalk.bold(`\n📋 Tasks: ${chalk.cyan(path.basename(changeDir))}\n`));
+    if (tasks.length === 0) {
+      console.log(chalk.dim('  No tasks found.'));
+      return tasks;
+    }
+    for (const t of tasks) {
+      const icon = t.status === 'done' ? chalk.green('[x]') : t.status === 'in-progress' ? chalk.yellow('[~]') : chalk.dim('[ ]');
+      const phase = t.phase ? chalk.dim(` (phase:${t.phase})`) : '';
+      console.log(`  ${icon} ${t.title}${phase}`);
+    }
+    console.log('');
+    return tasks;
+  }
+
+  /** `stdd plan estimate <change>`: per-task time estimates. */
+  showEstimates(changeDir, options = {}) {
+    const tasksPath = path.join(changeDir, 'tasks.md');
+    if (!fsSync.existsSync(tasksPath)) {
+      throw new Error(`No tasks.md found in ${path.basename(changeDir)}.`);
+    }
+    const lines = fsSync.readFileSync(tasksPath, 'utf-8').split('\n');
+    const estimates = [];
+    for (const [i, line] of lines.entries()) {
+      const taskMatch = line.match(/^(\s*- )\[([ ~x])\]\s*(.+)$/);
+      if (!taskMatch) continue;
+      const next = (lines[i + 1] || '') + (lines[i + 2] || '');
+      const est = (next.match(/Estimated:\s*(\d+)\s*minutes/i) || [])[1];
+      estimates.push({
+        title: taskMatch[3].replace(/\s*\[phase:\w+\]/g, '').trim(),
+        status: taskMatch[2] === 'x' ? 'done' : 'pending',
+        estimatedMinutes: est ? Number(est) : null,
+      });
+    }
+    const total = estimates.reduce((sum, e) => sum + (e.estimatedMinutes || 0), 0);
+    if (options.json) {
+      console.log(JSON.stringify({ change: path.basename(changeDir), estimates, totalMinutes: total }, null, 2));
+      return estimates;
+    }
+    console.log(chalk.bold(`\n⏱ Task Estimates: ${chalk.cyan(path.basename(changeDir))}\n`));
+    for (const e of estimates) {
+      console.log(`  ${e.status === 'done' ? chalk.green('✓') : chalk.dim('·')} ${e.title} — ${e.estimatedMinutes === null ? 'n/a' : e.estimatedMinutes + ' min'}`);
+    }
+    console.log(chalk.cyan(`\n  Total: ${total} minutes\n`));
+    return estimates;
+  }
+
+  /** `stdd plan dependencies <change>`: declared task dependencies. */
+  showDependencies(changeDir, options = {}) {
+    const tasksPath = path.join(changeDir, 'tasks.md');
+    if (!fsSync.existsSync(tasksPath)) {
+      throw new Error(`No tasks.md found in ${path.basename(changeDir)}.`);
+    }
+    const lines = fsSync.readFileSync(tasksPath, 'utf-8').split('\n');
+    const deps = [];
+    for (const [i, line] of lines.entries()) {
+      const taskMatch = line.match(/^(\s*- )\[([ ~x])\]\s*(.+)$/);
+      if (!taskMatch) continue;
+      const next = (lines[i + 1] || '') + (lines[i + 2] || '');
+      const depLine = (next.match(/Dependencies:\s*([^\n]+)/i) || [])[1];
+      const dependencies = depLine ? depLine.split(',').map(d => d.trim()).filter(Boolean) : [];
+      deps.push({
+        title: taskMatch[3].replace(/\s*\[phase:\w+\]/g, '').trim(),
+        dependencies,
+      });
+    }
+    if (options.json) {
+      console.log(JSON.stringify({ change: path.basename(changeDir), dependencies: deps }, null, 2));
+      return deps;
+    }
+    console.log(chalk.bold(`\n🔗 Task Dependencies: ${chalk.cyan(path.basename(changeDir))}\n`));
+    for (const d of deps) {
+      const depStr = d.dependencies.length > 0 ? chalk.cyan(` ← ${d.dependencies.join(', ')}`) : chalk.dim(' (none)');
+      console.log(`  ${d.title}${depStr}`);
+    }
+    console.log('');
+    return deps;
   }
 
   printTaskSummary(tasks) {

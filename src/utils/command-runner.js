@@ -50,6 +50,35 @@ function validateCommand(command, _options = {}) {
   return true;
 }
 
+// Test-infrastructure failure signatures: the test runner itself never got
+// to execute assertions (missing binary, missing package.json, missing test
+// script, missing executor). A non-zero exit from these is NOT a failing
+// test suite and must never be recorded as RED evidence — "watch the test
+// fail" requires the suite to actually run (终测复验 D03).
+const INFRA_OUTPUT_PATTERNS = [
+  /npm (?:ERR!|error)[^\n]*(?:ENOENT|Missing script|Could not read package\.json)/i,
+  /Missing script:\s*["']?test/i,
+  /Could not read package\.json/i,
+  /command not found/i,
+  /(?:^|\n)(?:sh|bash|zsh|dash):[^:\n]+:\s*(?:command )?not found/i,
+  /ERR_MODULE_NOT_FOUND/,
+  /Cannot find module\s+['"][^'"]*package\.json/,
+  /Could not find ['"][^'"]*\.(?:test|spec)\.[cm]?[jt]s/i,
+];
+
+/**
+ * Whether a spawn result failed for infrastructure reasons (the command
+ * never ran as a test suite) rather than because tests asserted a failure.
+ * @param {{status?: number|null, error?: Error, stdout?: string, stderr?: string}} result
+ */
+function isInfraFailure(result) {
+  if (!result) return false;
+  if (result.error) return true; // spawn-level failure (ENOENT/EACCES/timeout kill)
+  const output = `${result.stderr || ''}\n${result.stdout || ''}`;
+  if (!output) return false;
+  return INFRA_OUTPUT_PATTERNS.some(pattern => pattern.test(output));
+}
+
 function runCommand(command, options = {}) {
   const input = String(command || '').trim();
 
@@ -66,4 +95,4 @@ function runCommand(command, options = {}) {
   });
 }
 
-module.exports = { parseCommand, runCommand, validateCommand, isDangerous };
+module.exports = { parseCommand, runCommand, validateCommand, isDangerous, isInfraFailure, INFRA_OUTPUT_PATTERNS };

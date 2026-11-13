@@ -296,6 +296,13 @@ describe('HIGH validate/archive: rename-aware, structure-only gate', () => {
       '## REMOVED Requirements\n\n### Requirement: Gone requirement\n\n(already applied)\n\n#### Scenario: S\n- **WHEN** x\n- **THEN** y\n', 'utf8');
     fs.mkdirSync(path.join(projectPath, 'stdd', 'specs', 'auth'), { recursive: true });
     fs.writeFileSync(path.join(projectPath, 'stdd', 'specs', 'auth', 'auth.md'), '# Auth\n');
+    // D02: fresh passing verify evidence (written last).
+    const evidenceDir = path.join(changeDir, 'evidence');
+    fs.mkdirSync(evidenceDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(evidenceDir, 'verify-1000000000.json'),
+      JSON.stringify({ type: 'verify', status: 'pass', results: {}, metadata: {} })
+    );
 
     const result = runCli(['archive', 'demo'], projectPath);
 

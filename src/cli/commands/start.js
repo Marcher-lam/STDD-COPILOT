@@ -8,7 +8,7 @@ const inquirer = require('inquirer');
 
 const CORE_WORKFLOW = [
   { step: 1, cmd: 'stdd init', desc: 'Initialize STDD in your project' },
-  { step: 2, cmd: 'stdd new <name>', desc: 'Create a new change' },
+  { step: 2, cmd: 'stdd new change <name>', desc: 'Create a new change' },
   { step: 3, cmd: 'stdd apply <name>', desc: 'Execute TDD tasks (red → green → refactor)' },
   { step: 4, cmd: 'stdd verify <name>', desc: 'Verify change readiness' },
   { step: 5, cmd: 'stdd archive <name>', desc: 'Archive completed change' },
@@ -46,6 +46,23 @@ class StartCommand {
   async execute(options = {}) {
     if (options.help) {
       console.log(HELP_TEXT);
+      return;
+    }
+
+    // 终测复验 D10: --json is a machine-parseable, non-interactive entry —
+    // it must never drop into an inquirer prompt (which hangs CI/scripts).
+    if (options.json) {
+      console.log(JSON.stringify({
+        tool: 'stdd-copilot',
+        workflow: CORE_WORKFLOW.map(s => ({ step: s.step, command: s.cmd, description: s.desc })),
+        tddPhases: [
+          { phase: 'red', command: 'stdd apply --phase red' },
+          { phase: 'green', command: 'stdd apply --phase green' },
+          { phase: 'refactor', command: 'stdd apply --phase refactor' },
+        ],
+        qualityChecks: ['stdd guard', 'stdd constitution check'],
+        next: 'stdd init',
+      }, null, 2));
       return;
     }
 
@@ -91,7 +108,7 @@ class StartCommand {
           },
         ]);
         console.log('\n' + chalk.cyan('To create this change:'));
-        console.log(chalk.yellow(`  stdd new ${name}`) + '\n');
+        console.log(chalk.yellow(`  stdd new change ${name}`) + '\n');
         break;
       }
 

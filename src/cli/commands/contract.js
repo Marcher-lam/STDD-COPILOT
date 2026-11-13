@@ -170,6 +170,12 @@ class ContractCommand {
 
     this.evidence.saveToFile(report, changeDir, 'contract-verify');
 
+    // 终测复验 D05: a violation must fail the process — CI blocks on the
+    // exit code, and a zero exit here let incompatible contracts through.
+    if (hasViolations) {
+      process.exitCode = 1;
+    }
+
     return { results, hasViolations, evidence: report };
   }
 

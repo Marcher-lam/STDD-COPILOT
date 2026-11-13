@@ -53,7 +53,7 @@ describe('CiGeneratorCommand', () => {
 
       const cmd = new CiGeneratorCommand(tempDir);
 
-      await expect(cmd.execute('gitlab')).rejects.toThrow('Unsupported platform: gitlab');
+      await expect(cmd.execute('travis')).rejects.toThrow('Unsupported platform: travis');
 
       teardown();
     });

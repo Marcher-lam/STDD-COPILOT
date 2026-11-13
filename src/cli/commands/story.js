@@ -6,7 +6,11 @@ class StoryCommand {
   constructor(cwd = process.cwd()) { this.cwd = cwd; }
 
   execute(action = 'create', name = 'journey', options = {}) {
-    if (action === 'bdd') return this.toBdd(name, options);
+    // 终测复验 D09/S014: the documented `story convert <journey>` action
+    // now maps to the BDD conversion (aliases of `story bdd`).
+    if (action === 'bdd' || action === 'convert' || action === 'to-bdd') {
+      return this.toBdd(name, options);
+    }
     return this.create(name, options);
   }
 

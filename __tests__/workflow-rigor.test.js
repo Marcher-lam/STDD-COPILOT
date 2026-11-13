@@ -113,6 +113,9 @@ describe('change-level rigor in the main workflow', () => {
     fs.writeFileSync(path.join(changeDir, 'specs', 'billing.md'),
       '## ADDED Requirements\n\n### Requirement: Invoice issuance\nThe system SHALL issue invoices.\n', 'utf8');
 
+    // D02: the archive gate requires fresh passing verify evidence.
+    runCli(['verify', changeName], projectPath);
+
     const result = runCli(['archive', changeName], projectPath);
 
     expect(result.status).toBe(0);
@@ -129,6 +132,16 @@ describe('change-level rigor in the main workflow', () => {
     fs.writeFileSync(path.join(changeDir, 'tasks.md'), '- [x] TASK-001 Done\n', 'utf8');
     fs.writeFileSync(path.join(changeDir, 'specs', 'billing.md'),
       '## ADDED Requirements\n\n### Requirement: Invoice issuance\nThe system SHALL issue invoices.\n', 'utf8');
+
+    // D02: record passing verify evidence directly (a real verify in this
+    // bare fixture would fail constitution for unrelated reasons), so the
+    // refusal below comes from the STRICT gate, not the evidence gate.
+    const evidenceDir = path.join(changeDir, 'evidence');
+    fs.mkdirSync(evidenceDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(evidenceDir, 'verify-1000000000.json'),
+      JSON.stringify({ type: 'verify', status: 'pass', results: {}, metadata: {} })
+    );
 
     const result = runCli(['archive', changeName], projectPath);
 
