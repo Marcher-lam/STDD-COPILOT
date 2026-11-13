@@ -679,18 +679,20 @@ const commandRegistry = [
     options: [
       { flags: '--description <text>', description: 'Requirement description' },
       { flags: '--force', description: 'Overwrite existing proposal' },
-      { flags: '--dry-run', description: 'Show proposal without saving' },
+      { flags: '--dry-run', description: 'Show proposal without saving (draft) or print the split plan without writing (split)' },
       { flags: '--json', description: 'JSON output' },
     ],
     // Commander passes (action, name, options); ProposeCommand.execute takes
-    // (requirement, options). Without the mapper the documented two-positional
-    // form (`stdd propose draft add-user-auth --description ...`) created a
-    // change named after the action keyword and silently dropped every flag.
-    mapper: (action, name, options) => name
-      ? [(options && options.description) || name, { ...(options || {}), name }]
-      : [action, options || {}],
+    // (requirement, options, action). The action keyword must reach execute
+    // for dispatch — pre-round-4 it was silently discarded and the draft flow
+    // ran instead (overwriting proposals on `propose show <name>`).
+    mapper: (action, name, options) => [
+      name || action,
+      name ? { ...(options || {}), name } : (options || {}),
+      name ? action : null,
+    ],
     action: 'ProposeCommand',
-    helpText: `Actions: draft, show, refine, validate, split\n\nExamples:\n  stdd propose draft add-user-auth\n  stdd propose show\n  stdd propose validate`,
+    helpText: `Actions: draft, show, validate, refine, split\n\nExamples:\n  stdd propose draft add-user-auth --description "Add user login"\n  stdd propose show add-user-auth\n  stdd propose validate add-user-auth\n  stdd propose refine add-user-auth   # regenerate clarifying questions\n  stdd propose split add-user-auth    # split-plan.md + scaffold sub-changes`,
   },
   {
     name: 'clarify [action] [change]',
@@ -713,6 +715,7 @@ const commandRegistry = [
     description: 'User confirmation gate before specification',
     options: [
       { flags: '--skip', description: 'Skip confirmation (auto-confirm)' },
+      { flags: '--yes', description: 'Record an explicit non-interactive confirmation (non-TTY sessions refuse without it)' },
       { flags: '--json', description: 'JSON output' },
     ],
     action: 'ConfirmCommand',

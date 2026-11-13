@@ -128,6 +128,70 @@ describe('token extractors (pure functions)', () => {
     expect(vars.radius).toEqual([{ token: 'card', value: '14px' }]);
   });
 
+  it('extracts unprefixed custom properties and classifies by name', () => {
+    const vars = extractCssVariables([
+      ':root {',
+      '  --bg: #f5f6fa;',
+      '  --card: #ffffff;',
+      '  --text: #1c2333;',
+      '  --border: #d9dde8;',
+      '  --radius-card: 10px;',
+      '  --gap-lg: 16px;',
+      '  --font-heading: system-ui;',
+      '}',
+    ].join('\n'));
+
+    expect(vars.colors).toEqual(
+      expect.arrayContaining([
+        { token: 'bg', value: '#f5f6fa' },
+        { token: 'card', value: '#ffffff' },
+        { token: 'text', value: '#1c2333' },
+        { token: 'border', value: '#d9dde8' },
+      ])
+    );
+    expect(vars.radius).toEqual([{ token: 'card', value: '10px' }]);
+    expect(vars.spacing).toEqual([{ token: 'gap-lg', value: '16px' }]);
+    expect(vars.fonts).toEqual([{ token: 'heading', value: 'system-ui' }]);
+  });
+
+  it('maps semantic unprefixed names to suggested roles in the full markdown', () => {
+    const projectPath = createProject('rev-roles', {
+      'tailwind.config.js': "module.exports = { theme: { fontFamily: { sans: ['Inter', 'sans-serif'] }, spacing: { lg: '16px' } } };",
+      'src/theme/base.css': [
+        ':root {',
+        '  --error: #b3261e;',
+        '  --success: #1b873f;',
+        '  --warn: #f9ab00;',
+        '  --text-muted: #5f6368;',
+        '  --muted: #e8eaed;',
+        '  --border-weak: #dadce0;',
+        '  --shadow-sm: 0 1px 2px rgba(0,0,0,.3);',
+        '  --surface: #ffffff;',
+        '  --radius-card: 10px;',
+        '  --gap-lg: 16px;',
+        '}',
+      ].join('\n'),
+    });
+
+    const md = reverseDesignMarkdown(projectPath);
+
+    // Nested src subdirectory is scanned and annotated.
+    expect(md).toContain('- src/theme/base.css');
+    // Role suggestions for semantic unprefixed names.
+    expect(md).toContain('Errors and destructive actions');
+    expect(md).toContain('Success states');
+    expect(md).toContain('Warnings');
+    expect(md).toContain('Body text');
+    expect(md).toContain('Secondary text');
+    expect(md).toContain('Borders and outlines');
+    expect(md).toContain('Elevation and shadows');
+    // Spacing & Radius section from both tailwind and CSS sources.
+    expect(md).toContain('## Spacing & Radius');
+    expect(md).toContain('`radius-card`');
+    expect(md).toContain('`gap-lg`');
+    expect(md).toContain('`lg` | `16px` | tailwind.config.js');
+  });
+
   it('maps component-library dependencies to friendly names', () => {
     const pkg = JSON.stringify({ dependencies: { antd: '^5.0.0', '@chakra-ui/react': '^2.0.0' } });
     expect(detectComponentLibraries(pkg)).toEqual(
@@ -195,6 +259,37 @@ describe('stdd design reverse (CLI)', () => {
     expect(result.status).not.toBe(0);
     expect(result.stdout).toMatch(/design create/i);
     expect(fs.existsSync(path.join(projectPath, 'DESIGN.md'))).toBe(false);
+  });
+
+  // 终测 N-design: a plain hand-written public/style.css with unprefixed
+  // custom properties must be recognized as a design source.
+  it('reverse-engineers public/style.css with unprefixed CSS variables', () => {
+    const projectPath = createProject('rev-public', {
+      'package.json': JSON.stringify({ name: 'task-harbor', private: true }),
+      'public/style.css': [
+        ':root {',
+        '  --bg: #f5f6fa;',
+        '  --card: #ffffff;',
+        '  --text: #1c2333;',
+        '  --accent: #4f6df5;',
+        '  --border: #d9dde8;',
+        '  --radius-card: 10px;',
+        '  --font-heading: system-ui, sans-serif;',
+        '}',
+      ].join('\n'),
+    });
+
+    const result = runCli(['design', 'reverse'], projectPath);
+
+    expect(result.status).toBe(0);
+    const design = fs.readFileSync(path.join(projectPath, 'DESIGN.md'), 'utf8');
+    expect(design).toContain('- public/style.css');
+    expect(design).toContain('`bg`');
+    expect(design).toContain('#f5f6fa');
+    expect(design).toContain('`card`');
+    expect(design).toContain('Borders and outlines');
+    expect(design).toContain('`radius-card`');
+    expect(design).toContain('`heading`');
   });
 
   it('requires --force to overwrite an existing DESIGN.md', () => {

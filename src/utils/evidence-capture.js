@@ -186,6 +186,18 @@ class EvidenceCapture {
       const overall = values.every(r => r && (r.status === 'pass' || r.status === 'skip' || r.status === 'warn'));
       return overall ? 'pass' : 'fail';
     }
+    if (type === 'graph-run') {
+      // Derive from the recorded step statuses so history/evidence agree
+      // with the run outcome (终测 N-graph: every graph-run used to persist
+      // status 'unknown' because no branch handled this type).
+      const steps = Array.isArray(results.steps) ? results.steps : [];
+      if (steps.length === 0) return 'unknown';
+      if (results.failedAt || steps.some(s => s && s.status === 'failed')) return 'fail';
+      // A run with skipped nodes (e.g. --skip-apply) is a recorded skip,
+      // not a pass — SKIPPED and PASS carry different audit meanings.
+      if (steps.some(s => s && s.status === 'skipped')) return 'skipped';
+      return 'pass';
+    }
     return 'unknown';
   }
 }

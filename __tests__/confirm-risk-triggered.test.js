@@ -138,15 +138,43 @@ describe('confirm risk-triggered gate', () => {
     expect(statusYaml(projectPath)).not.toContain('status: confirmed');
   });
 
-  it('keeps the legacy non-interactive behavior in other modes', () => {
-    const { projectPath, changeDir } = createTempProject('risk-legacy', {});
+  // 终测 N-confirm: piped stdin used to auto-confirm — recorded as a human
+  // decision it never was. Default mode now refuses without a TTY unless the
+  // operator passes an explicit flag; --yes records the honest variant.
+  it('refuses to confirm non-interactively in default mode (no flag)', () => {
+    const { projectPath, changeDir } = createTempProject('default-nontty', {});
 
     const result = runCli(['confirm', 'demo'], projectPath);
 
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain('confirmed');
-    expect(statusYaml(projectPath)).toContain('status: confirmed');
-    // No risk decision artifact in legacy modes.
+    expect(result.status).not.toBe(0);
+    expect(result.stdout).toContain('--yes');
+    // Nothing was recorded: the change stays unconfirmed, no decision file.
+    expect(statusYaml(projectPath)).not.toContain('status: confirmed');
     expect(decision(changeDir)).toBeNull();
+  });
+
+  it('confirms non-interactively with --yes and records a manual-override decision', () => {
+    const { projectPath, changeDir } = createTempProject('default-yes', {});
+
+    const result = runCli(['confirm', 'demo', '--yes'], projectPath);
+
+    expect(result.status).toBe(0);
+    expect(statusYaml(projectPath)).toContain('status: confirmed');
+    const record = decision(changeDir);
+    expect(record.status).toBe('manual-override');
+    expect(record.basis.override).toBe('confirm --yes');
+    expect(record.basis.interactive).toBe(false);
+  });
+
+  it('confirms with --skip and records the override basis', () => {
+    const { projectPath, changeDir } = createTempProject('default-skip', {});
+
+    const result = runCli(['confirm', 'demo', '--skip'], projectPath);
+
+    expect(result.status).toBe(0);
+    expect(statusYaml(projectPath)).toContain('status: confirmed');
+    const record = decision(changeDir);
+    expect(record.status).toBe('manual-override');
+    expect(record.basis.override).toBe('confirm --skip');
   });
 });

@@ -152,6 +152,58 @@ describe('EvidenceCapture', () => {
       });
       expect(report.status).toBe('fail');
     });
+
+    // 终测 N-graph: graph-run evidence used to persist status 'unknown' for
+    // every run because _determineStatus had no branch for the type.
+    it('should return pass for graph-run with all steps successful', () => {
+      const ec = new EvidenceCapture();
+      const report = ec.captureVerify('graph-run', {
+        steps: [
+          { node: 'stdd-plan', status: 'success' },
+          { node: 'stdd-apply', status: 'success' },
+          { node: 'stdd-verify', status: 'cached' },
+        ],
+        failedAt: null,
+      });
+      expect(report.status).toBe('pass');
+    });
+
+    it('should return skipped for graph-run with skipped steps (--skip-apply)', () => {
+      const ec = new EvidenceCapture();
+      const report = ec.captureVerify('graph-run', {
+        steps: [
+          { node: 'stdd-plan', status: 'success' },
+          { node: 'stdd-apply', status: 'skipped' },
+          { node: 'stdd-verify', status: 'skipped' },
+        ],
+        failedAt: null,
+      });
+      expect(report.status).toBe('skipped');
+    });
+
+    it('should return fail for graph-run with a failed step or failedAt', () => {
+      const ec = new EvidenceCapture();
+      const failedStep = ec.captureVerify('graph-run', {
+        steps: [
+          { node: 'stdd-plan', status: 'success' },
+          { node: 'stdd-apply', status: 'failed' },
+        ],
+        failedAt: 'stdd-apply',
+      });
+      expect(failedStep.status).toBe('fail');
+
+      const failedOnly = ec.captureVerify('graph-run', {
+        steps: [{ node: 'stdd-apply', status: 'failed' }],
+        failedAt: null,
+      });
+      expect(failedOnly.status).toBe('fail');
+    });
+
+    it('should return unknown for graph-run with no steps', () => {
+      const ec = new EvidenceCapture();
+      const report = ec.captureVerify('graph-run', { steps: [], failedAt: null });
+      expect(report.status).toBe('unknown');
+    });
   });
 
   describe('saveToFile', () => {

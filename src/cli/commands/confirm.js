@@ -61,15 +61,58 @@ class ConfirmCommand {
     }
 
     const statusPath = path.join(process.cwd(), 'stdd', '.status.yaml');
-    const confirmed = options.skip ? true : await this.promptConfirmation();
+    const confirmedName = path.basename(changeDir);
+
+    // Explicit flags are the only non-interactive way to record a
+    // confirmation (终测 N-confirm: piped stdin used to auto-confirm, which
+    // is not evidence of a human decision). The decision file mirrors the
+    // risk-triggered record so audits can tell human / non-interactive
+    // overrides apart.
+    if (options.skip || options.yes) {
+      const decision = {
+        status: 'manual-override',
+        change: confirmedName,
+        basis: {
+          mode: 'default',
+          override: options.yes ? 'confirm --yes' : 'confirm --skip',
+          interactive: Boolean(process.stdin.isTTY),
+        },
+        reasons: [
+          options.yes
+            ? 'Explicit non-interactive confirmation via --yes.'
+            : 'Confirmation skipped via --skip.',
+        ],
+        timestamp: new Date().toISOString(),
+      };
+      const decisionPath = path.join(changeDir, 'confirm-decision.json');
+      await fs.writeFile(decisionPath, JSON.stringify(decision, null, 2), 'utf8');
+      await this.updateStatus(statusPath, confirmedName, 'confirmed');
+      await this.updateProposalStatus(proposalPath, 'confirmed');
+      console.log(chalk.green(`\n✓ Proposal confirmed (${options.yes ? '--yes, non-interactive' : '--skip'}) — recorded as manual-override`));
+      console.log(chalk.dim(`   Decision recorded: ${path.relative(process.cwd(), decisionPath)}`));
+      console.log(chalk.cyan('\nNext step: stdd spec ' + confirmedName));
+      return { summary, validation, confirmed: true, manualOverride: true, decision };
+    }
+
+    const confirmed = await this.promptConfirmation();
 
     if (confirmed) {
-      await this.updateStatus(statusPath, path.basename(changeDir), 'confirmed');
+      await this.updateStatus(statusPath, confirmedName, 'confirmed');
       await this.updateProposalStatus(proposalPath, 'confirmed');
       console.log(chalk.green('\n✓ Proposal confirmed!'));
-      console.log(chalk.cyan('\nNext step: stdd spec ' + path.basename(changeDir)));
+      console.log(chalk.cyan('\nNext step: stdd spec ' + confirmedName));
       return { summary, validation, confirmed: true };
     } else {
+      if (!process.stdin.isTTY) {
+        // Non-interactive sessions never reach a real prompt; refusing keeps
+        // `confirmed` meaning "a human decided" (--yes records the explicit
+        // non-interactive variant).
+        console.log(chalk.yellow('\n⚠ Non-interactive session: confirmation requires a TTY.'));
+        console.log(chalk.yellow('  To record an explicit non-interactive confirmation, re-run with --yes.'));
+        console.log(chalk.dim('  Nothing was recorded; the change stays unconfirmed.'));
+        process.exitCode = 1;
+        return { summary, validation, confirmed: false, refusedNonInteractive: true };
+      }
       console.log(chalk.yellow('\n⚠ Confirmation cancelled. Return to proposal phase.'));
       console.log(chalk.cyan('\nNext step: /stdd:propose to revise'));
       return { summary, validation, confirmed: false };
@@ -284,8 +327,18 @@ class ConfirmCommand {
   }
 
   extractSection(proposal, sectionName) {
+    // The framework's own proposal template carries the title only in the H1
+    // (`# Proposal: ...`) — recognize it instead of reporting a perpetual
+    // "missing title" false positive (终测 N-confirm noise).
+    if (sectionName === 'title') {
+      const h1 = String(proposal).match(/^#\s+(?:Proposal:\s*)?(.+)$/im);
+      if (h1 && h1[1] && h1[1].trim()) return h1[1].trim().substring(0, 200);
+    }
     const patterns = [
-      new RegExp(`^#+\\s*${sectionName.replace(/_/g, '([ _-]?)')}\\s*\\n([\\s\\S]+?)(?=\\n#+|\\n*$)`, 'im'),
+      // Non-capturing separator: a capturing group here would shadow the
+      // content group for underscored names (success_criteria returned its
+      // separator as the content — the perpetual "missing" hint).
+      new RegExp(`^#+\\s*${sectionName.replace(/_/g, '(?:[ _-]?)')}\\s*\\n([\\s\\S]+?)(?=\\n#+|\\n*$)`, 'im'),
       new RegExp(`\\*\\*${sectionName}\\*\\*:\\s*([\\s\\S]+?)(?=\\n\\*\\*|\\n*$)`, 'im'),
       new RegExp(`${sectionName}:\\s*([\\s\\S]+?)(?=\\n\\w+:|\\n*$)`, 'im')
     ];
@@ -365,9 +418,10 @@ class ConfirmCommand {
   }
 
   async promptConfirmation() {
-    // In non-interactive mode, auto-confirm
+    // Non-interactive sessions must not auto-confirm (终测 N-confirm): a
+    // piped stdin is not a human decision. The caller guides to --yes.
     if (!process.stdin.isTTY) {
-      return true;
+      return false;
     }
 
     try {

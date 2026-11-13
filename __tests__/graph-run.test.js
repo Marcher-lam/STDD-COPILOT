@@ -166,6 +166,9 @@ describe('GraphRunCommand', () => {
 
   it('should skip apply and verify when --skip-apply is passed', async () => {
     const projectPath = createTempProject('graph-run-skip');
+    // Commands are mocked, so the change dir the evidence lands in must
+    // exist before the run.
+    fs.mkdirSync(path.join(projectPath, 'stdd', 'changes', 'skip-change'), { recursive: true });
     process.chdir(projectPath);
 
     const command = new GraphRunCommand();
@@ -175,6 +178,30 @@ describe('GraphRunCommand', () => {
     expect(skippedSteps.length).toBeGreaterThanOrEqual(2);
     expect(skippedSteps.some(s => s.node === 'stdd-apply')).toBe(true);
     expect(skippedSteps.some(s => s.node === 'stdd-verify')).toBe(true);
+
+    // 终测 N-graph: the persisted evidence must carry a definitive status
+    // ('skipped'), not 'unknown'.
+    const evidenceDir = path.join(projectPath, 'stdd', 'changes', 'skip-change', 'evidence');
+    const files = fs.readdirSync(evidenceDir).filter(f => f.startsWith('graph-run-'));
+    expect(files.length).toBeGreaterThanOrEqual(1);
+    const evidence = JSON.parse(fs.readFileSync(path.join(evidenceDir, files[files.length - 1]), 'utf8'));
+    expect(evidence.status).toBe('skipped');
+  });
+
+  it('should persist graph-run evidence with status pass on a fully successful run', async () => {
+    const projectPath = createTempProject('graph-run-evidence-pass');
+    fs.mkdirSync(path.join(projectPath, 'stdd', 'changes', 'pass-change'), { recursive: true });
+    process.chdir(projectPath);
+
+    const command = new GraphRunCommand();
+    const result = await command.execute('feature', { changeName: 'pass-change' });
+    expect(result.failedAt).toBeNull();
+
+    const evidenceDir = path.join(projectPath, 'stdd', 'changes', 'pass-change', 'evidence');
+    const files = fs.readdirSync(evidenceDir).filter(f => f.startsWith('graph-run-'));
+    expect(files.length).toBeGreaterThanOrEqual(1);
+    const evidence = JSON.parse(fs.readFileSync(path.join(evidenceDir, files[files.length - 1]), 'utf8'));
+    expect(evidence.status).toBe('pass');
   });
 
   it('should execute repair intent starting with fix-packet', async () => {

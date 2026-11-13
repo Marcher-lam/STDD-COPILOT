@@ -104,26 +104,38 @@ function firstColorValue(raw) {
 
 /**
  * Extract design-relevant CSS custom properties from stylesheet text.
+ *
+ * Prefixed (`--color-bg`) and unprefixed (`--bg`) custom properties are both
+ * captured (终测 N-design: hand-written stylesheets routinely use plain
+ * names); classification keys off the full variable name and the display
+ * token strips a leading semantic prefix so both forms show as `bg`.
  */
 function extractCssVariables(cssText) {
   const out = { colors: [], fonts: [], spacing: [], radius: [] };
-  const re = /--(color|colour|font|spacing|radius)-([\w-]+)\s*:\s*([^;]+);/g;
+  const re = /--([\w-]+)\s*:\s*([^;]+);/g;
   const seenVars = new Set();
   let m;
   while ((m = re.exec(String(cssText || '')))) {
-    const kind = m[1];
-    const name = m[2];
-    const dedupeKey = kind + ':' + name;
-    if (seenVars.has(dedupeKey)) continue; // dark-theme override; keep base
-    seenVars.add(dedupeKey);
-    const value = m[3].trim();
-    const entry = { token: name, value };
-    if (kind === 'color' || kind === 'colour') out.colors.push(entry);
-    else if (kind === 'font') out.fonts.push(entry);
-    else if (kind === 'spacing') out.spacing.push(entry);
-    else out.radius.push(entry);
+    const rawName = m[1];
+    if (seenVars.has(rawName)) continue; // dark-theme override; keep base
+    seenVars.add(rawName);
+    const value = m[2].trim();
+    out[classifyVariable(rawName)].push({
+      token: rawName.replace(/^(?:color|colour|font|spacing|radius)-/, ''),
+      value,
+    });
   }
   return out;
+}
+
+/** Bucket a custom-property name by what it names, not by any prefix. */
+function classifyVariable(name) {
+  if (/font|family|weight|leading|line-height/.test(name)) return 'fonts';
+  if (/radius|round/.test(name)) return 'radius';
+  if (/space|gap|padding|margin/.test(name)) return 'spacing';
+  // Everything else (bg, card, text, accent, border, shadow, ...) lands in
+  // the token table; values are shown verbatim and roles are suggested.
+  return 'colors';
 }
 
 /** Map component-library dependencies to friendly names. */
@@ -149,12 +161,16 @@ function suggestRole(token) {
   if (/warn/.test(t)) return 'Warnings';
   if (/text|fg|foreground/.test(t)) return 'Body text';
   if (/muted|subtle/.test(t)) return 'Secondary text';
+  if (/border/.test(t)) return 'Borders and outlines';
+  if (/shadow/.test(t)) return 'Elevation and shadows';
   return 'Surface / as needed';
 }
 
 function collectCssFiles(cwd) {
   const out = [];
-  for (const dir of ['src', 'styles', 'app', '.']) {
+  // `public`/`static` are conventional locations for hand-written styles in
+  // server-rendered apps (终测 N-design: public/style.css was never scanned).
+  for (const dir of ['src', 'styles', 'app', 'public', 'static', '.']) {
     const base = path.join(cwd, dir);
     if (!fs.existsSync(base)) continue;
     for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
