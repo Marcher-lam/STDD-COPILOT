@@ -21,6 +21,9 @@ const { readDeferred, appendDeferred, resolveDeferred, DEFERRED_FILENAME } = req
 const { readChangeRigor, rigorNodeOptions } = require('../../utils/rigor');
 const { readApplyLog } = require('../../utils/apply-log');
 const { computeProjectTestFingerprint } = require('../../utils/project-fingerprint');
+const { getChangedFiles } = require('../../utils/changed-files');
+const { readGateConfig } = require('../../utils/gate-config');
+const { walkFiles } = require('../../utils/file-walker');
 
 // getConfigTestCommand is now imported from test-command-resolver
 
@@ -71,6 +74,90 @@ class VerifyCommand {
       if (state.hasGreen && !state.hasRed) missingRed.push(task);
     }
     return { available: true, tasksWithPhaseEvidence, withRedEvidence, missingRed, legacyTasks };
+  }
+
+  /**
+   * 过程审计 B-1: a checked task with zero recorded process evidence was
+   * completed OUTSIDE the TDD machinery (e.g. hand-edited checkboxes).
+   * Reported as a visible warning — the checkbox alone must never look
+   * like verified process. Not blocking: --allow-no-tests and legitimate
+   * manual flows record 'skipped' entries, which DO count as evidence.
+   */
+  checkTaskCompletionEvidence(changeDir) {
+    const tasksPath = path.join(changeDir, 'tasks.md');
+    if (!fs.existsSync(tasksPath)) return [];
+    // Defensive: older test doubles of change-utils may not export
+    // parseTasks — the B-1 cross-check degrades to "no signal" rather
+    // than crashing verify.
+    const parseTasksFn = require('../../utils/change-utils').parseTasks;
+    if (typeof parseTasksFn !== 'function') return [];
+    const tasks = parseTasksFn(tasksPath) || [];
+    const entries = readApplyLog(changeDir);
+    const evidencedKeys = new Set(entries.filter(e => e.task).map(e => taskKey(e.task)));
+    return tasks
+      .filter(t => t.isDone && !evidencedKeys.has(taskKey(t.description)))
+      .map(t => t.description);
+  }
+
+  /**
+   * 过程审计 B-5: the artifact-refinement step carries the most quality
+   * but had the least constraint — strict validation only checked
+   * structure, so an unrefined ff skeleton (single template-shaped
+   * requirement, undecided design) sailed through silently. This gate is a
+   * DETERMINISTIC refinement-depth probe (labeled heuristic signals, no
+   * AI judging).
+   *
+   * SIGNAL CATALOG — the known skeleton shapes. A new generator template
+   * needs its own signal here (USAGE.md "过程门禁" documents this
+   * extension point); a shape without a signal is invisible to the probe,
+   * never a false pass.
+   */
+  checkRefinement(changeDir) {
+    // The probe is an EXTRA signal — it must never crash verify (older
+    // test doubles mock a partial fs). Any probe failure degrades to
+    // "no signals", never to a false verdict.
+    try {
+      return this._checkRefinement(changeDir);
+    } catch {
+      return { refined: true, signals: [], probeUnavailable: true };
+    }
+  }
+
+  _checkRefinement(changeDir) {
+    const signals = [];
+    const specsDir = path.join(changeDir, 'specs');
+    const specFiles = fs.existsSync(specsDir)
+      ? walkFiles(specsDir, { predicate: f => /\.(md|feature)$/.test(f) })
+      : [];
+    const contents = specFiles.map(f => {
+      try { return fs.readFileSync(f, 'utf8'); } catch { return ''; }
+    });
+    const allSpecText = contents.join('\n');
+
+    if (specFiles.length > 0) {
+      // ff-generated scenario shape still in place — the requirement was
+      // never rewritten into domain scenarios.
+      if (/WHEN the behavior ".*" is exercised/.test(allSpecText) || /is delivered as specified\s*$/m.test(allSpecText)) {
+        signals.push('spec scenarios still carry the ff template shape (GIVEN the current system state / WHEN the behavior "…" is exercised)');
+      }
+      const requirementCount = (allSpecText.match(/^### Requirement:/gm) || []).length;
+      const scenarioCount = (allSpecText.match(/^\s*#{0,4}\s*Scenario\b/gim) || []).length;
+      if (requirementCount > 0 && requirementCount < 2 && scenarioCount < 2) {
+        signals.push(`single requirement with ${scenarioCount} scenario(s) — refinement should split behavior into multiple requirements/scenarios`);
+      }
+    }
+
+    const designPath = path.join(changeDir, 'design.md');
+    if (fs.existsSync(designPath)) {
+      try {
+        const design = fs.readFileSync(designPath, 'utf8');
+        if (/Status:\s*OPEN/.test(design)) {
+          signals.push('design.md has decisions still Status: OPEN — the decision ledger was never filled in');
+        }
+      } catch { /* unreadable design — no signal */ }
+    }
+
+    return { refined: signals.length === 0, signals };
   }
 
   async execute(changeName, options = {}) {
@@ -232,7 +319,13 @@ class VerifyCommand {
     // 3) Constitution check
     if (options.constitution !== false) {
       console.log(`\n  ${chalk.bold('Constitution Compliance')}`);
-      const checker = new ConstitutionChecker(cwd);
+      // 过程审计 A-4: audit only what THIS change touched when a baseline
+      // commit exists — brownfield legacy debt stops failing every verify.
+      const changedFiles = getChangedFiles(cwd, changeDir);
+      if (changedFiles) {
+        console.log(chalk.dim(`  Scope: ${changedFiles.length} file(s) changed since this change's baseline commit`));
+      }
+      const checker = new ConstitutionChecker(cwd, { changedFiles });
       const issues = checker.run();
       const hasBlocking = issues.blocking.length > 0;
       const hasWarnings = issues.warning.length > 0;
@@ -257,6 +350,9 @@ class VerifyCommand {
         for (const s of issues.skipped) {
           console.log(`      ${chalk.dim('⊘ Article ' + s.article + ' (' + s.name + '): ' + s.reason)}`);
         }
+      }
+      for (const info of issues.info || []) {
+        console.log(`      ${chalk.dim('ℹ Article ' + info.article + ' (' + info.name + '): ' + info.message)}`);
       }
     } else {
       console.log(`\n  ${chalk.dim('Constitution: skipped (use --no-constitution)')}`);
@@ -326,9 +422,48 @@ class VerifyCommand {
       }
     }
 
+    // 1.6) 过程审计 B-1: completed tasks with zero process evidence were
+    // checked off outside the TDD machinery. Visible warning, recorded in
+    // the evidence report — checkbox compliance alone is not process truth.
+    const manualCompletions = this.checkTaskCompletionEvidence(changeDir);
+    report.tdd = report.tdd || {};
+    report.tdd.manualCompletions = manualCompletions;
+    if (manualCompletions.length > 0) {
+      console.log(`  ${chalk.yellow('⚠')} TDD: ${manualCompletions.length} completed task(s) have NO recorded process evidence (hand-checked?)`);
+      manualCompletions.slice(0, 5).forEach(d => {
+        console.log(`      ${chalk.yellow('–')} ${d}`);
+      });
+      if (manualCompletions.length > 5) {
+        console.log(`      ${chalk.dim(`… +${manualCompletions.length - 5} more`)}`);
+      }
+    }
+
     // 5) Deferred-work ledger status
     const deferred = readDeferred(changeDir);
     report.deferred = { open: deferred.open, total: deferred.total };
+
+    // 4.5) Refinement-depth gate (B-5): off | warn (default) | block.
+    const gateConfig = readGateConfig(cwd);
+    if (gateConfig.refinement !== 'off') {
+      const refinement = this.checkRefinement(changeDir);
+      report.refinement = { ...refinement, gate: gateConfig.refinement };
+      if (!refinement.refined) {
+        const lines = refinement.signals.map(sg => `      ${gateConfig.refinement === 'block' ? chalk.red('–') : chalk.yellow('–')} ${sg}`);
+        if (gateConfig.refinement === 'block') {
+          console.log(`  ${chalk.red('✗')} Refinement gate (block): artifacts are unrefined skeletons`);
+          lines.forEach(l => console.log(l));
+          console.log(chalk.yellow('      Refine specs/design into domain semantics, then re-run verify.'));
+          console.log(chalk.dim('      Escape: gates.refinement: warn in stdd/config.yaml'));
+          healthy = false;
+        } else {
+          console.log(`  ${chalk.yellow('⚠')} Refinement (advisory): unrefined skeleton signals`);
+          lines.forEach(l => console.log(l));
+          console.log(chalk.dim('      The refinement step carries the quality — strict only checks structure.'));
+        }
+      } else if (refinement.signals.length === 0) {
+        console.log(`  ${chalk.green('✓')} Refinement: no skeleton signals detected`);
+      }
+    }
 
     // Summary
     console.log(chalk.bold('\n📊 Verification Report'));

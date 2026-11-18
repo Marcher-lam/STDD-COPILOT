@@ -367,12 +367,13 @@ stdd/changes/change-YYYYMMDD-HHMMSS/
 | `stdd update [path]` | 更新 STDD 文件 (`--force` 强制更新) |
 | `stdd list` / `stdd ls` | 列出变更 (`--specs`, `--archived`, `--json`) |
 | `stdd status [change]` | 查看变更状态 (`--json`) |
-| `stdd ff <description>` | 快速创建 change、proposal、tasks 和 specs 目录 (`--workspace`, `--change-name`) |
+| `stdd ff <description>` | 快速生成 change/proposal/tasks/specs/design；可填充 new 创建的骨架 (`--workspace`, `--change-name`, `--output`, `--rigor`, `--include-design`/`--skip-design`) |
 | `stdd spec <change>` | 从 tasks 生成 BDD feature (`--merge`, `--workspace`) |
 | `stdd api-spec [change]` | 从 BDD feature 生成 OpenAPI (`--format`, `--workspace`) |
 | `stdd apply [change]` | 执行下一个任务并运行测试 (`--task`, `--test-command`, `--workspace`, `--dry-run`, `--delegate`, `--e2e-command`) |
 | `stdd continue [change]` | 从最近任务状态继续 (`--force`, `--test-command`, `--dry-run`) |
 | `stdd mutation [change]` | 生成 mutation evidence (`--mode quick|stryker`, `--workspace`) |
+| `stdd baseline [action]` | 已知失败基线：capture 记录存量失败签名 / show 查看 / clear 清除（brownfield 脏基线不再污染 RED/GREEN 判定） |
 | `stdd verify [change]` | 验证任务、测试、Constitution 和 evidence (`--lint`, `--workspace`, `--no-constitution`) |
 | `stdd archive [change]` | 归档完成变更并合并 delta specs 到主 specs |
 | `stdd commit [change]` | 生成提交信息 (`--format json`, `--tdd`, `--phase`, `--issue`, `--require-issue`) |
@@ -621,6 +622,37 @@ stdd product-proposal --output my-report.md  # 自定义输出路径
 | 3 | 连续失败回滚 | 4 阶段容错 (策略调整→降级→熔断→回滚) |
 | 4 | 静态质检门 | 语法/类型检查在测试前执行 |
 | 5 | 伪变异审查 | 检测骗绿灯断言 |
+
+### 过程门禁（gates，可选收紧）
+
+审计发现"AI 表演合规"的两大缺口后（任务勾选可伪造、确认门可穿越），
+`stdd/config.yaml` 提供两道可执行的过程门禁。**默认保持宽松**（advisory /
+warn），按项目收紧：
+
+```yaml
+gates:
+  confirmation: advisory   # advisory（默认）| enforced
+  refinement: warn         # off | warn（默认）| block
+```
+
+**确认门（confirmation: enforced）** —— 代码执行在确认门停下：
+
+- **拦截范围**：`stdd apply`、`stdd continue`、`stdd graph run` 中一切
+  走 apply 的路径。这是特性不是缺陷——启用后自主执行的 agent（含
+  ff 路径）必须先留下记录在案的决策才能动代码。
+- **解锁方式**：`stdd confirm <change> --yes "<理由>"`（决策落
+  `confirm-decision.json`，manual-override 可审计）；交互式 TTY 会话
+  可直接 `stdd confirm <change>`。
+- **注意**：`pending-human` 状态（risk-triggered 门要求人工）**不算**
+  通过；配置值写错会 fail-closed 回落 enforced。
+
+**细化门（refinement: warn / block）** —— verify 探测产物细化深度：
+
+- 当前识别三种骨架形态：ff 模板场景句残留（`WHEN the behavior "…"
+  is exercised`）、单 Requirement 单 Scenario 深度不足、design 决策仍
+  `Status: OPEN`。这是确定性探针（诚实标注 heuristic），不是 AI 判分。
+- **扩展**：出现新的生成器模板形态时需在
+  `src/cli/commands/verify.js` 的 `_checkRefinement` 增补信号。
 
 ---
 

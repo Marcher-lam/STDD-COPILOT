@@ -63,8 +63,31 @@ const LEAKAGE_RULES = [
   },
 ];
 
-function lineDiagnostics(filePath, cwd) {
+/**
+ * 过程审计 A-7: leakage rules can be noisy for domains where the "leak" is
+ * the domain (an API backend's specs legitimately name endpoints). Projects
+ * disable individual rules via stdd/config.yaml:
+ *
+ *   spec_guardian:
+ *     disabled_rules: [api-detail]
+ */
+function readLeakageDisabledRules(cwd) {
+  try {
+    const configPath = path.join(cwd, 'stdd', 'config.yaml');
+    if (!fs.existsSync(configPath)) return new Set();
+    const yaml = require('js-yaml');
+    const config = yaml.load(fs.readFileSync(configPath, 'utf8')) || {};
+    const rules = config && config.spec_guardian && config.spec_guardian.disabled_rules;
+    if (!Array.isArray(rules)) return new Set();
+    return new Set(rules.filter(r => typeof r === 'string'));
+  } catch {
+    return new Set();
+  }
+}
+
+function lineDiagnostics(filePath, cwd, options = {}) {
   const relFile = path.relative(cwd, filePath).replace(/\\/g, '/');
+  const disabled = options.disabledRules instanceof Set ? options.disabledRules : null;
   let content;
   try {
     content = fs.readFileSync(filePath, 'utf8');
@@ -81,6 +104,7 @@ function lineDiagnostics(filePath, cwd) {
     if (GWT_PATTERN.test(line)) gwtCount++;
 
     for (const rule of LEAKAGE_RULES) {
+      if (disabled && disabled.has(rule.id)) continue;
       if (rule.pattern.test(line)) {
         diagnostics.push({
           file: relFile,
@@ -445,7 +469,8 @@ class ValidateCommand {
     }
 
     const specFiles = walkFiles(specsDir, { predicate: file => /\.(feature|md)$/.test(file) });
-    const diagnostics = specFiles.flatMap(file => lineDiagnostics(file, this.cwd));
+    const disabledRules = readLeakageDisabledRules(this.cwd);
+    const diagnostics = specFiles.flatMap(file => lineDiagnostics(file, this.cwd, { disabledRules }));
     if (options.strict) {
       diagnostics.push(...this.strictDiagnostics(changeDir, specFiles));
     }
@@ -609,4 +634,4 @@ class ValidateCommand {
   }
 }
 
-module.exports = { ValidateCommand, LEAKAGE_RULES, lineDiagnostics };
+module.exports = { ValidateCommand, LEAKAGE_RULES, lineDiagnostics, readLeakageDisabledRules };

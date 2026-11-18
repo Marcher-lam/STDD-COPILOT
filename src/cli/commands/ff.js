@@ -10,6 +10,7 @@ const { resolveWorkspace } = require('../../utils/workspace-detector');
 const { validateChangeName } = require('../../utils/change-utils');
 const { generateChangeName: _genChangeName, toSafeFilename: _toSafe, workspaceContext: _wsCtx } = require('../../utils/change-helpers');
 const { resolveRigor, writeChangeRigor } = require('../../utils/rigor');
+const { readGateConfig } = require('../../utils/gate-config');
 
 class FFCommand {
   constructor(spinner) {
@@ -35,6 +36,19 @@ class FFCommand {
 
 
 
+  /**
+   * A-2: a concise, case-preserving label for requirement/task titles.
+   * Never title-case the description — that destroyed URLs like
+   * /api/articles/:slug/favorite in the generated spec (过程审计 A-2).
+   */
+  shortLabel(description, max = 48) {
+    const text = String(description).replace(/\s+/g, ' ').trim();
+    if (text.length <= max) return text;
+    const cut = text.slice(0, max);
+    const boundary = cut.lastIndexOf(' ');
+    return (boundary > max / 2 ? cut.slice(0, boundary) : cut).trim() + '…';
+  }
+
   generateProposal(description, workspace = null) {
     const timestamp = new Date().toISOString();
     const workspaceSection = workspace ? `
@@ -45,7 +59,9 @@ class FFCommand {
 ` : '';
     const workspaceRow = workspace ? `| Workspace | ${workspace.path} |
 ` : '';
-    return `# Proposal: ${description}
+    // A-2: In Scope carries the requirement itself — no more disconnected
+    // template words ("核心功能实现"); tasks derive from these items.
+    return `# Proposal: ${this.shortLabel(description, 80)}
 
 ## Intent
 
@@ -57,8 +73,8 @@ ${description}
 
 ### In Scope
 
-- [ ] 核心功能实现
-- [ ] 基础单元测试
+- [ ] ${description}
+- [ ] 基础单元测试与回归
 
 ### Out of Scope
 
@@ -84,18 +100,23 @@ ${workspaceRow}
 `;
   }
 
+  /**
+   * A-2: tasks derive from the proposal's scope items (same philosophy as
+   * `stdd plan`), not a fixed 3-slot template. [phase:red] markers keep
+   * them on the TDD state machine's default path (终测复验 D12).
+   */
   generateTasks(description, workspace = null) {
     const workspaceHeader = workspace ? `
 > Workspace: ${workspace.path}
 ` : '';
-    // [phase:red] markers put ff tasks on the TDD state machine's default
-    // path — apply enforces RED → GREEN → REFACTOR evidence (终测复验 D12).
+    const label = this.shortLabel(description);
     return `# Tasks
 ${workspaceHeader}
 
-- [ ] TASK-001: 环境准备与脚手架搭建 [phase:red]
-- [ ] TASK-002: ${description} 核心逻辑实现 [phase:red]
-- [ ] TASK-003: 单元测试编写与验证 [phase:red]
+- [ ] TASK-001: Implement: ${label} [phase:red]
+- [ ] TASK-002: Write failing tests for ${label} [phase:red]
+- [ ] TASK-003: Add error handling and edge cases [phase:red]
+- [ ] TASK-004: Run mutation testing [phase:red]
 `;
   }
 
@@ -127,28 +148,24 @@ ${workspaceSection}
   }
 
   /**
-   * Delta spec skeleton for ff: an ADDED requirement with a real Scenario
-   * block derived from the description, so the change's specs pass the same
-   * strict gate (`stdd validate --strict` / archive) instead of shipping an
-   * empty specs/ directory (终测复验 D12).
+   * Delta spec skeleton for ff: an ADDED requirement whose name is a
+   * case-preserving short label (A-2: the old title-casing destroyed URLs),
+   * with the RAW requirement text in the SHALL body, plus a Scenario block.
+   * Passes the same strict gate as `stdd validate --strict` / archive.
    */
   generateDeltaSpec(description) {
-    const title = description
-      .trim()
-      .replace(/[-_]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
+    const label = this.shortLabel(description);
     return `## ADDED Requirements
 
-### Requirement: ${title}
+### Requirement: ${label}
 
-The system SHALL support: ${description}.
+The system SHALL ${description}.
 
-#### Scenario: ${title}
+#### Scenario: ${label}
 
 - **GIVEN** the current system state
-- **WHEN** the user attempts to ${description}
-- **THEN** "${description}" is delivered as specified
+- **WHEN** the behavior "${label}" is exercised
+- **THEN** "${label}" is delivered as specified
 `;
   }
 
@@ -173,33 +190,77 @@ The system SHALL support: ${description}.
     validateChangeName(changeName);
     const changeDir = path.join(changesDir, changeName);
 
+    // 过程审计 A-1: `new change` then `ff` is the documented pairing — ff
+    // must FILL an existing skeleton change, not error on EEXIST. User
+    // edits are never clobbered: only absent files or untouched templates
+    // (detected by their sentinel markers) get written.
+    let populateMode = false;
     try {
       await fs.mkdir(changeDir, { recursive: false });
     } catch (error) {
       if (error.code === 'EEXIST') {
-        throw new Error(`Change '${changeName}' already exists.`);
+        populateMode = true;
+      } else {
+        throw error;
       }
-      throw error;
     }
 
     await fs.mkdir(path.join(changeDir, 'specs'), { recursive: true });
 
-    await fs.writeFile(path.join(changeDir, 'proposal.md'), this.generateProposal(description, workspaceMeta));
-    await fs.writeFile(path.join(changeDir, 'tasks.md'), this.generateTasks(description, workspaceMeta));
-    await fs.writeFile(path.join(changeDir, 'specs', 'spec.md'), this.generateDeltaSpec(description));
     // design.md ships by default (--skip-design omits it; --include-design
     // is the explicit form of the default).
     const includeDesign = options.includeDesign === true
       || (options.includeDesign === undefined && options.skipDesign !== true);
-    if (includeDesign) {
-      await fs.writeFile(path.join(changeDir, 'design.md'), this.generateDesign(description, workspaceMeta));
+
+    // [rel, content, templateSentinels] — sentinels prove a file is still
+    // an untouched `stdd new` skeleton (safe to replace with ff's version).
+    const artifacts = [
+      ['proposal.md', this.generateProposal(description, workspaceMeta), ['[功能点 1]']],
+      ['tasks.md', this.generateTasks(description, workspaceMeta), ['TASK-001: Setup project structure']],
+      ['specs/spec.md', this.generateDeltaSpec(description), []],
+      ...(includeDesign ? [['design.md', this.generateDesign(description, workspaceMeta), []]] : []),
+    ];
+
+    const filled = [];
+    const kept = [];
+    for (const [rel, content, sentinels] of artifacts) {
+      const filePath = path.join(changeDir, rel);
+      let existing = null;
+      try {
+        existing = await fs.readFile(filePath, 'utf8');
+      } catch {
+        existing = null; // absent → fill
+      }
+      if (existing === null) {
+        await fs.writeFile(filePath, content);
+        filled.push(rel);
+      } else if (populateMode && sentinels.some(s => existing.includes(s))) {
+        await fs.writeFile(filePath, content);
+        filled.push(`${rel} (replaced untouched template)`);
+      } else {
+        kept.push(rel);
+      }
+    }
+
+    if (populateMode && filled.length === 0) {
+      throw new Error(
+        `Change '${changeName}' already exists and is already populated (${kept.join(', ')}).\n` +
+        'ff fills skeletons once; edit the artifacts directly or use a new change name.'
+      );
     }
 
     // Rigor is a property of the change: recorded once at creation, honored
     // by verify/archive unless explicitly overridden there.
     writeChangeRigor(changeDir, rigor.level);
 
-    console.log(chalk.green(`\n✅ Fast-forward change '${changeName}' created at stdd/changes/${changeName}/\n`));
+    if (populateMode) {
+      console.log(chalk.green(`\n✅ Fast-forward filled existing change '${changeName}'\n`));
+      filled.forEach(f => console.log(`  ${chalk.green('+')} ${f}`));
+      kept.forEach(k => console.log(`  ${chalk.dim('=')} ${k} (kept — already has content)`));
+      console.log('');
+    } else {
+      console.log(chalk.green(`\n✅ Fast-forward change '${changeName}' created at stdd/changes/${changeName}/\n`));
+    }
     console.log(chalk.dim(`  Rigor: ${rigor.level} (${rigor.basis}) — verify/archive will follow it`));
     console.log(chalk.dim(`  Artifacts: proposal.md, tasks.md (TDD phases), specs/spec.md${includeDesign ? ', design.md' : ''}`));
     if (workspaceMeta) {
@@ -207,6 +268,13 @@ The system SHALL support: ${description}.
     }
     console.log('Next steps:');
     const workspaceArg = workspaceMeta ? ` --workspace ${workspaceMeta.path}` : '';
+    // B-2: ff deliberately skips the interactive confirmation gate — in
+    // enforced mode the framework still stops code execution at apply
+    // until a decision is recorded. Say so up front, not after the fact.
+    if (readGateConfig(process.cwd()).confirmation === 'enforced') {
+      console.log(chalk.yellow(`  ⛔ gates.confirmation=enforced: record a decision before apply —`));
+      console.log(chalk.cyan(`     stdd confirm ${changeName} --yes "<why this proceeds>"`));
+    }
     console.log(chalk.cyan(`  stdd apply ${changeName}${workspaceArg}`));
     console.log(chalk.dim(`  (risk-triggered confirm? record evidence first: stdd certainty assess ${changeName} --scores "req:4,tech:4,risk:4,test:4,vision:4")`));
 

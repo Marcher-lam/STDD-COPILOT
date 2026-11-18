@@ -21,6 +21,7 @@ const { injectReporter } = require('../../utils/reporter-injector');
 const { runCommand: runParsedCommand, isInfraFailure } = require('../../utils/command-runner');
 const { readApplyLog } = require('../../utils/apply-log');
 const { taskKey } = require('../../utils/change-utils');
+const { extractFailureSignatures, classifyFailures } = require('../../utils/baseline');
 const { MutationCommand } = require('./mutation');
 
 const logger = createLogger('execute');
@@ -387,7 +388,18 @@ class ExecuteCommand {
         command: testCommand.command,
         passed: result.status === 0,
         infra: isInfraFailure(result),
+        failureSignatures: result.status === 0 ? [] : extractFailureSignatures(
+          `${result.stdout || ''}\n${result.stderr || ''}`
+        ).map(sig => `${testCommand.workspaceName}::${sig}`),
       });
+    }
+    // A-3 baseline semantics, same as apply.
+    for (const r of results) {
+      if (r.passed) continue;
+      const cls = classifyFailures(r.failureSignatures, cwd);
+      r.newFailures = cls.newFailures;
+      r.baselineExempted = cls.exempted;
+      r.effectivePassed = cls.baselineActive && r.failureSignatures.length > 0 && cls.newFailures.length === 0;
     }
     return results;
   }
@@ -425,6 +437,18 @@ class ExecuteCommand {
         reason: 'tests already green — no failing test observed',
       });
       return { success: false, error: 'tests already green', results };
+    }
+
+    // A-3/B-4: baseline-only failures are not this task's red light.
+    const failedSigs = results.flatMap(r => r.failureSignatures || []);
+    const cls = classifyFailures(failedSigs, cwd);
+    if (cls.baselineActive && failedSigs.length > 0 && cls.newFailures.length === 0) {
+      console.log(chalk.red(`\n❌ RED violation: all ${cls.exempted.length} failing test(s) are pre-existing baseline failures.`));
+      console.log(chalk.yellow('  Write a NEW failing test for this task, or re-record known failures: stdd baseline capture.'));
+      this.writeStageLog(changeDir, changeName, task, 'RED', 'failed', {
+        reason: 'baseline-only failures — no new failing test observed',
+      });
+      return { success: false, error: 'baseline-only failures', results };
     }
 
     console.log(chalk.green('\n✅ Tests failed as expected (RED stage)'));
@@ -477,7 +501,9 @@ class ExecuteCommand {
     console.log(chalk.dim('Tests must now pass with the minimal implementation.'));
     const results = this.runTestCommands(cwd, changeDir, testCommands, options);
 
-    if (results.every(r => r.passed)) {
+    if (results.every(r => r.passed || r.effectivePassed)) {
+      const exempted = results.reduce((n, r) => n + ((r.passed ? 0 : (r.baselineExempted || []).length)), 0);
+      if (exempted > 0) console.log(chalk.yellow(`  ⚠ ${exempted} pre-existing baseline failure(s) exempted (stdd/baseline.json)`));
       console.log(chalk.green('\n✅ Tests passed (GREEN stage)'));
       this.writeStageLog(changeDir, changeName, task, 'GREEN', 'passed', {
         command: testCommands.map(tc => tc.command).join(' && '),
@@ -496,9 +522,35 @@ class ExecuteCommand {
 
   async executeMutationStage(task, changeDir, changeName, options) {
     const cwd = options.cwd || process.cwd();
-    console.log(chalk.dim('Mutation gate (quick heuristic — not real mutation testing).'));
+    const mode = options.mutationMode || 'quick';
+    // 过程审计 A-6: the quick score is a static heuristic — it scored a
+    // suite missing a critical test identically to a complete one, so it
+    // must not block the default loop. It runs as a visible advisory;
+    // only stryker (real mutants) gates.
+    if (mode === 'quick') {
+      console.log(chalk.dim('Mutation advisory (quick heuristic — NOT real mutation testing, non-gating).'));
+      try {
+        const mutation = new MutationCommand(cwd).execute(changeName, { mode: 'quick' });
+        process.exitCode = 0; // the advisory must not fail the loop
+        const label = mutation.status === 'pass'
+          ? chalk.green('heuristic ok')
+          : chalk.yellow('heuristic weak');
+        console.log(`  ${label} (${mutation.score === null ? 'n/a' : mutation.score + '%'})${chalk.dim(' — advisory only; real gating: --mutation-mode stryker')}`);
+        this.writeStageLog(changeDir, changeName, task, 'MUTATION', mutation.status === 'pass' ? 'passed' : 'skipped', {
+          score: mutation.score,
+          advisory: true,
+          reason: 'quick heuristic is non-gating in the ralph loop (A-6)',
+        });
+      } catch (err) {
+        console.log(chalk.yellow(`  ⚠ Mutation advisory could not run: ${err.message} (non-blocking)`));
+        this.writeStageLog(changeDir, changeName, task, 'MUTATION', 'skipped', { error: err.message, advisory: true });
+      }
+      return { success: true, skipped: true, advisory: true };
+    }
+
+    console.log(chalk.dim('Mutation gate (stryker — real mutation testing).'));
     try {
-      const mutation = new MutationCommand(cwd).execute(changeName, { mode: options.mutationMode || 'quick' });
+      const mutation = new MutationCommand(cwd).execute(changeName, { mode: 'stryker' });
       if (mutation.status === 'pass') {
         this.writeStageLog(changeDir, changeName, task, 'MUTATION', 'passed', { score: mutation.score });
         return { success: true, score: mutation.score };
@@ -531,7 +583,9 @@ class ExecuteCommand {
     console.log(chalk.dim('Tests must stay green through the refactor.'));
     const results = this.runTestCommands(cwd, changeDir, testCommands, options);
 
-    if (results.every(r => r.passed)) {
+    if (results.every(r => r.passed || r.effectivePassed)) {
+      const exempted = results.reduce((n, r) => n + ((r.passed ? 0 : (r.baselineExempted || []).length)), 0);
+      if (exempted > 0) console.log(chalk.yellow(`  ⚠ ${exempted} pre-existing baseline failure(s) exempted (stdd/baseline.json)`));
       console.log(chalk.green('\n✅ Tests still passing (REFACTOR stage)'));
       this.writeStageLog(changeDir, changeName, task, 'REFACTOR', 'passed', {
         command: testCommands.map(tc => tc.command).join(' && '),

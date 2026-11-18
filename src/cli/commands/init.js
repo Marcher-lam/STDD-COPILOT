@@ -126,6 +126,20 @@ defense:
   failure_rollback:
     threshold: 3
 
+# Process-truth gates (过程审计 B-2/B-5). Defaults keep historical
+# behavior; tighten per project.
+gates:
+  # confirmation: enforced blocks code execution (apply/continue/graph run)
+  # until the change has a RECORDED decision — unlock with:
+  #   stdd confirm <change> --yes "<why this proceeds>"
+  # advisory (default) only warns.
+  confirmation: advisory
+  # refinement probes artifact depth in verify: off | warn (default) | block.
+  # Signals today: ff template scenario shape, single-requirement/single-
+  # scenario specs, design decisions still Status: OPEN. New generator
+  # template shapes need new signals (see VerifyCommand._checkRefinement).
+  refinement: warn
+
 # Memory System
 memory:
   enabled: true

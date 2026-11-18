@@ -13,7 +13,7 @@ const { applyDelta, parseDeltaSections } = require('../../utils/delta-spec');
 const { readDeferred, DEFERRED_FILENAME } = require('../../utils/deferred-work');
 const { readChangeRigor, rigorNodeOptions } = require('../../utils/rigor');
 const { computeProjectTestFingerprint } = require('../../utils/project-fingerprint');
-const { ValidateCommand, lineDiagnostics } = require('./validate');
+const { ValidateCommand, lineDiagnostics, readLeakageDisabledRules } = require('./validate');
 const logger = createLogger('archive');
 
 function extractProposalTitle(content) {
@@ -355,9 +355,25 @@ class ArchiveCommand {
     // than every change artifact it covers. Previously only "an existing
     // failed verify" blocked; a never-verified change, an empty task list,
     // or tests edited to fail after a green verify all slipped through.
-    // --force is the explicit escape hatch and still records the rejection
-    // in summary.md.
-    if (!options.force) {
+    //
+    // Escape hatches (过程审计 A-5):
+    //   --waive "<reason>"  recorded waiver — requires a reason, written to
+    //                       the change (archive-waivers.json) and surfaced
+    //                       in summary.md; the audited path for baseline
+    //                       debt the gates correctly can't judge.
+    //   --force             legacy unrecorded escape hatch (kept for
+    //                       scripting; the gate message now points here).
+    const waiveReason = typeof options.waive === 'string' ? options.waive.trim() : '';
+    if (options.waive !== undefined && !waiveReason) {
+      throw new Error('--waive requires a non-empty reason. Record WHY the verification gate is being waived (auditable).');
+    }
+    if (waiveReason) {
+      this.recordWaiver(changeDir, changeNameActual, waiveReason, {
+        latestVerify: findLatestVerifyEvidenceFile(changeDir),
+      });
+      console.log(chalk.yellow(`\n⚖ Verification gate WAIVED with recorded reason: "${waiveReason}"`));
+      console.log(chalk.dim('  Waiver is durable (archive-waivers.json) and will appear in summary.md.'));
+    } else if (!options.force) {
       const latest = findLatestVerifyEvidenceFile(changeDir);
       const refuse = (lines) => {
         console.log(chalk.red(`\n✗ Verification gate for '${changeNameActual}' — change NOT archived:`));
@@ -492,6 +508,34 @@ class ArchiveCommand {
     console.log(chalk.green(`\n✅ Archived ${chalk.cyan(changeNameActual)} as ${chalk.cyan(archiveName)}`));
   }
 
+  /**
+   * A-5: durable, auditable waiver for the verification gate. Unlike
+   * --force, the reason is mandatory and travels with the archived change.
+   */
+  recordWaiver(changeDir, changeName, reason, context = {}) {
+    const waiversPath = path.join(changeDir, 'archive-waivers.json');
+    let waivers = [];
+    try {
+      if (fs.existsSync(waiversPath)) waivers = JSON.parse(fs.readFileSync(waiversPath, 'utf8')) || [];
+    } catch (err) {
+      logger.warn(err.message);
+    }
+    waivers.push({
+      date: new Date().toISOString(),
+      reason,
+      by: process.env.USER || process.env.USERNAME || 'unknown',
+      gate: 'verification',
+      context: {
+        latestVerifyStatus: context.latestVerify && context.latestVerify.data
+          ? context.latestVerify.data.status
+          : 'none',
+        latestVerifyFile: context.latestVerify ? path.basename(context.latestVerify.file) : null,
+      },
+    });
+    fs.writeFileSync(waiversPath, JSON.stringify(waivers, null, 2), 'utf8');
+    return waiversPath;
+  }
+
   writeMergeReport(changeDir, mergeReport) {
     if (mergeReport.length === 0) return;
     fs.writeFileSync(path.join(changeDir, 'spec-merge-report.json'), JSON.stringify(mergeReport, null, 2), 'utf8');
@@ -562,8 +606,9 @@ class ArchiveCommand {
     // leakage/shape rules over .feature files, but strictDiagnostics skips
     // them — so placeholder specs that failed strict validation still
     // archived. Run the same line rules here so the two gates agree.
+    const disabledRules = readLeakageDisabledRules(cwd);
     for (const file of files) {
-      diagnostics.push(...lineDiagnostics(file, cwd));
+      diagnostics.push(...lineDiagnostics(file, cwd, { disabledRules }));
     }
     // Structure rules only. Stateful delta-vs-main rules (target-missing,
     // added-conflict, ...) reflect merge state: after a conflict-aborted
@@ -688,18 +733,33 @@ class ArchiveCommand {
     }
 
     // Retrospective verdict (BMAD retrospective: accepted /
-    // accepted-with-open-items / rejected), computed from the evidence:
-    // failed verification => rejected; open deferred items =>
+    // accepted-with-open-items / accepted-with-waivers / rejected),
+    // computed from the evidence: failed verification => rejected (unless a
+    // recorded waiver says otherwise — A-5); open deferred items =>
     // accepted-with-open-items; otherwise accepted.
     const deferredState = readDeferred(changeDir);
+    let waivers = [];
+    try {
+      const waiversPath = path.join(changeDir, 'archive-waivers.json');
+      if (fs.existsSync(waiversPath)) waivers = JSON.parse(fs.readFileSync(waiversPath, 'utf8')) || [];
+    } catch (err) {
+      logger.warn(err.message);
+    }
     let verdict = 'accepted';
     let verdictReason = evidence
       ? 'Verification passed with no open deferred items.'
       : 'No verification evidence recorded; archived without verification.';
-    if (verificationStatus === 'FAIL') {
+    if (verificationStatus === 'FAIL' && waivers.length === 0) {
       verdict = 'rejected';
       verdictReason = 'Latest verification evidence failed.';
-    } else if (deferredState.open > 0) {
+    } else if (verificationStatus === 'FAIL') {
+      verdict = 'accepted-with-waivers';
+      verdictReason = `Latest verification failed; ${waivers.length} recorded waiver(s) authorize the archive.`;
+    } else if (waivers.length > 0) {
+      verdict = 'accepted-with-waivers';
+      verdictReason = `${waivers.length} recorded waiver(s) applied during archiving.`;
+    }
+    if (verdict === 'accepted' && deferredState.open > 0) {
       verdict = 'accepted-with-open-items';
       verdictReason = `${deferredState.open} deferred item(s) remain open in ${DEFERRED_FILENAME}; sweep them in a later change.`;
     }
@@ -709,6 +769,15 @@ class ArchiveCommand {
     lines.push('');
     lines.push(`Reason: ${verdictReason}`);
     lines.push('');
+
+    if (waivers.length > 0) {
+      lines.push('## Recorded Waivers');
+      lines.push('');
+      for (const w of waivers) {
+        lines.push(`- [${w.date}] gate=${w.gate} by=${w.by}: ${w.reason}`);
+      }
+      lines.push('');
+    }
 
     const summaryPath = path.join(changeDir, 'summary.md');
     fs.writeFileSync(summaryPath, lines.join('\n'), 'utf-8');

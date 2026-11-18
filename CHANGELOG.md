@@ -2,6 +2,35 @@
 
 All notable changes to STDD Copilot will be documented in this file.
 
+## [Unreleased] — 验收报告 D01-D12 清偿 + 过程审计第一辑 A/B 类清偿 + 过程门禁
+
+### Fixed (acceptance report D01-D12, 2026-11-14)
+- execute (D01/D04): the ralph-loop stages only printed prompts and returned success — a permanently failing test script "completed" the whole loop. Rewritten with real gates: RED requires the suite to actually fail (infrastructure failures excluded), CHECK runs lint when configured (or an explicit labeled skip), GREEN/MUTATION/REFACTOR gate on command results; stage passes are recorded in apply.log (shared ledger with verify's TDD gate), the full loop resumes past evidenced stages, `--phase` requires prior recorded passes, failures set exit 1.
+- archive (D02): three verification gates — a passing `stdd verify` evidence must EXIST (empty/missing task lists are refused independently of allDone), be FRESH (newer than the change artifacts), and match the project's test fingerprint (verify now records a hash of package.json/config/test dirs/*.test.*; editing tests after a green verify no longer archives). `--waive "<reason>"` records a durable waiver (archive-waivers.json + summary verdict); `--force` remains the unrecorded escape hatch.
+- apply (D03): infrastructure failures (spawn ENOENT, npm ENOENT, missing test script, runner MODULE_NOT_FOUND) are classified via `isInfraFailure` and never recorded as RED evidence, in both the phase machine and legacy mode.
+- contract (D05): `stdd contract verify` exits 1 on violations so CI can block.
+- spec-generator/archive (D06): the generic placeholder steps are replaced by description-derived semantics, and the archive strict gate now runs the same per-line leakage rules over `.feature` files (`validate --strict` and archive agree again).
+- parallel (D07): destructured a non-existent `DynamicRouter` export and called a ParallelExecutor API from a different design — every action crashed. Now uses the same compile/layer APIs as `stdd graph`.
+- mock (D08): commander arg mapping (the target string was treated as an args array), the never-assigned `this.cwd` ("path argument Received undefined" root cause), nested-path targets, and `--methods` comma splitting.
+- CLI surface (D09-D12): ff `--include-design/--skip-design/--output` + delta-spec skeleton + `[phase:red]` task markers (plan too); plan `show/estimate/dependencies`; execute `status/evidence`; story `convert`; ci `gitlab`/`jenkins` generators; starters `--type` (+ commander Command-instance tail-arg trap); wizard prints `stdd new change <name>`; `start --json`/`depcheck --json` real machine output (node: builtins no longer "missing"); progress records real argv positionals/flags.
+
+### Fixed (process audit vol.1 A-1~A-7, B-1/B-4, 2026-11-17)
+- ff (A-1): `stdd new change` then `stdd ff --change-name <same>` errored "already exists" — ff now FILLS an existing skeleton (only absent files or untouched templates via sentinels; user edits untouched) and errors "already populated" when there is nothing to fill.
+- ff artifacts (A-2): URLs are no longer title-cased into requirement names (case-preserving short label + raw text in the SHALL body); In-Scope carries the requirement; tasks derive from it (no fixed 3-slot template).
+- dirty baseline (A-3/B-4): new `stdd baseline capture/show/clear` records failing-test signatures (jest/node:test ✕, indented TAP subtests, FAIL files, mocha lists, plus TAP/mocha fail-count signatures for directory-mode runners). RED then requires at least one NEW failure (baseline-only failures are refused with a recorded reason — no polluted RED evidence); GREEN/REFACTOR/legacy exempt recorded baseline failures with counted exemptions. Without a baseline.json, behavior is unchanged.
+- constitution scoping (A-4): verify computes the change's changed files from its recorded `baseline_commit`; Article 2 missing-test-file and Article 4 eslint audit only what the change touched, Article 9 missing CI downgrades to a warning when the change didn't touch CI paths. No git / no baseline → whole-repo semantics (unchanged).
+- archive waiver (A-5): `--waive "<reason>"` (reason mandatory) writes archive-waivers.json and surfaces in summary.md as accepted-with-waivers — distinct from `--force`.
+- mutation advisory (A-6): the quick heuristic (which scored a suite missing a critical test identically to a complete one) is now advisory in the execute loop — visible, recorded, non-gating; only `--mutation-mode stryker` gates.
+- leakage config (A-7): `spec_guardian.disabled_rules` in stdd/config.yaml disables individual leakage rules (e.g. api-detail for API backends) in both validate and the archive gate.
+- task checkbox authenticity (B-1): verify cross-checks completed tasks against apply.log process evidence; hand-checked tasks are listed as "NO recorded process evidence" and recorded in the evidence report.
+
+### Added (process gates B-2/B-5, 2026-11-18)
+- `gates.confirmation: enforced` — apply/continue/graph run stop at the confirmation gate until the change has a RECORDED decision (`stdd confirm <change> --yes "<reason>"`; only manual-override/auto-approved count, pending-human does not). Invalid config values fail closed to enforced. ff prints the gate requirement up front. Default `advisory` keeps historical behavior.
+- `gates.refinement: off|warn|block` — verify probes artifact refinement depth with deterministic signals (ff template scenario shape, single-requirement/single-scenario specs, design decisions still Status: OPEN). Default `warn`. The signal catalog is documented at `VerifyCommand._checkRefinement` (new generator templates need new signals).
+- init now ships a commented `gates:` section in stdd/config.yaml; USAGE.md gained a "过程门禁" section documenting blast radius, unlocking, and probe extension.
+
+Gates: 234 suites / 4509 tests; lint clean (0 errors / 0 warnings); docs consistency 9/9. Audit scenarios re-run end-to-end (D01-D12 19 groups; A/B RA1-RA8; gates RB2/RB5 + blast radius BLAST-1/2).
+
 ## [1.2.11] - 2026-11-13 — 终测复验新发现修复（config 占位符插值）
 
 ### Fixed (P1)

@@ -9,6 +9,7 @@ const { SchemaCommand } = require('./schema');
 const { isSafeListed } = require('./depcheck');
 const { mergePackageDeps } = require('../../utils/tech-stack-detector');
 const { walkFiles } = require('../../utils/file-walker');
+const { isInChangedSet, isCiConfigPath } = require('../../utils/changed-files');
 const { createLogger } = require('../../utils/logger');
 const logger = createLogger('constitution-checker');
 
@@ -30,6 +31,11 @@ class ConstitutionChecker {
     this.issues = { blocking: [], warning: [], info: [], skipped: [] };
     this.waivers = new Set();
     this.workspaces = detectWorkspaces(this.cwd);
+    // 过程审计 A-4: when a change-scoped file list is provided (verify
+    // computes it from the change's baseline_commit), file-level checks
+    // judge only what THIS change touched — pre-existing repo debt stops
+    // being re-litigated on every verify. null → whole repo (legacy).
+    this.changedFiles = Array.isArray(options.changedFiles) ? options.changedFiles : null;
   }
 
   loadConfig() {
@@ -382,8 +388,16 @@ class ConstitutionChecker {
       return;
     }
 
-    // Check 1: Every source file must have a corresponding test file
+    // Check 1: Every source file must have a corresponding test file.
+    // A-4 scoping: with a change-scoped file list, only files this change
+    // touched are gated — a brownfield repo's untouched legacy files are
+    // baseline debt, not this change's TDD violation.
+    let baselineSkipped = 0;
     for (const { file: sf, srcDir } of sourceFiles) {
+      if (this.changedFiles && !isInChangedSet(this.changedFiles, sf, this.cwd)) {
+        baselineSkipped++;
+        continue;
+      }
       const testFile = this.findTestFileForSource(sf, srcDir);
       if (!testFile) {
         const relPath = path.relative(this.cwd, sf);
@@ -393,6 +407,13 @@ class ConstitutionChecker {
           message: `Missing test file for: ${relPath}`
         });
       }
+    }
+    if (baselineSkipped > 0) {
+      this.issues.info.push({
+        article: 2,
+        name: 'TDD',
+        message: `Scoped to this change: ${sourceFiles.length - baselineSkipped} changed file(s) audited, ${baselineSkipped} pre-existing file(s) exempted (baseline debt).`,
+      });
     }
 
     // Check 2: Verify test execution status (not just file existence)
@@ -951,9 +972,22 @@ class ConstitutionChecker {
 
     const linter = this.detectLinter(sourceDirs[0]);
     if (linter) {
-      const result = this.runLinter(linter);
+      // A-4 scoping: lint only the files this change touched, so baseline
+      // style debt in untouched files stops failing every change's verify.
+      const scopedLinter = this.scopeLinterToChangedFiles(linter);
+      if (scopedLinter === null) {
+        // Nothing lintable changed — the change cannot have introduced
+        // style violations; record and skip the linter run entirely.
+        this.issues.info.push({
+          article: 4,
+          name: 'Style',
+          message: 'Scoped to this change: no lintable files touched, linter skipped (baseline style debt exempted).',
+        });
+        return;
+      }
+      const result = this.runLinter(scopedLinter);
       if (result.error) {
-        sourceDirs.forEach(srcDir => this.fallbackLineCheck(srcDir));
+        if (!scopedLinter.scoped) sourceDirs.forEach(srcDir => this.fallbackLineCheck(srcDir));
         return;
       }
       if (result.status !== 0) {
@@ -962,12 +996,29 @@ class ConstitutionChecker {
         this.issues.blocking.push({
           article: 4,
           name: 'Style',
-          message: `Lint errors (${linter.type}): ${lines.join(' | ')}`
+          message: `Lint errors (${scopedLinter.type})${scopedLinter.scoped ? ' (changed files only)' : ''}: ${lines.join(' | ')}`
         });
       }
     } else {
       sourceDirs.forEach(srcDir => this.fallbackLineCheck(srcDir));
     }
+  }
+
+  /**
+   * A-4: narrow a linter invocation to the change's changed files.
+   * Returns the linter (possibly with scoped args), or null when scoping
+   * is active and no lintable file was touched.
+   */
+  scopeLinterToChangedFiles(linter) {
+    if (!this.changedFiles) return linter;
+    const lintable = this.changedFiles.filter(f => /\.(js|jsx|ts|tsx)$/.test(f));
+    if (lintable.length === 0) return null;
+    if (linter.type === 'eslint') {
+      return { ...linter, args: ['eslint', ...lintable], scoped: true };
+    }
+    // Unknown linter families: keep the original invocation but mark the
+    // scope so reporting is honest.
+    return { ...linter, scoped: false };
   }
 
   _checkProductionLogging(content, relPath) {
@@ -1282,11 +1333,25 @@ class ConstitutionChecker {
         }
       }
 
-      this.issues.blocking.push({
-        article: 9,
-        name: 'CI/CD',
-        message: 'Missing CI Configuration. No CI config found (GitHub Actions, CircleCI, GitLab CI, or Jenkins).'
-      });
+      // A-4 scoping: when auditing a specific change and the change did not
+      // touch any CI config path, the missing CI is pre-existing project
+      // debt — a warning for this change, not a blocking verdict.
+      const changeAddsCi = this.changedFiles
+        ? this.changedFiles.some(f => isCiConfigPath(f))
+        : null; // no scope → whole-project semantics
+      if (changeAddsCi === false) {
+        this.issues.warning.push({
+          article: 9,
+          name: 'CI/CD',
+          message: 'Missing CI Configuration (pre-existing project debt — not introduced by this change). Generate one with `stdd ci github`, or waive: stdd constitution waive 9 --reason "baseline".',
+        });
+      } else {
+        this.issues.blocking.push({
+          article: 9,
+          name: 'CI/CD',
+          message: 'Missing CI Configuration. No CI config found (GitHub Actions, CircleCI, GitLab CI, or Jenkins).'
+        });
+      }
 
       if (hasTestScript) {
         this.issues.warning.push({

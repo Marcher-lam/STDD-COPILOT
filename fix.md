@@ -1,6 +1,85 @@
 # STDD Copilot 边际优化追踪
 
-> Last Updated: 2026-11-14 | Round 48 完成（验收报告 D01-D12 清偿）
+> Last Updated: 2026-11-18 | Round 50 完成（过程审计 B-2/B-5 门禁补强 + 扩散半径实测与文档化）
+
+### Round 50 — v1.2.11 后：过程审计 B-2 确认门强制 + B-5 细化质量门禁（2026-11-18）
+
+Round 49 把 B-2/B-5 记为"执行器行为约束设计，留待第二辑"——复盘判定
+该定性错误：审计结论 #1 指"过程真实性门禁极软"，框架应提供可选的
+牙齿而非把约束推给执行器自觉。本轮补齐两道门禁，默认行为不变
+（advisory/warn），项目经 stdd/config.yaml gates: 节渐进收紧。
+B-2（确认门无强制）：新增 gate-config util（gates.confirmation:
+advisory|enforced，默认 advisory；非法值 fail-closed 回落 enforced 而非
+静默降级）；apply 在 dry-run/ruling 之外的执行路径上检查
+confirm-decision.json——仅 manual-override（confirm --yes/--skip 显式
+记录）与 auto-approved（risk-triggered 高置信自动通过）算通过，
+pending-human 不算；无证据时拒绝 exit 1 并给出精确解锁命令，拒绝
+事件写入 apply.log（confirmation-gate-blocked）。ff 在 enforced 模式
+创建时前置提示"下一步必须 confirm"，不再事后才暴露。
+B-5（细化质量无门禁）：verify 新增确定性细化深度探针（诚实标注
+heuristic，无 AI 判分）：ff 模板场景句残留（GIVEN the current system
+state / WHEN the behavior "…" is exercised）、单 Requirement 单
+Scenario 深度不足、design.md Status: OPEN 未决决策三个信号；默认 warn
+（显著可见+计入 evidence 报告 refinement 字段），gates.refinement:
+block 时 fail verify（附逃生指引），off 全静默；探针任何异常降级为
+无信号而非误判。新增 process-gates.test.js 9 测试覆盖：默认值/解析/
+fail-closed、enforced 拒绝→confirm --yes 解锁→门后流程照常执法、
+pending-human 非通过、三信号检出/精化通过/block 拦截/off 静默。
+回归：234 套件 4509 测试通过（+9），lint 0/0；RB2/RB5 端到端复现
+通过（ff enforced 路径停在确认门、细化三态转换）。B 类执行器违规
+至此全部有框架侧对策：B-1 勾选证据交叉校验、B-2 确认门强制、
+B-3 --waive 登记豁免、B-4 基线签名防污染、B-5 细化深度探针。
+补强复验（同日）：enforced 门禁的扩散半径从推断改为实测——continue
+与 graph run（stdd-apply 节点）均被拦（exit 1 + Confirmation gate 输出
++ graph run 全局失败），确认为特性；init 生成的 stdd/config.yaml 新增
+带注释的 gates 节（默认 advisory/warn，readGateConfig 实测解析一致），
+USAGE.md 新增"过程门禁"章节（拦截范围/解锁方式/pending-human 非通过/
+细化探针三信号与扩展点），_checkRefinement 头注明确 SIGNAL CATALOG
+为新模板形态的登记处。回归 234 套件 4509 全过、lint 0/0、docs 9/9。
+
+### Round 49 — v1.2.11 后：过程审计第一辑 A-1~A-7 + B-1/B-4 清偿（2026-11-17）
+
+A-1（new→ff 断链）：ff 遇 EEXIST 不再报错，改为填充模式——只写缺失
+文件或含 sentinel 的未编辑模板（new 的 proposal/tasks 骨架被识别并
+替换），用户改过的产物不动；全部已填充时报 already populated。
+A-2（ff 产物占位空壳）：spec 的 Requirement 名改为大小写保留的短标签
+（不再 Title-Case 破坏 URL），需求原文进 SHALL 正文与场景步骤；
+proposal In-Scope 携带需求文本；tasks 从需求派生（Implement/Write
+failing tests/error handling/mutation 四任务）取代固定三槽模板。
+A-3/B-4（脏基线污染红绿）：新增 baseline 机制（stdd baseline
+capture/show/clear + src/utils/baseline.js）——签名提取覆盖
+jest/node:test ✕、缩进 TAP not ok 子测试（目录模式折叠问题）、
+FAIL 文件、mocha 编号列表，另以 TAP/mocha fail 计数作计数签名兜底；
+RED 要求至少一个新失败签名（baseline-only 失败被拒并写入拒绝理由，
+不产生 RED 证据），GREEN/REFACTOR/legacy 豁免已登记基线失败并记录
+exemption 数；无 baseline.json 时行为与旧语义完全一致。execute 循环
+同步接入。isInfraFailure 增补 runner 自身 MODULE_NOT_FOUND 模式。
+A-4（章程全仓误伤）：verify 依据 change 的 baseline_commit 计算
+changedFiles（git diff + status，无 git/无基线返回 null 回退全仓），
+Article 2 Missing-test-file 只审计变更文件（存量豁免计入 info 行），
+Article 4 eslint 只跑变更的 js/ts 文件（无 lintable 变更则跳过），
+Article 9 无 CI 在变更范围内降为 warning（存量债，附 waive 指引）。
+A-5（归档无豁免通道）：archive --waive "<reason>"（必填理由）写入
+archive-waivers.json 并在 summary.md 以 accepted-with-waivers verdict
+与 Recorded Waivers 节展示；--force 保留为脚本逃生口但帮助与门禁
+消息指向 --waive；空理由显式报错。
+A-6（quick 变异无鉴别力）：execute MUTATION 阶段 quick 模式降为
+advisory（运行取证、可见弱分提示、不设退出码、日志记 advisory），
+仅 --mutation-mode stryker 真变异门禁；直接调用 stdd mutation 的
+CLI 语义不变。
+A-7（噪音告警）：leakage 规则可经 stdd/config.yaml
+spec_guardian.disabled_rules 关闭（validate 与 archive 门禁同口径），
+api-detail 对 API 后端项目不再强制噪音。
+B-1（勾选可伪造）：verify 交叉校验已完成任务的 apply.log 过程证据，
+无证据的手动勾选以显著警告列出并写入 evidence 报告的
+tdd.manualCompletions（不阻断，留痕可审计）。
+测试：ff 既有变更用例翻转为填充语义、任务数断言改派生式、index
+键表补 BaselineCommand、verify-unit 对缺 parseTasks 的旧 mock 防御
+降级；全量 233 套件 4500 测试通过，lint 0/0、docs 9/9；审计原始
+场景复现通过：new→ff 填充、URL 保留、脏基线三相位（baseline-only
+RED 拒绝/新失败 RED 通过/GREEN 豁免完成全循环）、章程范围审计
+（1 changed audited, 2 pre-existing exempted）、--waive 留痕归档、
+quick advisory 不阻断、api-detail 可关、手动勾选警告。
 
 ### Round 48 — v1.2.11 后：终测验收报告 D01-D12 全面清偿（2026-11-14）
 

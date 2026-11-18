@@ -16,6 +16,8 @@ const { runCommand: runParsedCommand, isInfraFailure: _isInfraFailure } = requir
 // Defensive resolution: partial mocks of command-runner (older test doubles)
 // may not export the classifier — fall back to "not infra" rather than crash.
 const isInfraFailure = typeof _isInfraFailure === 'function' ? _isInfraFailure : () => false;
+const { extractFailureSignatures, classifyFailures } = require('../../utils/baseline');
+const { readGateConfig, readConfirmEvidence, isConfirmed } = require('../../utils/gate-config');
 const { appendRuling, RULINGS_FILENAME } = require('../../utils/ruling-ledger');
 const { recordInterruption } = require('../../utils/interruption');
 const { readApplyLog } = require('../../utils/apply-log');
@@ -182,6 +184,31 @@ class ApplyCommand {
       console.log(chalk.yellow(`\n⚖ Ruling #${n} recorded in stdd/changes/${changeNameActual}/${RULINGS_FILENAME}`));
       console.log(chalk.dim('  Format: 决定 — 理由 — 出错了的代价. Feed back to later changes via stdd plan.'));
       return;
+    }
+
+    // 过程审计 B-2: with gates.confirmation=enforced, code execution stops
+    // at the confirmation gate — apply refuses until the change carries a
+    // RECORDED decision (confirm --yes/--skip override or risk-triggered
+    // auto-approval). Default (advisory) keeps the historical behavior.
+    if (!options.dryRun) {
+      const gates = readGateConfig(cwd);
+      if (gates.confirmation === 'enforced') {
+        const evidence = readConfirmEvidence(changeDir);
+        if (!isConfirmed(evidence)) {
+          const state = evidence ? `decision status '${evidence.status}'` : 'no confirmation decision recorded';
+          console.log(chalk.red(`\n⛔ Confirmation gate (enforced): ${state} for '${changeNameActual}'.`));
+          console.log(chalk.yellow('  Autonomous execution stops here by project policy (gates.confirmation: enforced).'));
+          console.log(chalk.yellow(`  Record a decision first:  ${chalk.cyan(`stdd confirm ${changeNameActual} --yes \"<why this proceeds\"`)}`));
+          console.log(chalk.dim('  (interactive TTY sessions: stdd confirm ' + changeNameActual + ')'));
+          process.exitCode = 1;
+          writeLog(changeDir, {
+            change: changeNameActual,
+            event: 'confirmation-gate-blocked',
+            reason: state,
+          });
+          return;
+        }
+      }
     }
 
     // Capture the pre-implementation git baseline once, so verification and
@@ -438,7 +465,8 @@ class ApplyCommand {
         });
       }
 
-      resultStatus = testResults.every(result => result.passed) ? 'passed' : 'failed';
+      // A-3: baseline failures count as effective pass in legacy mode too.
+      resultStatus = testResults.every(result => result.passed || result.effectivePassed) ? 'passed' : 'failed';
     }
 
     let hasRedEvidence = false;
@@ -589,7 +617,28 @@ class ApplyCommand {
       return;
     }
 
-    console.log(chalk.green(`\n✅ Tests failed as expected (RED phase)`));
+    // 过程审计 A-3/B-4: every failure being a recorded baseline failure is
+    // NOT this task's red light — the suite was already failing before the
+    // change. Recording it as RED would pollute the evidence ledger.
+    const failedSignatures = testResults.flatMap(r => r.failureSignatures || []);
+    const classification = classifyFailures(failedSignatures, cwd);
+    if (classification.baselineActive && failedSignatures.length > 0 && classification.newFailures.length === 0) {
+      console.log(chalk.red(`\n❌ RED Phase Violation: all ${classification.exempted.length} failing test(s) are pre-existing baseline failures.`));
+      console.log(chalk.yellow(`  A dirty baseline is not your red light — the suite already failed before this change.`));
+      console.log(chalk.yellow(`  Write a NEW failing test for this task, or re-record known failures with ${chalk.cyan('stdd baseline capture')}.`));
+      writeLog(changeDir, {
+        change: changeName,
+        task: task.description,
+        phase: TDD_PHASES.RED,
+        status: 'failed',
+        reason: 'baseline-only failures — no new failing test observed',
+      });
+      process.exitCode = 1;
+      return;
+    }
+
+    const exemptedCount = classification.baselineActive ? classification.exempted.length : 0;
+    console.log(chalk.green(`\n✅ Tests failed as expected (RED phase)${exemptedCount > 0 ? chalk.dim(` — ${exemptedCount} baseline failure(s) exempted`) : ''}`));
     updateTaskPhase(tasksPath, task.index, TDD_PHASES.GREEN);
     writeLog(changeDir, {
       change: changeName,
@@ -597,6 +646,7 @@ class ApplyCommand {
       phase: TDD_PHASES.RED,
       status: 'passed',
       message: 'Tests failed as expected, advancing to GREEN phase',
+      ...(exemptedCount > 0 ? { baselineExemptions: exemptedCount } : {}),
     });
   }
 
@@ -629,7 +679,13 @@ class ApplyCommand {
     console.log(`\n  ${chalk.dim('📡 STDD Reporter linked for better evidence')}`);
 
     const testResults = await this._runTests(testCommands, cwd);
-    const allPassed = testResults.every(r => r.passed);
+    // A-3: effective pass — exit 0, or every remaining failure is a
+    // recorded baseline failure (pre-existing, not this change's).
+    const allPassed = testResults.every(r => r.passed || r.effectivePassed);
+    const baselineExempted = testResults.reduce((n, r) => n + ((r.passed ? 0 : (r.baselineExempted || []).length)), 0);
+    if (!allPassed && baselineExempted > 0) {
+      console.log(chalk.yellow(`  ⚠ ${baselineExempted} pre-existing baseline failure(s) would still fail GREEN — fix them or re-capture (stdd baseline capture).`));
+    }
 
     if (allPassed) {
       console.log(chalk.green(`\n✅ Tests passed (GREEN phase)`));
@@ -715,7 +771,7 @@ class ApplyCommand {
     console.log(`\n  ${chalk.dim('📡 STDD Reporter linked for better evidence')}`);
 
     const testResults = await this._runTests(testCommands, cwd);
-    const allPassed = testResults.every(r => r.passed);
+    const allPassed = testResults.every(r => r.passed || r.effectivePassed);
 
     if (allPassed) {
       console.log(chalk.green(`\n✅ Tests still passing after refactoring (REFACTOR phase)`));
@@ -782,8 +838,24 @@ class ApplyCommand {
         // Infrastructure failure (runner never executed) — must never be
         // mistaken for a failing suite, especially in the RED phase.
         infra: !result.error && result.status !== 0 ? isInfraFailure(result) : Boolean(result.error),
+        // 过程审计 A-3: known-failure baseline classification, so dirty
+        // baselines stop flipping between "RED as expected" and "GREEN
+        // not reached" on the same evidence.
+        failureSignatures: result.status === 0 ? [] : extractFailureSignatures(
+          `${result.stdout || ''}\n${result.stderr || ''}`
+        ).map(sig => `${testCommand.workspaceName}::${sig}`),
         workspace: commandToWorkspaceScope(cwd, testCommand),
       });
+    }
+
+    // Effective pass = exit 0 OR every remaining failure is a recorded
+    // baseline failure (pre-existing debt, not this change's regression).
+    for (const r of testResults) {
+      if (r.passed) continue;
+      const cls = classifyFailures(r.failureSignatures, cwd);
+      r.newFailures = cls.newFailures;
+      r.baselineExempted = cls.exempted;
+      r.effectivePassed = cls.baselineActive && r.failureSignatures.length > 0 && cls.newFailures.length === 0;
     }
 
     return testResults;

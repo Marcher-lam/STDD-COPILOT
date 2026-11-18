@@ -21,6 +21,9 @@ stdd hooks verify
 stdd hooks status
 stdd hooks disable
 stdd hooks enable
+stdd baseline capture
+stdd baseline show
+stdd baseline clear
 stdd progress
 stdd progress --summary
 stdd progress --resume

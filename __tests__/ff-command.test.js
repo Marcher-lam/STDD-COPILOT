@@ -85,7 +85,7 @@ describe('FFCommand', () => {
     expect(proposalContent).toContain('implement payment gateway');
   });
 
-  it('should generate 3 tasks in tasks.md with unchecked status', async () => {
+  it('should derive tasks from the description with unchecked status', async () => {
     const projectPath = createTempProject('ff-tasks-project');
     process.chdir(projectPath);
 
@@ -94,12 +94,13 @@ describe('FFCommand', () => {
 
     const tasksPath = path.join(projectPath, 'stdd', 'changes', 'ff-tasks-test', 'tasks.md');
     const tasksContent = fs.readFileSync(tasksPath, 'utf8');
-    expect(tasksContent).toContain('- [ ] TASK-001: 环境准备与脚手架搭建');
-    expect(tasksContent).toContain('- [ ] TASK-002: add dashboard 核心逻辑实现');
-    expect(tasksContent).toContain('- [ ] TASK-003: 单元测试编写与验证');
+    // A-2: tasks carry the requirement's own semantics (no fixed template
+    // slots) and the [phase:red] TDD marker.
+    expect(tasksContent).toContain('- [ ] TASK-001: Implement: add dashboard [phase:red]');
+    expect(tasksContent).toContain('- [ ] TASK-002: Write failing tests for add dashboard [phase:red]');
 
     const taskLines = tasksContent.split('\n').filter(line => line.includes('TASK-'));
-    expect(taskLines.length).toBe(3);
+    expect(taskLines.length).toBe(4);
 
     taskLines.forEach(line => {
       expect(line).toMatch(/- \[ \]/);
@@ -144,16 +145,17 @@ describe('FFCommand', () => {
       .toThrow('Description is required.');
   });
 
-  it('should fail when change name already exists', async () => {
+  it('fills a `new`-created skeleton instead of failing on EEXIST (A-1)', async () => {
     const projectPath = createTempProject('ff-dup-project');
     process.chdir(projectPath);
 
     const ffCommand = new FFCommand(silentSpinner);
     await ffCommand.execute('first change', { changeName: 'ff-dup-test' });
 
+    // A-1: a fully populated change refuses a second ff (nothing to fill).
     await expect(ffCommand.execute('second change', { changeName: 'ff-dup-test' }))
       .rejects
-      .toThrow("Change 'ff-dup-test' already exists.");
+      .toThrow(/already populated/);
   });
 
   it('should write workspace metadata and return workspace when scoped', async () => {

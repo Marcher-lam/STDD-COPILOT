@@ -32,7 +32,7 @@ describe('ff.js coverage boost', () => {
   });
 
   describe('execute — change already exists', () => {
-    it('throws when change name already exists', async () => {
+    it('fills an empty existing change dir (A-1 populate mode)', async () => {
       const stddDir = path.join(TMP, 'stdd');
       mkdirp(path.join(stddDir, 'changes', 'ff-existing'));
       mkdirp(path.join(stddDir, 'specs'));
@@ -41,7 +41,10 @@ describe('ff.js coverage boost', () => {
       process.chdir(TMP);
       try {
         const cmd = new FFCommand();
-        await expect(cmd.execute('test feature', { changeName: 'ff-existing' })).rejects.toThrow('already exists');
+        const result = await cmd.execute('test feature', { changeName: 'ff-existing' });
+        const fsSync = require('fs');
+        expect(fsSync.existsSync(path.join(stddDir, 'changes', 'ff-existing', 'proposal.md'))).toBe(true);
+        expect(result.changeName).toBe('ff-existing');
       } finally {
         process.chdir(origCwd);
       }

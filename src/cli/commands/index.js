@@ -82,4 +82,5 @@ module.exports = {
   ExecuteCommand: require('./execute').ExecuteCommand,
   FinalDocCommand: require('./final-doc').FinalDocCommand,
   CommitTddCommand: require('./commit-tdd').CommitTddCommand,
+  BaselineCommand: require('./baseline').BaselineCommand,
 };

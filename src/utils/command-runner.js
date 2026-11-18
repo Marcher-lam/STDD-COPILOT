@@ -64,6 +64,9 @@ const INFRA_OUTPUT_PATTERNS = [
   /ERR_MODULE_NOT_FOUND/,
   /Cannot find module\s+['"][^'"]*package\.json/,
   /Could not find ['"][^'"]*\.(?:test|spec)\.[cm]?[jt]s/i,
+  // Runner itself failed to load its entry (node --test directory-mode
+  // MODULE_NOT_FOUND, etc.) — the suite never ran.
+  /^\s*#\s+Error: Cannot find module /m,
 ];
 
 /**

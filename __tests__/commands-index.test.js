@@ -24,6 +24,7 @@ describe('commands/index.js re-exports', () => {
     // Skill-based workflow commands
     'ProposeCommand', 'ClarifyCommand', 'ConfirmCommand', 'PlanCommand',
     'ExecuteCommand', 'FinalDocCommand', 'CommitTddCommand',
+    'BaselineCommand',
   ];
 
   it('exports all expected command classes', () => {

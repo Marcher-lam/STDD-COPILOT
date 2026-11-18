@@ -258,6 +258,7 @@ init → new → propose → clarify → confirm → spec → plan → apply →
 | CLI | 用途 |
 |-----|------|
 | `stdd mutation [change]` | 变异测试（Quick Heuristic + Stryker 深度变异） |
+| `stdd baseline [action]` | 已知失败基线（capture/show/clear）——brownfield 存量失败不再污染红绿判定 |
 | `stdd outside-in init / scaffold` | Outside-In TDD：E2E → 集成 → 单元 |
 | `stdd tdd-init` | 测试脚手架生成（Jest/Vitest/pytest/go test） |
 | `stdd mock <name>` | Mock 数据和桩生成 |

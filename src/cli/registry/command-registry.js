@@ -162,7 +162,8 @@ const commandRegistry = [
     description: 'Archive completed change',
     options: [
       { flags: '--skip-strict', description: 'Skip the pre-archive strict spec validation gate' },
-      { flags: '--force', description: 'Force archive even if the latest verification evidence failed (records the rejection)' },
+      { flags: '--waive <reason>', description: 'Archive past the verification gate with a RECORDED waiver (required reason, listed in summary.md)' },
+      { flags: '--force', description: 'Force archive even if the latest verification evidence failed (unrecorded escape hatch — prefer --waive)' },
     ],
     action: 'ArchiveCommand',
   },
@@ -516,6 +517,17 @@ const commandRegistry = [
     action: 'AuditCommand',
   },
   {
+    name: 'baseline [action]',
+    description: 'Record/exempt known pre-existing test failures (brownfield baseline)',
+    options: [
+      { flags: '--test-command <cmd>', description: 'Test command override for capture' },
+      { flags: '--workspace <workspace>', description: 'Scope capture to a workspace' },
+      { flags: '--json', description: 'JSON output' },
+    ],
+    action: 'BaselineCommand',
+    helpText: `Actions: capture, show, clear\n\nWith a baseline active, apply RED requires NEW failing tests and GREEN exempts recorded baseline failures.\n\nExamples:\n  stdd baseline capture\n  stdd baseline show\n  stdd baseline clear`,
+  },
+  {
     name: 'continue [change]',
     description: 'Continue interrupted work',
     options: [
@@ -749,6 +761,7 @@ const commandRegistry = [
       { flags: '--test-command <cmd>', description: 'Test command override' },
       { flags: '--lint-command <cmd>', description: 'CHECK stage lint command override' },
       { flags: '--task <fragment>', description: 'Target a specific task by title fragment' },
+      { flags: '--mutation-mode <mode>', description: 'MUTATION stage mode: quick (advisory, default) or stryker (gating)' },
       { flags: '--json', description: 'JSON output' },
     ],
     action: 'ExecuteCommand',

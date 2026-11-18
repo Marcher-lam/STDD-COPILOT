@@ -26,6 +26,7 @@ const {
   ParallelCommand, SupervisorCommand,
   ProposeCommand, ClarifyCommand, ConfirmCommand, PlanCommand,
   ExecuteCommand, FinalDocCommand, CommitTddCommand,
+  BaselineCommand,
 } = require('../commands/index');
 const { BrowserCommand } = require('../commands/browser');
 const { SpecGenerator } = require('../commands/spec-generator');
@@ -55,6 +56,7 @@ function buildCommandFactories() {
     ParallelCommand, SupervisorCommand,
     ProposeCommand, ClarifyCommand, ConfirmCommand, PlanCommand,
     ExecuteCommand, FinalDocCommand, CommitTddCommand,
+    BaselineCommand,
     AgentEngine, SudoLangParser, SudoExecutor, createAgentExecutor,
     RuntimeAgentCommand: AgentEngine,
     RuntimeSudoCommand: SudoLangParser,

@@ -17,6 +17,16 @@ stdd ff "需求描述" --output <change-id>        # Custom change id (alias of 
 ## Description
 One-click generation of all STDD artifacts (proposal, specs, design, tasks) by skipping confirmation gates. Suitable for well-defined requirements with clear boundaries.
 
+> 产物为骨架级：In-Scope/任务/spec 场景由需求文本派生，领域语义（多
+> Requirement/Scenario 拆分、架构决策）仍需 AI/人工细化后过 strict 校验。
+> 与 `stdd new change <name>` 组合时，ff 会填充既有骨架（只补缺失或
+> 未编辑的模板文件，用户改过的产物不动）：
+>
+> ```bash
+> stdd new change add-favorites
+> stdd ff "POST /api/articles/:slug/favorite" --change-name add-favorites
+> ```
+
 ## When to Use
 
 ### ✅ Suitable for Fast-Forward
